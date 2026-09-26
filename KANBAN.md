@@ -5,7 +5,7 @@ Sem prazos. Uma etapa só começa quando a anterior está pronta. Definição de
 ## Fazendo
 
 - Etapa 2: dados em JSON (champions, cards, boss, monsters)
-- Etapa 3: motor em TypeScript (começando pela base do projeto e testes)
+- Etapa 3: motor em TypeScript. Feito: rng com seed, geometria, estado inicial, mana, dado e movimento (29 testes). Falta: compra e mão, escolha do campeão principal, ordem das fases do turno, morte e retorno
 
 ## Teste
 
