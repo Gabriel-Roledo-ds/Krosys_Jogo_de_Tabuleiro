@@ -1,6 +1,6 @@
 # Krósys: jogo de campeões contra um boss
 
-> **Experimento 100% feito com IA.** Este projeto é um experimento em que as regras, os dados, o código e a documentação são criados em conversa com o Claude (Anthropic). As decisões de design são de Gabe; a IA propõe, escreve e testa.
+> **Experimento 100% feito com IA.** Este projeto é um experimento em que as regras, os dados, o código e a documentação são criados em conversa com o Claude (Anthropic). As decisões de design são minhas; a IA propõe, escreve e testa.
 
 Jogo de tabuleiro digital, por turnos, para jogar online com amigos. Duas equipes de três campeões começam em lados opostos de um tabuleiro 15x15. No centro está um boss, e pelo mapa há monstros que dão cartas ao serem derrotados. **Vence quem der o último golpe no boss.**
 
