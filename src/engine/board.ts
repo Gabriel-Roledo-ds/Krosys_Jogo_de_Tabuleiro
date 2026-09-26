@@ -38,3 +38,50 @@ export function cellsInRadius(center: Pos, radius: number, width: number, height
   }
   return cells;
 }
+
+const sign = (n: number): number => (n > 0 ? 1 : n < 0 ? -1 : 0);
+
+/** Direção unitária (8 direções) que vai de `from` para `to`. (0,0) se forem a mesma casa. */
+export function directionTo(from: Pos, to: Pos): Pos {
+  return { x: sign(to.x - from.x), y: sign(to.y - from.y) };
+}
+
+/** Verdadeiro se `to` está em linha reta (horizontal, vertical ou diagonal) a partir de `from`. */
+export function isInLine(from: Pos, to: Pos): boolean {
+  const dx = Math.abs(to.x - from.x);
+  const dy = Math.abs(to.y - from.y);
+  return dx === 0 || dy === 0 || dx === dy;
+}
+
+/**
+ * Casas que a reta entre `a` e `b` atravessa, sem incluir as pontas (Bresenham).
+ * Usada para a linha de visão.
+ */
+export function lineBetween(a: Pos, b: Pos): Pos[] {
+  const cells: Pos[] = [];
+  let x = a.x;
+  let y = a.y;
+  const dx = Math.abs(b.x - a.x);
+  const dy = Math.abs(b.y - a.y);
+  const sx = a.x < b.x ? 1 : -1;
+  const sy = a.y < b.y ? 1 : -1;
+  let err = dx - dy;
+  while (!(x === b.x && y === b.y)) {
+    const e2 = 2 * err;
+    if (e2 > -dy) {
+      err -= dy;
+      x += sx;
+    }
+    if (e2 < dx) {
+      err += dx;
+      y += sy;
+    }
+    if (!(x === b.x && y === b.y)) cells.push({ x, y });
+  }
+  return cells;
+}
+
+/** Gira uma direção 90 graus (usada no formato em L). */
+export const rotate90 = (d: Pos): Pos => ({ x: -d.y, y: d.x });
+
+export const addPos = (a: Pos, b: Pos): Pos => ({ x: a.x + b.x, y: a.y + b.y });

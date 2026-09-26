@@ -4,19 +4,15 @@ Sem prazos. Uma etapa só começa quando a anterior está pronta. Definição de
 
 ## Fazendo
 
-- Etapa 2: dados em JSON (champions, cards, boss, monsters)
-- Etapa 3: motor em TypeScript. Feito: rng com seed, geometria, estado inicial, mana, dado e movimento (29 testes). Falta: compra e mão, escolha do campeão principal, ordem das fases do turno, morte e retorno
+- Etapa 5: bots e simulação
+- Etapa 6: servidor online e cliente jogável
 
 ## Teste
 
-(vazio)
+- Etapas 3 e 4: motor e combate implementados, 182 testes passando; falta rodar simulação com bots inteligentes
 
 ## Backlog
 
-- Etapa 4: combate (alcance, habilidades, status, monstros, boss com auras)
-- Etapa 5: bots e simulação (Trio Combo vs Trio Tático; bots contra o boss e bots entre si)
-- Etapa 6a: cliente Phaser jogável local contra bot, com placeholders
-- Etapa 6b: servidor online, salas com código, reconexão
 - Etapa 7: balanceamento e arte definitiva
 - Pós-MVP: paredes fixas, tesouros, interagíveis, mais equipes, modos com 3 ou 4 jogadores
 

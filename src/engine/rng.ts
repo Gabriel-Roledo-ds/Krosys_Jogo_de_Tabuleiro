@@ -1,9 +1,13 @@
 // Gerador de números aleatórios com seed fixa (mulberry32).
 // Mesma seed = mesma partida, o que torna bugs reproduzíveis.
+// O estado do gerador fica num número dentro do GameState, então a partida inteira
+// pode ser salva e restaurada como JSON.
+
+export interface RngHolder {
+  rngState: number;
+}
 
 export interface Rng {
-  /** Estado interno, para salvar e restaurar a partida. */
-  state: number;
   /** Número real em [0, 1). */
   next(): number;
   /** Inteiro em [0, n). */
@@ -12,14 +16,16 @@ export interface Rng {
   roll(sides: number): number;
   /** Embaralha uma cópia da lista (Fisher-Yates). */
   shuffle<T>(items: readonly T[]): T[];
+  /** Escolhe um item ao acaso. */
+  pick<T>(items: readonly T[]): T;
 }
 
-export function createRng(seed: number): Rng {
+/** Gerador que lê e grava o estado em `holder.rngState`. */
+export function rngOf(holder: RngHolder): Rng {
   const rng: Rng = {
-    state: seed >>> 0,
     next() {
-      rng.state = (rng.state + 0x6d2b79f5) >>> 0;
-      let t = rng.state;
+      holder.rngState = (holder.rngState + 0x6d2b79f5) >>> 0;
+      let t = holder.rngState;
       t = Math.imul(t ^ (t >>> 15), t | 1);
       t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
@@ -38,6 +44,14 @@ export function createRng(seed: number): Rng {
       }
       return a;
     },
+    pick(items) {
+      return items[rng.int(items.length)];
+    },
   };
   return rng;
+}
+
+/** Gerador independente, para testes. */
+export function createRng(seed: number): Rng {
+  return rngOf({ rngState: seed >>> 0 });
 }

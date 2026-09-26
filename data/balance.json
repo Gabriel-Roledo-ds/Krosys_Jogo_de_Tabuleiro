@@ -3,7 +3,10 @@
   "board": {
     "width": 15,
     "height": 15,
-    "boss_position": { "x": 7, "y": 7 }
+    "boss_position": {
+      "x": 7,
+      "y": 7
+    }
   },
   "teams": {
     "count": 2,
@@ -12,14 +15,80 @@
     "start_layout_3_or_4_teams": "corners",
     "start_areas": {
       "A": [
-        { "x": 1, "y": 6 }, { "x": 1, "y": 7 }, { "x": 1, "y": 8 },
-        { "x": 0, "y": 6 }, { "x": 0, "y": 7 }, { "x": 0, "y": 8 },
-        { "x": 2, "y": 6 }, { "x": 2, "y": 7 }, { "x": 2, "y": 8 }
+        {
+          "x": 1,
+          "y": 6
+        },
+        {
+          "x": 1,
+          "y": 7
+        },
+        {
+          "x": 1,
+          "y": 8
+        },
+        {
+          "x": 0,
+          "y": 6
+        },
+        {
+          "x": 0,
+          "y": 7
+        },
+        {
+          "x": 0,
+          "y": 8
+        },
+        {
+          "x": 2,
+          "y": 6
+        },
+        {
+          "x": 2,
+          "y": 7
+        },
+        {
+          "x": 2,
+          "y": 8
+        }
       ],
       "B": [
-        { "x": 13, "y": 6 }, { "x": 13, "y": 7 }, { "x": 13, "y": 8 },
-        { "x": 14, "y": 6 }, { "x": 14, "y": 7 }, { "x": 14, "y": 8 },
-        { "x": 12, "y": 6 }, { "x": 12, "y": 7 }, { "x": 12, "y": 8 }
+        {
+          "x": 13,
+          "y": 6
+        },
+        {
+          "x": 13,
+          "y": 7
+        },
+        {
+          "x": 13,
+          "y": 8
+        },
+        {
+          "x": 14,
+          "y": 6
+        },
+        {
+          "x": 14,
+          "y": 7
+        },
+        {
+          "x": 14,
+          "y": 8
+        },
+        {
+          "x": 12,
+          "y": 6
+        },
+        {
+          "x": 12,
+          "y": 7
+        },
+        {
+          "x": 12,
+          "y": 8
+        }
       ]
     }
   },
@@ -88,7 +157,14 @@
   },
   "damage": {
     "deterministic": true,
-    "order": ["base", "flat_bonuses", "multipliers", "defense", "shield", "hp"],
+    "order": [
+      "base",
+      "flat_bonuses",
+      "multipliers",
+      "defense",
+      "shield",
+      "hp"
+    ],
     "defense_mode": "flat_subtraction",
     "minimum_damage_if_base_at_least_1": 1,
     "damage_over_time_ignores_defense": true,
@@ -108,7 +184,9 @@
   },
   "combat": {
     "champions_can_attack_other_teams": true,
-    "kill_reward": "none"
+    "kill_reward": "none",
+    "monster_attack_trigger_voluntary_moves_only": true,
+    "hazards_trigger_on": "stop_or_forced_landing"
   },
   "death": {
     "return_to": "start_area",
@@ -116,7 +194,9 @@
     "untargetable_until_end_of_first_own_turn": true,
     "can_cast_cards_while_untargetable": true,
     "resurrect_uses_per_game": 1,
-    "never_chosen_champion_exit_rule": false
+    "never_chosen_champion_exit_rule": false,
+    "return_hp": "full",
+    "return_timing": "start_of_own_next_turn"
   },
   "boss": {
     "hp": 60,
@@ -124,7 +204,12 @@
     "range": 4,
     "deck_size": 11,
     "activation": "start_of_turn_of_player_with_champion_in_range",
-    "target_types": ["closest", "last_attacker", "aura", "area"],
+    "target_types": [
+      "closest",
+      "last_attacker",
+      "aura",
+      "area"
+    ],
     "last_attacker_fallback": "closest",
     "max_active_auras": 1,
     "new_aura_replaces_old": true,
@@ -138,5 +223,17 @@
   },
   "victory": {
     "condition": "last_hit_on_boss"
+  },
+  "walls": {
+    "default_duration_rounds": 3,
+    "low_wall_hp": 2,
+    "normal_wall_hp": 2,
+    "portal_duration_rounds": 4,
+    "spring_duration_rounds": 4,
+    "_notes": "Duracoes e vidas nao definidas no planejamento: valores padrao, ajustaveis."
+  },
+  "resurrect": {
+    "placement": "adjacent_to_caster",
+    "keeps_hand": true
   }
 }

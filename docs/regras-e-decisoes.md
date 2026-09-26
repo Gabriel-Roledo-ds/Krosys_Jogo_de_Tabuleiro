@@ -207,3 +207,21 @@ Resolvidas antes: quem lança as cartas (qualquer campeão, com mana), habilidad
 - Online: servidor autoritativo com WebSocket, salas por código, 2 jogadores humanos no MVP. [DEFINIDO]
 - Cliente: Phaser 3 com visão de cima e estilo de RPG de 16 bits, placeholders no início. [DEFINIDO]
 - Aleatoriedade (dado, embaralhar) usa seed fixa para reproduzir partidas. [PADRÃO]
+
+## 15. Decisões de implementação (todas [PADRÃO], valem até serem confirmadas)
+
+Regras que o motor precisou fechar e que o planejamento não definia. Os números ficam em data/balance.json.
+
+- **Morte:** o campeão sai do tabuleiro na hora, e a mão dele fica guardada. Ele volta no início do próximo turno da equipe, na largada, com vida cheia e imune. Só então as cartas dele voltam ao baralho embaralhadas. Enquanto está morto, não usa cartas.
+- **Ressurgir:** só age sobre aliado morto que ainda não voltou. O aliado aparece numa casa livre adjacente ao Curandeiro, com a mão de volta e sem imunidade. 1 vez por partida.
+- **Efeitos de casa** (armadilha, mola, portal, Muro de Chamas) disparam quando o campeão termina o movimento na casa ou é jogado para ela. Passar por cima não dispara.
+- **Monstros** atacam ao fim de um movimento voluntário dentro do alcance, não em empurrões nem puxões.
+- **Cartas de monstro** são consumíveis: depois de usadas, somem (não vão para o descarte).
+- **Duração de paredes:** Barreira, Estaca, Muralha, Barricada e Cúpula duram as rodadas da carta ou 3 rodadas (Barreira e Estaca). Portal 4 rodadas, Mola 4 rodadas. Vida das paredes: 2 (+2 do Engenheiro). Reforçar torna permanente.
+- **Boss:** o alvo `closest` é o campeão mais próximo do jogador da vez; `last_attacker` cai para o mais próximo se o último atacante estiver morto ou fora do alcance. Lacaios atacam como monstros (ao fim do movimento adjacente).
+- **Fúria** conta cartas do boss que resolvem depois dela; termina após 2. **Carapaça** zera na próxima ativação do boss.
+- **Cartas rápidas** respondem a cartas, básicas e ativações do boss. Movimento não abre janela de resposta. Na ativação do boss, quem responde primeiro é o jogador da vez.
+- **Vento Lateral:** sem escolha de destino, cada aliado avança em direção ao boss.
+- **Ricochete:** o segundo alvo é o inimigo mais próximo do primeiro, a até 2 casas.
+- **Passo Ágil:** o +1 de mana vale se, depois de usar a básica, o total andado no turno chegar a 5.
+- **Elo:** o parceiro sofre metade do dano final (arredondado para baixo, mínimo 1), sem defesa e sem repassar de novo.
