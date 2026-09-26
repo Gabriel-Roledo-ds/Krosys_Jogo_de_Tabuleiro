@@ -4,7 +4,7 @@ Sem prazos. Uma etapa só começa quando a anterior está pronta. Definição de
 
 ## Fazendo
 
-- Etapa 5: bots e simulação
+- Etapa 5: bots e simulação (bot guloso e aleatório, relatório; falta balancear)
 - Etapa 6: servidor online e cliente jogável
 
 ## Teste
