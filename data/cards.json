@@ -1152,6 +1152,1151 @@
     "assumed_range": true
   },
   {
+    "id": "tiro_certeiro",
+    "owner": "atirador",
+    "name": "Tiro Certeiro",
+    "cost": 2,
+    "fast": false,
+    "range": 5,
+    "target": "enemy",
+    "effects": [
+      {
+        "type": "damage",
+        "amount": 3
+      }
+    ],
+    "text": "Dano 3, alcance 5."
+  },
+  {
+    "id": "tiro_de_precisao",
+    "owner": "atirador",
+    "name": "Tiro de Precisão",
+    "cost": 2,
+    "fast": false,
+    "range": 6,
+    "target": "enemy",
+    "effects": [
+      {
+        "type": "damage",
+        "amount": 2
+      }
+    ],
+    "text": "Dano 2, alcance 6."
+  },
+  {
+    "id": "disparo_atordoante",
+    "owner": "atirador",
+    "name": "Disparo Atordoante",
+    "cost": 3,
+    "fast": false,
+    "range": 4,
+    "target": "enemy",
+    "effects": [
+      {
+        "type": "damage",
+        "amount": 1
+      },
+      {
+        "type": "apply_status",
+        "status": "move_penalty",
+        "amount": 3,
+        "duration": {
+          "unit": "champion_turns",
+          "value": 1
+        },
+        "control": true
+      }
+    ],
+    "text": "Dano 1 e o alvo perde 3 de movimento."
+  },
+  {
+    "id": "marca_fatal",
+    "owner": "atirador",
+    "name": "Marca Fatal",
+    "cost": 3,
+    "fast": false,
+    "range": 5,
+    "target": "enemy",
+    "effects": [
+      {
+        "type": "apply_status",
+        "status": "mark",
+        "bonus_damage": 3,
+        "duration": {
+          "unit": "rounds",
+          "value": 2
+        }
+      }
+    ],
+    "text": "Marca o alvo: +3 de dano por 2 rodadas."
+  },
+  {
+    "id": "tiro_em_cadeia",
+    "owner": "atirador",
+    "name": "Tiro em Cadeia",
+    "cost": 4,
+    "fast": false,
+    "range": 4,
+    "target": "enemy",
+    "effects": [
+      {
+        "type": "damage",
+        "amount": 3
+      },
+      {
+        "type": "damage_second_target",
+        "amount": 3,
+        "max_distance_from_first": 2
+      }
+    ],
+    "text": "Dano 3 no alvo e 3 em outro inimigo a até 2 casas dele."
+  },
+  {
+    "id": "salva_dupla",
+    "owner": "atirador",
+    "name": "Salva Dupla",
+    "cost": 4,
+    "fast": false,
+    "range": 4,
+    "target": "two_enemies",
+    "effects": [
+      {
+        "type": "damage",
+        "amount": 3,
+        "per_target": true
+      }
+    ],
+    "text": "Dano 3 em dois inimigos."
+  },
+  {
+    "id": "olho_de_aguia",
+    "owner": "atirador",
+    "name": "Olho de Águia",
+    "cost": 2,
+    "fast": false,
+    "range": "self",
+    "target": "self",
+    "effects": [
+      {
+        "type": "buff_next_card",
+        "bonus_range": 2,
+        "bonus_damage": 1
+      }
+    ],
+    "text": "Próxima carta: +2 de alcance e +1 de dano."
+  },
+  {
+    "id": "tiro_pesado",
+    "owner": "atirador",
+    "name": "Tiro Pesado",
+    "cost": 4,
+    "fast": false,
+    "range": 4,
+    "target": "enemy",
+    "effects": [
+      {
+        "type": "damage",
+        "amount": 6
+      }
+    ],
+    "text": "Dano 6, alcance 4."
+  },
+  {
+    "id": "tiro_de_misericordia",
+    "owner": "atirador",
+    "name": "Tiro de Misericórdia",
+    "cost": 4,
+    "fast": false,
+    "range": 4,
+    "target": "enemy",
+    "effects": [
+      {
+        "type": "damage",
+        "amount": 6,
+        "total_if_target_has_status": {
+          "status": "mark",
+          "total": 10,
+          "mark_included": true
+        }
+      }
+    ],
+    "text": "Dano 6; 10 no total se o alvo estiver marcado."
+  },
+  {
+    "id": "fogo_de_cobertura",
+    "owner": "atirador",
+    "name": "Fogo de Cobertura",
+    "cost": 1,
+    "fast": false,
+    "range": 4,
+    "target": "enemy",
+    "effects": [
+      {
+        "type": "damage",
+        "amount": 1
+      },
+      {
+        "type": "apply_status",
+        "status": "move_penalty",
+        "amount": 1,
+        "duration": {
+          "unit": "champion_turns",
+          "value": 1
+        },
+        "control": true
+      }
+    ],
+    "text": "Dano 1 e o alvo perde 1 de movimento."
+  },
+  {
+    "id": "fagulha",
+    "owner": "piromante",
+    "name": "Fagulha",
+    "cost": 1,
+    "fast": false,
+    "range": 4,
+    "target": "enemy",
+    "effects": [
+      {
+        "type": "damage",
+        "amount": 2,
+        "element": "fire"
+      }
+    ],
+    "text": "Dano 2 de fogo, alcance 4."
+  },
+  {
+    "id": "labareda",
+    "owner": "piromante",
+    "name": "Labareda",
+    "cost": 2,
+    "fast": false,
+    "range": 3,
+    "target": "cell",
+    "effects": [
+      {
+        "type": "damage",
+        "amount": 2,
+        "radius": 1,
+        "element": "fire"
+      }
+    ],
+    "text": "Dano 2 de fogo em área 1."
+  },
+  {
+    "id": "cinzas_ardentes",
+    "owner": "piromante",
+    "name": "Cinzas Ardentes",
+    "cost": 2,
+    "fast": false,
+    "range": 3,
+    "target": "cell",
+    "effects": [
+      {
+        "type": "ground_fire",
+        "radius": 1,
+        "damage_per_round": 1,
+        "duration": {
+          "unit": "rounds",
+          "value": 3
+        }
+      }
+    ],
+    "text": "Área 1 em chamas por 3 rodadas (1 de dano)."
+  },
+  {
+    "id": "pilar_de_fogo",
+    "owner": "piromante",
+    "name": "Pilar de Fogo",
+    "cost": 3,
+    "fast": false,
+    "range": 3,
+    "target": "cell",
+    "effects": [
+      {
+        "type": "ground_fire",
+        "radius": 0,
+        "damage_per_round": 2,
+        "duration": {
+          "unit": "rounds",
+          "value": 3
+        }
+      }
+    ],
+    "text": "Uma casa em chamas por 3 rodadas (2 de dano)."
+  },
+  {
+    "id": "combustao_total",
+    "owner": "piromante",
+    "name": "Combustão Total",
+    "cost": 3,
+    "fast": false,
+    "range": 3,
+    "target": "enemy",
+    "effects": [
+      {
+        "type": "damage",
+        "amount": 5,
+        "only_if": "target_burning_or_on_burning_ground",
+        "element": "fire"
+      }
+    ],
+    "text": "Dano 5 se o alvo estiver queimando."
+  },
+  {
+    "id": "chuva_de_brasas",
+    "owner": "piromante",
+    "name": "Chuva de Brasas",
+    "cost": 4,
+    "fast": false,
+    "range": 5,
+    "target": "random_enemies",
+    "effects": [
+      {
+        "type": "damage",
+        "amount": 2,
+        "random_targets": 3,
+        "element": "fire"
+      }
+    ],
+    "text": "Dano 2 de fogo em até 3 inimigos aleatórios."
+  },
+  {
+    "id": "muro_ardente",
+    "owner": "piromante",
+    "name": "Muro Ardente",
+    "cost": 3,
+    "fast": false,
+    "range": 3,
+    "target": "line",
+    "effects": [
+      {
+        "type": "fire_wall",
+        "length": 3,
+        "damage_on_enter": 3,
+        "duration": {
+          "unit": "rounds",
+          "value": 3
+        }
+      }
+    ],
+    "text": "Muro de fogo de 3 casas: 3 de dano a quem entra."
+  },
+  {
+    "id": "rastro_incandescente",
+    "owner": "piromante",
+    "name": "Rastro Incandescente",
+    "cost": 3,
+    "fast": false,
+    "range": "self",
+    "target": "self",
+    "effects": [
+      {
+        "type": "fire_trail",
+        "damage_per_round": 2,
+        "duration": {
+          "unit": "rounds",
+          "value": 2
+        }
+      }
+    ],
+    "text": "Deixa rastro de fogo (2 de dano) por 2 rodadas."
+  },
+  {
+    "id": "inferno",
+    "owner": "piromante",
+    "name": "Inferno",
+    "cost": 4,
+    "fast": false,
+    "range": 4,
+    "target": "cell",
+    "effects": [
+      {
+        "type": "damage",
+        "amount": 4,
+        "radius": 2,
+        "element": "fire"
+      }
+    ],
+    "text": "Dano 4 de fogo em área 2, alcance 4."
+  },
+  {
+    "id": "erupcao",
+    "owner": "piromante",
+    "name": "Erupção",
+    "cost": 5,
+    "fast": false,
+    "range": 3,
+    "target": "cell",
+    "effects": [
+      {
+        "type": "damage",
+        "amount": 6,
+        "radius": 2,
+        "element": "fire"
+      }
+    ],
+    "text": "Dano 6 de fogo em área 2."
+  },
+  {
+    "id": "passo_largo",
+    "owner": "andarilho",
+    "name": "Passo Largo",
+    "cost": 1,
+    "fast": false,
+    "range": "self",
+    "target": "self",
+    "effects": [
+      {
+        "type": "bonus_move",
+        "amount": 2
+      }
+    ],
+    "text": "+2 de movimento."
+  },
+  {
+    "id": "sprint",
+    "owner": "andarilho",
+    "name": "Sprint",
+    "cost": 2,
+    "fast": false,
+    "range": "self",
+    "target": "self",
+    "effects": [
+      {
+        "type": "bonus_move",
+        "amount": 5
+      }
+    ],
+    "text": "+5 de movimento."
+  },
+  {
+    "id": "troca_rapida",
+    "owner": "andarilho",
+    "name": "Troca Rápida",
+    "cost": 1,
+    "fast": false,
+    "range": 3,
+    "target": "champion",
+    "effects": [
+      {
+        "type": "swap_places"
+      }
+    ],
+    "text": "Troca de lugar com um campeão a até 3 casas."
+  },
+  {
+    "id": "empurrao_aliado",
+    "owner": "andarilho",
+    "name": "Empurrão Aliado",
+    "cost": 1,
+    "fast": false,
+    "range": 3,
+    "target": "ally",
+    "effects": [
+      {
+        "type": "move_target",
+        "distance": 2
+      }
+    ],
+    "text": "Move um aliado 2 casas."
+  },
+  {
+    "id": "salto_curto",
+    "owner": "andarilho",
+    "name": "Salto Curto",
+    "cost": 2,
+    "fast": false,
+    "range": 4,
+    "target": "cell",
+    "effects": [
+      {
+        "type": "teleport_self",
+        "max_distance": 4
+      }
+    ],
+    "text": "Teletransporta até 4 casas."
+  },
+  {
+    "id": "puxao_forte",
+    "owner": "andarilho",
+    "name": "Puxão Forte",
+    "cost": 3,
+    "fast": false,
+    "range": 5,
+    "target": "champion_in_line",
+    "effects": [
+      {
+        "type": "pull",
+        "distance": 4
+      }
+    ],
+    "text": "Puxa um campeão em linha 4 casas."
+  },
+  {
+    "id": "investida_longa",
+    "owner": "andarilho",
+    "name": "Investida Longa",
+    "cost": 3,
+    "fast": false,
+    "range": "self",
+    "target": "direction",
+    "effects": [
+      {
+        "type": "move_in_line",
+        "distance": 4
+      },
+      {
+        "type": "damage_first_in_path",
+        "amount": 3
+      }
+    ],
+    "text": "Corre 4 casas; 3 de dano no primeiro atingido."
+  },
+  {
+    "id": "carga_devastadora",
+    "owner": "andarilho",
+    "name": "Carga Devastadora",
+    "cost": 4,
+    "fast": false,
+    "range": "self",
+    "target": "direction",
+    "effects": [
+      {
+        "type": "move_in_line",
+        "distance": 3
+      },
+      {
+        "type": "damage_first_in_path",
+        "amount": 5
+      }
+    ],
+    "text": "Corre 3 casas; 5 de dano no primeiro atingido."
+  },
+  {
+    "id": "corrida_em_grupo",
+    "owner": "andarilho",
+    "name": "Corrida em Grupo",
+    "cost": 4,
+    "fast": false,
+    "range": "self",
+    "target": "self",
+    "effects": [
+      {
+        "type": "move_all_allies",
+        "distance": 3
+      }
+    ],
+    "text": "Todos os aliados andam até 3 casas."
+  },
+  {
+    "id": "atalho_curto",
+    "owner": "andarilho",
+    "name": "Atalho Curto",
+    "cost": 2,
+    "fast": false,
+    "range": "self",
+    "target": "self",
+    "effects": [
+      {
+        "type": "phase_this_turn",
+        "pass_through": [
+          "champions",
+          "weak_walls"
+        ]
+      }
+    ],
+    "text": "Atravessa campeões e paredes fracas neste turno."
+  },
+  {
+    "id": "teia_larga",
+    "owner": "enredador",
+    "name": "Teia Larga",
+    "cost": 2,
+    "fast": false,
+    "range": 3,
+    "target": "cell",
+    "effects": [
+      {
+        "type": "slow_cell",
+        "entry_cost": 2,
+        "duration": {
+          "unit": "rounds",
+          "value": 3
+        }
+      }
+    ],
+    "text": "Casa lenta por 3 rodadas."
+  },
+  {
+    "id": "laco_firme",
+    "owner": "enredador",
+    "name": "Laço Firme",
+    "cost": 2,
+    "fast": false,
+    "range": 3,
+    "target": "enemy",
+    "effects": [
+      {
+        "type": "apply_status",
+        "status": "move_penalty",
+        "amount": 3,
+        "duration": {
+          "unit": "champion_turns",
+          "value": 1
+        },
+        "control": true
+      }
+    ],
+    "text": "Alvo perde 3 de movimento."
+  },
+  {
+    "id": "raizes_profundas",
+    "owner": "enredador",
+    "name": "Raízes Profundas",
+    "cost": 3,
+    "fast": false,
+    "range": 3,
+    "target": "enemy",
+    "effects": [
+      {
+        "type": "apply_status",
+        "status": "immobilized",
+        "duration": {
+          "unit": "champion_turns",
+          "value": 1
+        },
+        "control": true
+      },
+      {
+        "type": "damage",
+        "amount": 2
+      }
+    ],
+    "text": "Imobiliza e causa 2 de dano."
+  },
+  {
+    "id": "empurrao_forte",
+    "owner": "enredador",
+    "name": "Empurrão Forte",
+    "cost": 3,
+    "fast": false,
+    "range": 3,
+    "target": "enemy",
+    "effects": [
+      {
+        "type": "push",
+        "distance": 4,
+        "control": true
+      }
+    ],
+    "text": "Empurra o alvo 4 casas."
+  },
+  {
+    "id": "gancho_longo",
+    "owner": "enredador",
+    "name": "Gancho Longo",
+    "cost": 3,
+    "fast": false,
+    "range": 4,
+    "target": "enemy",
+    "effects": [
+      {
+        "type": "pull",
+        "distance": 3,
+        "control": true
+      },
+      {
+        "type": "damage",
+        "amount": 2
+      }
+    ],
+    "text": "Puxa 3 casas e causa 2 de dano."
+  },
+  {
+    "id": "rede_grande",
+    "owner": "enredador",
+    "name": "Rede Grande",
+    "cost": 4,
+    "fast": false,
+    "range": 3,
+    "target": "cell",
+    "effects": [
+      {
+        "type": "apply_status_area",
+        "radius": 2,
+        "status": "move_penalty",
+        "amount": 3,
+        "duration": {
+          "unit": "champion_turns",
+          "value": 1
+        },
+        "control": true,
+        "enemies_only": true
+      }
+    ],
+    "text": "Inimigos em área 2 perdem 3 de movimento."
+  },
+  {
+    "id": "marca_de_captura",
+    "owner": "enredador",
+    "name": "Marca de Captura",
+    "cost": 2,
+    "fast": false,
+    "range": 4,
+    "target": "enemy",
+    "effects": [
+      {
+        "type": "apply_status",
+        "status": "mark",
+        "bonus_damage": 2,
+        "duration": {
+          "unit": "rounds",
+          "value": 3
+        }
+      }
+    ],
+    "text": "Marca o alvo: +2 de dano por 3 rodadas."
+  },
+  {
+    "id": "elo_longo",
+    "owner": "enredador",
+    "name": "Elo Longo",
+    "cost": 4,
+    "fast": false,
+    "range": 5,
+    "target": "two_enemies",
+    "effects": [
+      {
+        "type": "link",
+        "share_ratio": 0.5,
+        "duration": {
+          "unit": "rounds",
+          "value": 3
+        }
+      }
+    ],
+    "text": "Liga dois inimigos por 3 rodadas."
+  },
+  {
+    "id": "amarras_fortes",
+    "owner": "enredador",
+    "name": "Amarras Fortes",
+    "cost": 3,
+    "fast": false,
+    "range": "self",
+    "target": "self",
+    "effects": [
+      {
+        "type": "apply_status_adjacent_enemies",
+        "status": "move_penalty",
+        "amount": 3,
+        "duration": {
+          "unit": "champion_turns",
+          "value": 1
+        },
+        "control": true
+      }
+    ],
+    "text": "Inimigos adjacentes perdem 3 de movimento."
+  },
+  {
+    "id": "choque",
+    "owner": "enredador",
+    "name": "Choque",
+    "cost": 5,
+    "fast": false,
+    "range": 3,
+    "target": "enemy",
+    "effects": [
+      {
+        "type": "apply_status",
+        "status": "stunned",
+        "duration": {
+          "unit": "champion_turns",
+          "value": 1
+        },
+        "control": true
+      },
+      {
+        "type": "damage",
+        "amount": 3
+      }
+    ],
+    "text": "Atordoa e causa 3 de dano."
+  },
+  {
+    "id": "curativo",
+    "owner": "curandeiro",
+    "name": "Curativo",
+    "cost": 1,
+    "fast": false,
+    "range": 3,
+    "target": "ally",
+    "effects": [
+      {
+        "type": "heal",
+        "amount": 3
+      }
+    ],
+    "text": "Cura 3."
+  },
+  {
+    "id": "cura_maior",
+    "owner": "curandeiro",
+    "name": "Cura Maior",
+    "cost": 3,
+    "fast": false,
+    "range": 3,
+    "target": "ally",
+    "effects": [
+      {
+        "type": "heal",
+        "amount": 6
+      }
+    ],
+    "text": "Cura 6."
+  },
+  {
+    "id": "escudo_grande",
+    "owner": "curandeiro",
+    "name": "Escudo Grande",
+    "cost": 3,
+    "fast": false,
+    "range": 3,
+    "target": "ally",
+    "effects": [
+      {
+        "type": "shield",
+        "amount": 5
+      }
+    ],
+    "text": "Escudo de 5."
+  },
+  {
+    "id": "bencao_dupla",
+    "owner": "curandeiro",
+    "name": "Bênção Dupla",
+    "cost": 3,
+    "fast": false,
+    "range": 3,
+    "target": "ally",
+    "effects": [
+      {
+        "type": "heal",
+        "amount": 3
+      },
+      {
+        "type": "shield",
+        "amount": 2
+      }
+    ],
+    "text": "Cura 3 e escudo de 2."
+  },
+  {
+    "id": "regeneracao_forte",
+    "owner": "curandeiro",
+    "name": "Regeneração Forte",
+    "cost": 3,
+    "fast": false,
+    "range": 3,
+    "target": "ally",
+    "effects": [
+      {
+        "type": "heal_over_time",
+        "amount_per_round": 2,
+        "duration": {
+          "unit": "rounds",
+          "value": 3
+        }
+      }
+    ],
+    "text": "Cura 2 por rodada, 3 rodadas."
+  },
+  {
+    "id": "fonte_de_vida",
+    "owner": "curandeiro",
+    "name": "Fonte de Vida",
+    "cost": 4,
+    "fast": false,
+    "range": 3,
+    "target": "ally",
+    "effects": [
+      {
+        "type": "heal_over_time",
+        "amount_per_round": 2,
+        "duration": {
+          "unit": "rounds",
+          "value": 4
+        }
+      }
+    ],
+    "text": "Cura 2 por rodada, 4 rodadas."
+  },
+  {
+    "id": "aura_curativa",
+    "owner": "curandeiro",
+    "name": "Aura Curativa",
+    "cost": 4,
+    "fast": false,
+    "range": "self",
+    "target": "self",
+    "effects": [
+      {
+        "type": "heal",
+        "amount": 3,
+        "radius": 3,
+        "around_self": true,
+        "allies_only": true
+      }
+    ],
+    "text": "Cura 3 aliados a até 3 casas."
+  },
+  {
+    "id": "toque_purificador",
+    "owner": "curandeiro",
+    "name": "Toque Purificador",
+    "cost": 2,
+    "fast": false,
+    "range": 3,
+    "target": "ally",
+    "effects": [
+      {
+        "type": "remove_negative_effects"
+      },
+      {
+        "type": "heal",
+        "amount": 1
+      }
+    ],
+    "text": "Remove efeitos negativos e cura 1."
+  },
+  {
+    "id": "sacrificio_maior",
+    "owner": "curandeiro",
+    "name": "Sacrifício Maior",
+    "cost": 2,
+    "fast": false,
+    "range": 3,
+    "target": "ally",
+    "effects": [
+      {
+        "type": "self_damage",
+        "amount": 3,
+        "ignores_defense": true
+      },
+      {
+        "type": "heal",
+        "amount": 7
+      }
+    ],
+    "text": "Perde 3 de vida e cura 7."
+  },
+  {
+    "id": "santuario_maior",
+    "owner": "curandeiro",
+    "name": "Santuário Maior",
+    "cost": 5,
+    "fast": false,
+    "range": 3,
+    "target": "cell",
+    "effects": [
+      {
+        "type": "immune_to_control_area",
+        "radius": 2,
+        "duration": {
+          "unit": "rounds",
+          "value": 3
+        },
+        "allies_only": true
+      }
+    ],
+    "text": "Aliados em área 2 imunes a controle por 3 rodadas."
+  },
+  {
+    "id": "pilar",
+    "owner": "arquiteto",
+    "name": "Pilar",
+    "cost": 1,
+    "fast": false,
+    "range": 3,
+    "target": "cell",
+    "effects": [
+      {
+        "type": "create_wall",
+        "kind": "normal",
+        "blocks_range": true
+      }
+    ],
+    "text": "Cria uma parede."
+  },
+  {
+    "id": "muralha_longa",
+    "owner": "arquiteto",
+    "name": "Muralha Longa",
+    "cost": 3,
+    "fast": false,
+    "range": 3,
+    "target": "line",
+    "effects": [
+      {
+        "type": "create_walls_line",
+        "count": 4,
+        "kind": "normal",
+        "duration": {
+          "unit": "rounds",
+          "value": 3
+        }
+      }
+    ],
+    "text": "Cria 4 paredes em linha por 3 rodadas."
+  },
+  {
+    "id": "armadilha_letal",
+    "owner": "arquiteto",
+    "name": "Armadilha Letal",
+    "cost": 3,
+    "fast": false,
+    "range": 3,
+    "target": "cell",
+    "effects": [
+      {
+        "type": "hidden_trap",
+        "damage": 5
+      }
+    ],
+    "text": "Armadilha oculta: 5 de dano."
+  },
+  {
+    "id": "mola_forte",
+    "owner": "arquiteto",
+    "name": "Mola Forte",
+    "cost": 2,
+    "fast": false,
+    "range": 3,
+    "target": "cell",
+    "effects": [
+      {
+        "type": "spring",
+        "launch_distance": 4,
+        "direction_chosen_on_placement": true
+      }
+    ],
+    "text": "Mola que lança 4 casas."
+  },
+  {
+    "id": "torre_reforcada",
+    "owner": "arquiteto",
+    "name": "Torre Reforçada",
+    "cost": 4,
+    "fast": false,
+    "range": 3,
+    "target": "cell",
+    "effects": [
+      {
+        "type": "create_structure",
+        "kind": "watchtower",
+        "hp": 4,
+        "damage_per_round": 3,
+        "range": 3,
+        "enemies_only": true
+      }
+    ],
+    "text": "Torre: 3 de dano por rodada, alcance 3."
+  },
+  {
+    "id": "fortificar",
+    "owner": "arquiteto",
+    "name": "Fortificar",
+    "cost": 2,
+    "fast": false,
+    "range": 3,
+    "target": "wall",
+    "effects": [
+      {
+        "type": "reinforce_wall",
+        "bonus_hp": 5,
+        "permanent": true
+      }
+    ],
+    "text": "Parede ganha +5 de vida."
+  },
+  {
+    "id": "destruicao",
+    "owner": "arquiteto",
+    "name": "Destruição",
+    "cost": 3,
+    "fast": false,
+    "range": 3,
+    "target": "wall",
+    "effects": [
+      {
+        "type": "destroy_wall"
+      },
+      {
+        "type": "damage_adjacent_to_target",
+        "amount": 4
+      }
+    ],
+    "text": "Destrói parede e causa 4 de dano ao redor."
+  },
+  {
+    "id": "barricada_grande",
+    "owner": "arquiteto",
+    "name": "Barricada Grande",
+    "cost": 4,
+    "fast": false,
+    "range": 3,
+    "target": "cell",
+    "effects": [
+      {
+        "type": "create_walls_shape",
+        "shape": "L",
+        "count": 5,
+        "duration": {
+          "unit": "rounds",
+          "value": 3
+        }
+      }
+    ],
+    "text": "Barricada em L por 3 rodadas."
+  },
+  {
+    "id": "passagem",
+    "owner": "arquiteto",
+    "name": "Passagem",
+    "cost": 3,
+    "fast": false,
+    "range": 3,
+    "target": "two_cells",
+    "effects": [
+      {
+        "type": "create_portal_pair"
+      }
+    ],
+    "text": "Cria um par de portais."
+  },
+  {
+    "id": "cerco",
+    "owner": "arquiteto",
+    "name": "Cerco",
+    "cost": 5,
+    "fast": false,
+    "range": 3,
+    "target": "cell",
+    "effects": [
+      {
+        "type": "create_structure",
+        "kind": "watchtower",
+        "hp": 5,
+        "damage_per_round": 4,
+        "range": 4,
+        "enemies_only": true
+      }
+    ],
+    "text": "Torre: 4 de dano por rodada, alcance 4."
+  },
+  {
     "id": "faisca_selvagem",
     "owner": "monster",
     "name": "Faísca Selvagem",

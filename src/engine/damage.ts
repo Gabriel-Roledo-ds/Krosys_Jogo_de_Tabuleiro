@@ -48,6 +48,11 @@ export function damageMultipliers(s: GameState, src: DamageSource, target: Unit)
     mult *= cm;
     notes.push(`x${fmt(cm)} dano dos campeões`);
   }
+  if (s.bountyTeam && src.team === s.bountyTeam && s.boss.alive && (src.kind === "champion" || src.kind === "world")) {
+    const bm = balance.boss.bounty_multiplier ?? 1;
+    mult *= bm;
+    notes.push(`x${fmt(bm)} recompensa do Boss`);
+  }
   if (src.kind === "champion" && src.champion) {
     const attacker = getChampion(s, src.champion);
     for (const z of monsterZonesAt(s, attacker.pos)) {
@@ -141,7 +146,13 @@ export function dealDamage(s: GameState, src: DamageSource, target: Unit, base: 
 
   if (src.champion && src.team) {
     target.lastHitBy = { team: src.team, champion: src.champion };
-    if (target.kind === "boss") target.lastAttacker = src.champion;
+    if (target.kind === "boss") {
+      target.lastAttacker = src.champion;
+      if (s.boss.alive && s.bountyTeam !== src.team) {
+        s.bountyTeam = src.team;
+        log(s, `Equipe ${src.team} deu o último golpe no Boss: dano x${balance.boss.bounty_multiplier ?? 1} até ele cair`);
+      }
+    }
   }
 
   if (!opts.noChain) {

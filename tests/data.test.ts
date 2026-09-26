@@ -39,8 +39,8 @@ describe("campeões", () => {
 });
 
 describe("cartas", () => {
-  it("são 60 de campeão (6 x 10) e 3 de monstro", () => {
-    expect(championCards).toHaveLength(60);
+  it("são 120 de campeão (6 x 20) e 3 de monstro", () => {
+    expect(championCards).toHaveLength(120);
     expect(monsterCards).toHaveLength(3);
   });
 

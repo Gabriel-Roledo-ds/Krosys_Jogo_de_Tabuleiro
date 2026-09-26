@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { activateChampion, applyAction, IllegalAction, legalActions, startGame } from "../src/engine/turn";
 import { createGame, getChampion, type GameState } from "../src/engine/state";
-import { resolveDeaths } from "../src/engine/death";
+import { resolveDeaths, respawnMonsters } from "../src/engine/death";
 import { computeDamage, championSource } from "../src/engine/damage";
 import { give, hp, place, play, scenario, uid } from "./helpers";
 import balance from "../data/balance.json";
@@ -306,24 +306,106 @@ describe("morte e retorno", () => {
   });
 });
 
-describe("vitória", () => {
-  it("quem dá o último golpe no boss vence e a partida acaba", () => {
-    const s = scenario({ A: ["atirador", "piromante", "curandeiro"], B: ["atirador", "arquiteto", "andarilho"] });
+describe("vitória e boss", () => {
+  const mk = () => scenario({ A: ["atirador", "piromante", "curandeiro"], B: ["atirador", "arquiteto", "andarilho"] });
+
+  it("matar o boss não vence: só torna as mortes definitivas", () => {
+    const s = mk();
     place(s, uid("A", "atirador"), 7, 4);
     s.boss.hp = 2;
     applyAction(s, "A", { type: "basic", target: { uid: "boss" } });
-    expect(s.winner).toBe("A");
-    expect(s.turn.phase).toBe("over");
-    expect(() => applyAction(s, "A", { type: "end" })).toThrow(/terminou/);
+    expect(s.boss.alive).toBe(false);
+    expect(s.winner).toBeNull();
+    expect(s.bountyTeam).toBeNull();
+    const v = getChampion(s, uid("B", "atirador"));
+    v.hp = 0;
+    resolveDeaths(s);
+    expect(v.permaDead).toBe(true);
   });
 
-  it("último golpe conta mesmo se o boss estava com pouca vida por outra equipe", () => {
-    const s = scenario({ A: ["atirador", "piromante", "curandeiro"], B: ["atirador", "arquiteto", "andarilho"] });
-    place(s, uid("A", "atirador"), 7, 4);
-    s.boss.hp = 1;
-    s.boss.lastHitBy = { team: "B", champion: uid("B", "atirador") };
-    applyAction(s, "A", { type: "basic", target: { uid: "boss" } });
+  it("vence quem deixa os 3 inimigos mortos ao mesmo tempo, com o boss vivo", () => {
+    const s = mk();
+    for (const c of s.teams.B.champions) { c.hp = 0; }
+    resolveDeaths(s);
+    expect(s.boss.alive).toBe(true);
     expect(s.winner).toBe("A");
+    expect(s.turn.phase).toBe("over");
+  });
+
+  it("dois mortos não bastam: o terceiro segue vivo", () => {
+    const s = mk();
+    s.teams.B.champions[0].hp = 0;
+    s.teams.B.champions[1].hp = 0;
+    resolveDeaths(s);
+    expect(s.winner).toBeNull();
+  });
+
+  it("último golpe no boss dá x2 de dano à equipe até o boss cair; outra equipe toma o bônus", () => {
+    const s = mk();
+    place(s, uid("A", "atirador"), 7, 4);
+    place(s, uid("B", "atirador"), 5, 4);
+    applyAction(s, "A", { type: "basic", target: { uid: "boss" } });
+    expect(s.bountyTeam).toBe("A");
+    const foe = getChampion(s, uid("B", "arquiteto"));
+    foe.defense = 0;
+    const a = getChampion(s, uid("A", "atirador"));
+    const withBonus = computeDamage(s, championSource(a), foe, 2);
+    s.bountyTeam = null;
+    expect(withBonus).toBe(computeDamage(s, championSource(a), foe, 2) * 2);
+    // O boss dá a recompensa à outra equipe se ela acertar depois.
+    s.turn.team = "B";
+    s.turn.phase = "act";
+    s.turn.basicUsed = [];
+    applyAction(s, "B", { type: "basic", champion: uid("B", "atirador"), target: { uid: "boss" } });
+    expect(s.bountyTeam).toBe("B");
+  });
+
+  it("cada morte demora um turno a mais para voltar", () => {
+    const s = mk();
+    const v = getChampion(s, uid("B", "atirador"));
+    v.hp = 0; resolveDeaths(s);
+    expect(v.outTurns).toBe(2);
+    v.alive = true; v.hp = 5;
+    v.hp = 0; resolveDeaths(s);
+    expect(v.outTurns).toBe(3);
+    v.alive = true; v.hp = 5;
+    v.hp = 0; resolveDeaths(s);
+    expect(v.outTurns).toBe(4);
+  });
+
+  it("monstros renascem em casa aleatória livre enquanto o boss vive, e param quando ele cai", () => {
+    const s = mk();
+    for (const o of s.monsters) o.alive = true;
+    const m = s.monsters[0];
+    m.hp = 0;
+    resolveDeaths(s);
+    expect(m.alive).toBe(false);
+    expect(m.respawnRound).toBe(s.round + 3);
+    s.round += 3;
+    respawnMonsters(s);
+    expect(m.alive).toBe(true);
+    expect(m.hp).toBe(m.maxHp);
+    expect(s.monsters.filter((o) => o !== m && o.alive && o.pos.x === m.pos.x && o.pos.y === m.pos.y)).toHaveLength(0);
+
+    const m2 = s.monsters[1];
+    m2.hp = 0;
+    resolveDeaths(s);
+    s.boss.hp = 0;
+    resolveDeaths(s);
+    s.round += 10;
+    respawnMonsters(s);
+    expect(m2.alive).toBe(false);
+  });
+
+  it("cartas de besta não gastam mana", () => {
+    const s = mk();
+    s.teams.A.mana = 0;
+    s.teams.A.hand.push({ uid: "fs", cardId: "investida_bruta", owner: uid("A", "atirador"), monster: true });
+    place(s, uid("A", "atirador"), 5, 5);
+    place(s, uid("B", "atirador"), 5, 7);
+    applyAction(s, "A", { type: "play", card: "fs", target: { uid: uid("B", "atirador") } });
+    expect(s.teams.A.mana).toBe(0);
+    expect(s.teams.A.hand.some((c) => c.uid === "fs")).toBe(false);
   });
 });
 

@@ -10,7 +10,7 @@ import { balance, getCardDef, getChampionDef, type Effect } from "./data";
 import { posKey, type Pos } from "./board";
 import { beginBossActivation, bossShouldActivate, resolveBossItem } from "./boss";
 import { discardCard, refillIfEmpty } from "./deck";
-import { resolveDeaths, returnDeadChampions } from "./death";
+import { resolveDeaths, respawnMonsters, returnDeadChampions } from "./death";
 import { resolveItem } from "./effects";
 import { label } from "./damage";
 import { onLand } from "./hazards";
@@ -68,7 +68,7 @@ interface CardDefLike {
 /** Definição de uma carta da mão. */
 function cardInfo(card: CardInstance): CardDefLike {
   const d = getCardDef(card.cardId);
-  return { range: d.range, target: d.target, effects: d.effects, cost: d.cost, fast: d.fast };
+  return { range: d.range, target: d.target, effects: d.effects, cost: card.monster ? 0 : d.cost, fast: d.fast };
 }
 
 function basicInfo(c: ChampionState): CardDefLike {
@@ -414,6 +414,7 @@ function finishTurn(s: GameState): void {
     tickRound(s);
     if (s.winner) return;
     s.round += 1;
+    respawnMonsters(s);
   }
   s.turn = newTurn(next, "boss");
   beginTurn(s);

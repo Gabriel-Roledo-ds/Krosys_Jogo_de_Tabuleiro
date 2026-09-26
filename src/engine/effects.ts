@@ -307,7 +307,7 @@ function applyEffect(ctx: Ctx, e: Effect): void {
     case "resurrect": {
       const dead = target.uid ? getChampion(s, target.uid) : null;
       const team = s.teams[owner.team];
-      if (!dead || dead.alive || team.resurrectUsed) return;
+      if (!dead || dead.alive || dead.permaDead || team.resurrectUsed) return;
       if (resurrect(s, owner, dead)) team.resurrectUsed = true;
       return;
     }

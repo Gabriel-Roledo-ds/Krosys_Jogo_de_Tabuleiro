@@ -156,7 +156,7 @@ Regras complementares:
 - Ao sacar uma aura, o boss só a ativa e não ataca naquela ativação. [PADRÃO]
 - "Último a atacar" é o último campeão que atacou o boss. Se ninguém o atacou ainda ou ele está fora do alcance, a carta atinge o mais próximo. [PADRÃO]
 - Baralho esgotado: embaralha o descarte. [PADRÃO]
-- Vence quem der o último hit no boss. [DEFINIDO]
+- ~~Vence quem der o último hit no boss.~~ **Substituído pela seção 18** (vitória por eliminação).
 
 ## 11. Monstros
 
@@ -261,3 +261,13 @@ Pedidos do dono do projeto: [DEFINIDO] +3 de mana por turno; monstros com passiv
 - **Cartas de besta:** pertencem à equipe. Qualquer campeão vivo e sem silêncio pode lançá-las. Ao morrer um campeão, a equipe perde só uma carta de besta (a mais antiga), e só se tiver mais de uma.
 - **Habilidade básica:** cada campeão pode usar a sua uma vez por turno (antes: só uma por turno para a equipe).
 - **Resultado da simulação (60 partidas, bot guloso):** mediana 15 rodadas (mín 7, máx 44), 0,7 mortes de campeão por partida.
+
+## 18. Boss, ressurreição e vitória (26/09/2026) — [DEFINIDO] pelo dono do projeto
+
+- **Vitória:** vence a equipe que deixar os 3 campeões inimigos fora de campo ao mesmo tempo. Vale com o boss vivo (aí "fora de campo" inclui quem está esperando para ressuscitar). Se as duas equipes ficarem sem campeões ao mesmo tempo, vence a que estava jogando o turno. Matar o boss **não** vence.
+- **Boss vivo:** todos os campeões mortos ressuscitam na largada. A primeira morte de um campeão demora 2 turnos da equipe; cada morte seguinte demora um turno a mais (2, 3, 4...). `death.turns_out_base` e `death.extra_turns_per_previous_death`.
+- **Boss morto:** a partir daí toda morte de campeão é definitiva e Ressurgir não funciona nele.
+- **Recompensa do boss:** a equipe que deu o último golpe no boss causa dano x2 (`boss.bounty_multiplier`) em todas as habilidades, cartas e básicas, multiplicando com os outros bônus. Passa para a outra equipe se ela acertar o boss depois. Acaba quando o boss morre.
+- **Monstros:** com o boss vivo, cada monstro derrotado renasce em uma casa livre aleatória (fora das áreas de largada) 3 rodadas depois [PADRÃO: `monsters.respawn_after_rounds`]. Com o boss morto, param de renascer.
+- **Cartas de besta:** não gastam mana.
+- **Baralhos:** cada campeão passa a ter 20 cartas de habilidade (10 novas, todas não rápidas, nomes e valores em data/cards.json). [PADRÃO: valores das cartas novas, a calibrar.]

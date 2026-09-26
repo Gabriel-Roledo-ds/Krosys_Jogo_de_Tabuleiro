@@ -44,6 +44,10 @@ export interface ChampionState {
   alive: boolean;
   /** Turnos da equipe que ainda faltam para voltar da morte. */
   outTurns: number;
+  /** Quantas vezes já morreu (cada morte demora um turno a mais para voltar). */
+  deaths: number;
+  /** Morreu depois da morte do boss: não volta mais. */
+  permaDead: boolean;
   /** Imune depois de voltar da morte, até o fim do primeiro turno em que for o principal. */
   untargetable: boolean;
   statuses: Status[];
@@ -69,6 +73,8 @@ export interface MonsterState {
   rewardCard: string;
   statuses: Status[];
   lastHitBy: { team: TeamId; champion: string } | null;
+  /** Rodada em que renasce (só com o boss vivo). */
+  respawnRound: number | null;
 }
 
 export interface MinionState {
@@ -256,6 +262,8 @@ export interface GameState {
   turn: TurnState;
   round: number;
   winner: TeamId | null;
+  /** Equipe que deu o último golpe no boss: causa dano dobrado até o boss morrer. */
+  bountyTeam: TeamId | null;
   nextId: number;
   rngState: number;
   log: string[];
@@ -294,6 +302,8 @@ export function createGame(comp: Record<TeamId, string[]>, seed: number): GameSt
         pos: { ...startCells[i] },
         alive: true,
         outTurns: 0,
+        deaths: 0,
+        permaDead: false,
         untargetable: false,
         statuses: [],
         shield: 0,
@@ -327,6 +337,7 @@ export function createGame(comp: Record<TeamId, string[]>, seed: number): GameSt
     rewardCard: monsterTypes[m.type].reward_card,
     statuses: [],
     lastHitBy: null,
+    respawnRound: null,
   }));
 
   const boss: BossState = {
@@ -365,6 +376,7 @@ export function createGame(comp: Record<TeamId, string[]>, seed: number): GameSt
     turn: newTurn("A", "boss"),
     round: 1,
     winner: null,
+    bountyTeam: null,
     nextId: 1,
     rngState: holder.rngState,
     log: [],

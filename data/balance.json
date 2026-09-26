@@ -108,7 +108,9 @@
     "stronger_monsters_give_higher_cost_cards": true,
     "respawn": false,
     "total": 20,
-    "passives_are_zone_multipliers": true
+    "passives_are_zone_multipliers": true,
+    "respawn_while_boss_alive": true,
+    "respawn_after_rounds": 3
   },
   "dice": {
     "sides": 6,
@@ -143,7 +145,8 @@
   },
   "cards": {
     "deck_size_min": 10,
-    "beast_cards_shared_by_team": true
+    "beast_cards_shared_by_team": true,
+    "beast_cards_cost_mana": 0
   },
   "hand": {
     "max_size": 7,
@@ -209,7 +212,10 @@
     "return_timing": "after_turns_out_at_start_of_own_turn",
     "turns_out": 2,
     "beast_cards_lost_on_champion_death": 1,
-    "beast_cards_keep_at_least_one": true
+    "beast_cards_keep_at_least_one": true,
+    "turns_out_base": 2,
+    "extra_turns_per_previous_death": 1,
+    "permanent_after_boss_dies": true
   },
   "boss": {
     "hp": 40,
@@ -228,7 +234,9 @@
     "new_aura_replaces_old": true,
     "drawing_aura_skips_attack": true,
     "reshuffle_discard_when_empty": true,
-    "terremoto_radius": 5
+    "terremoto_radius": 5,
+    "bounty_multiplier": 2,
+    "champions_respawn_while_alive": true
   },
   "cards_special": {
     "execution_damage_base": 8,
@@ -236,7 +244,9 @@
     "execution_mark_included_in_total": true
   },
   "victory": {
-    "condition": "last_hit_on_boss"
+    "condition": "eliminate_all_enemy_champions_at_once",
+    "works_with_boss_alive": true,
+    "boss_kill_wins": false
   },
   "walls": {
     "default_duration_rounds": 3,

@@ -2,7 +2,7 @@
 
 > **Experimento 100% feito com IA.** Este projeto é um experimento em que as regras, os dados, o código e a documentação são criados em conversa com o Claude (Anthropic). As decisões de design são minhas; a IA propõe, escreve e testa.
 
-Jogo de tabuleiro digital, por turnos, para jogar online com amigos. Duas equipes de três campeões começam em lados opostos de um tabuleiro em losango (21x21). No centro está um boss, e pelo mapa há monstros que dão cartas ao serem derrotados. **Vence quem der o último golpe no boss.**
+Jogo de tabuleiro digital, por turnos, para jogar online com amigos. Duas equipes de três campeões começam em lados opostos de um tabuleiro em losango (21x21). No centro está um boss, e pelo mapa há monstros que dão cartas ao serem derrotados. **Vence quem eliminar os 3 campeões do outro time ao mesmo tempo** (vale com o boss vivo). Enquanto o boss vive, todos ressuscitam (cada morte demora um turno a mais); depois que ele cai, as mortes são definitivas.
 
 Estado atual: **jogável** (MVP). Narrativa e arte final ficam para depois; os gráficos atuais são placeholders em estilo 16-bit.
 

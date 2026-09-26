@@ -241,7 +241,7 @@ function renderGame() {
 function renderStatus() {
   const t = view.turn;
   let msg: string;
-  if (view.winner) msg = view.winner === me ? "🏆 VOCÊ VENCEU!" : "Derrota: o outro time deu o último golpe.";
+  if (view.winner) msg = view.winner === me ? "🏆 VOCÊ VENCEU!" : "Derrota: todos os seus campeões caíram de uma vez.";
   else if (view.pending) msg = view.pending.priority === me ? "⚡ Você pode responder com uma carta rápida." : "Aguardando resposta do adversário…";
   else if (t.team === me) msg = ({ draw: "Sua vez: compre uma carta.", act: "Ação: mova cada campeão uma vez, use cartas e uma habilidade básica.", discard: "Mão cheia: descarte uma carta.", boss: "O boss age…" } as any)[t.phase] ?? "";
   else msg = "Vez do adversário…";
@@ -256,7 +256,7 @@ function renderTeams() {
     return `<div><b class="team${id}">Equipe ${id}</b> · mana ${t.mana} · mão ${t.handCount}` +
       t.champions.map((c: any) => {
         const moved = id === view.turn.team && view.turn.activated.includes(c.uid);
-        return `<div class="clk" data-u="${c.uid}" style="cursor:pointer">${moved ? "✔ " : ""}${champs[c.defId].name} ${c.alive ? `${c.hp}/${c.maxHp}` : `☠ volta em ${c.outTurns} turno(s)`}${c.shield ? ` 🛡${c.shield}` : ""}
+        return `<div class="clk" data-u="${c.uid}" style="cursor:pointer">${moved ? "✔ " : ""}${champs[c.defId].name} ${c.alive ? `${c.hp}/${c.maxHp}` : (c.permaDead ? "☠ morto de vez" : `☠ volta em ${c.outTurns} turno(s)`)}${c.shield ? ` 🛡${c.shield}` : ""}
         <div class="bar"><i style="width:${c.alive ? (100 * c.hp) / c.maxHp : 0}%"></i></div>
         ${c.statuses.map((s: any) => `<span class="tag">${esc(STATUS[s.kind] ?? s.kind)}${s.amount ? " " + s.amount : ""}·${s.remaining}</span>`).join("")}</div>`;
       }).join("") + "</div>";
@@ -325,7 +325,7 @@ function renderHand() {
     const d = cards[c.cardId];
     const own = champs[d.owner]?.name ?? "Monstro";
     const ok = h.playable?.[c.uid];
-    return `<div class="card ${ok || h.mustDiscard ? "" : "no"} ${d.fast ? "fast" : ""} ${sel && (sel as any).uid === c.uid ? "sel" : ""}" data-u="${c.uid}"><span class="cost">${d.cost}</span><b>${esc(d.name)}</b> <small>${own}${d.fast ? " · rápida" : ""}<br>${esc(d.text)}</small></div>`;
+    return `<div class="card ${ok || h.mustDiscard ? "" : "no"} ${d.fast ? "fast" : ""} ${sel && (sel as any).uid === c.uid ? "sel" : ""}" data-u="${c.uid}"><span class="cost">${c.monster ? 0 : d.cost}</span><b>${esc(d.name)}</b> <small>${own}${d.fast ? " · rápida" : ""}<br>${esc(d.text)}</small></div>`;
   }).join("");
   H.querySelectorAll<HTMLElement>(".card").forEach((el) => {
     el.onclick = () => {
@@ -361,9 +361,11 @@ function renderLog() {
 function renderEffects() {
   const E: string[] = [];
   const add = (cls: string, text: string) => E.push(`<div class="e ${cls}">${text}</div>`);
+  if (view.bountyTeam && view.boss.alive) add("good", `<b>Equipe ${view.bountyTeam}</b>: recompensa do Boss, dano x2 até o Boss cair`);
+  if (!view.boss.alive) add("bad", "Boss caído: mortes de campeões são definitivas");
   for (const id of ["A", "B"] as const) {
     for (const c of view.teams[id].champions) {
-      if (!c.alive) { add("neutral", `${esc(unitName(c))}: fora da partida, volta em ${c.outTurns} turno(s) da equipe`); continue; }
+      if (!c.alive) { add("neutral", c.permaDead ? `${esc(unitName(c))}: morto de vez` : `${esc(unitName(c))}: fora da partida, volta em ${c.outTurns} turno(s) da equipe`); continue; }
       for (const s of c.statuses) add(s.negative ? "bad" : "good", `<b>${esc(unitName(c))}</b>: ${esc(STATUS[s.kind] ?? s.kind)}${s.amount ? " " + s.amount : ""} — ${durText(s)}${s.fresh ? " (começa no próximo turno)" : ""}`);
       if (c.shield) add("good", `<b>${esc(unitName(c))}</b>: escudo ${c.shield}${c.reflect ? ` (reflete ${c.reflect})` : ""} até ser gasto`);
       if (c.untargetable) add("good", `<b>${esc(unitName(c))}</b>: intocável até o fim do próprio turno`);

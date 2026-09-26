@@ -52,7 +52,7 @@ export function viewFor(s: GameState, me: TeamId | null): unknown {
       const def = getCardDef(c.cardId);
       const who = castersFor(s, me, c);
       casters[c.uid] = who.map((x) => x.uid);
-      playable[c.uid] = ((inWindow && def.fast) || myAct) && who.length > 0 && canPay(s, me, def.cost) && !resurrectBlocked(s, me, def.effects);
+      playable[c.uid] = ((inWindow && def.fast) || myAct) && who.length > 0 && canPay(s, me, c.monster ? 0 : def.cost) && !resurrectBlocked(s, me, def.effects);
     }
     hints.playable = playable;
     hints.casters = casters;
@@ -97,6 +97,7 @@ export function viewFor(s: GameState, me: TeamId | null): unknown {
     height: s.height,
     round: s.round,
     winner: s.winner,
+    bountyTeam: s.bountyTeam,
     me,
     awaiting: aw,
     turn: {

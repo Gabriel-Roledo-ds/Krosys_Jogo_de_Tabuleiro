@@ -23,12 +23,12 @@ export function evaluate(s: GameState, team: TeamId, aggression = 0.6): number {
   let v = 0;
   for (const c of s.teams[foe].champions) {
     v += (c.alive ? c.maxHp - c.hp : c.maxHp + 15) * aggression;
-    for (const st of c.statuses) v += statusValue(st.kind, st.amount ?? 1);
+    v += statusesValue(c.statuses);
   }
   for (const c of s.teams[team].champions) {
     v -= c.alive ? (c.maxHp - c.hp) * 1.3 : c.maxHp * 1.3 + 20;
     v += c.shield * 0.4;
-    for (const st of c.statuses) if (st.negative) v -= statusValue(st.kind, st.amount ?? 1);
+    v -= statusesValue(c.statuses.filter((st) => st.negative));
   }
   v += (s.boss.maxHp - s.boss.hp) * 1.2;
   v += s.monsters.filter((m) => !m.alive).length * 0;
@@ -42,6 +42,15 @@ export function evaluate(s: GameState, team: TeamId, aggression = 0.6): number {
   // Mão e mana valem algo: gastar precisa compensar.
   v += s.teams[team].mana * 0.35;
   return v;
+}
+
+/** Soma o valor dos efeitos, contando cada tipo uma vez (o maior), para o bot não acumular efeitos iguais. */
+function statusesValue(list: { kind: string; amount?: number }[]): number {
+  const best = new Map<string, number>();
+  for (const st of list) best.set(st.kind, Math.max(best.get(st.kind) ?? 0, statusValue(st.kind, st.amount ?? 1)));
+  let sum = 0;
+  for (const v of best.values()) sum += v;
+  return sum;
 }
 
 function statusValue(kind: string, amount: number): number {
@@ -66,6 +75,15 @@ function statusValue(kind: string, amount: number): number {
 /** Ponto que o time quer alcançar: monstros de perto para longe, depois o boss. */
 export function objective(s: GameState, team: TeamId): Pos {
   const order = ["weak", "medium", "strong"];
+  // Depois da fase de coleta (ou com o boss morto) o time caça o boss ou os campeões inimigos.
+  if (!s.boss.alive || s.round > 7) {
+    const foes = s.teams[otherTeam(team)].champions.filter((c) => c.alive);
+    const me = balance.teams.start_areas[team][4];
+    if (!s.boss.alive || foes.length === 0 || (s.round > 12 && s.round % 2 === 0)) {
+      if (foes.length) return foes.sort((a, b) => distance(a.pos, me) - distance(b.pos, me))[0].pos;
+    }
+    return s.boss.alive ? s.boss.pos : me;
+  }
   const start = balance.teams.start_areas[team][4];
   for (const type of order) {
     const list = s.monsters.filter((m) => m.alive && m.type === type);
