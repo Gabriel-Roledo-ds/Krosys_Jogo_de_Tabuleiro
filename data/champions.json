@@ -1,0 +1,184 @@
+[
+  {
+    "id": "atirador",
+    "name": "Atirador",
+    "role": "Dano único",
+    "hp": 14,
+    "defense": 0,
+    "basic": {
+      "name": "Disparo",
+      "range": 4,
+      "target": "enemy",
+      "effects": [
+        {
+          "type": "damage",
+          "amount": 2
+        }
+      ]
+    },
+    "passive": {
+      "name": "Olho Treinado",
+      "effects": [
+        {
+          "type": "bonus_damage_if_distance_at_least",
+          "distance": 3,
+          "amount": 1
+        }
+      ]
+    }
+  },
+  {
+    "id": "piromante",
+    "name": "Piromante",
+    "role": "Dano em área",
+    "hp": 14,
+    "defense": 0,
+    "basic": {
+      "name": "Faísca",
+      "range": 3,
+      "target": "cell",
+      "effects": [
+        {
+          "type": "damage",
+          "amount": 1,
+          "element": "fire"
+        }
+      ]
+    },
+    "passive": {
+      "name": "Pele em Brasa",
+      "effects": [
+        {
+          "type": "immune_to",
+          "element": "fire"
+        }
+      ]
+    }
+  },
+  {
+    "id": "andarilho",
+    "name": "Andarilho",
+    "role": "Movimentação",
+    "hp": 16,
+    "defense": 1,
+    "basic": {
+      "name": "Passo Ágil",
+      "range": "self",
+      "target": "self",
+      "effects": [
+        {
+          "type": "bonus_move",
+          "amount": 1
+        },
+        {
+          "type": "team_mana_if_moved_at_least",
+          "distance": 5,
+          "amount": 1,
+          "max_per_turn": 1
+        }
+      ]
+    },
+    "passive": {
+      "name": "Pés Leves",
+      "effects": [
+        {
+          "type": "pass_through_allies"
+        },
+        {
+          "type": "ignore_slow_cells"
+        }
+      ]
+    }
+  },
+  {
+    "id": "enredador",
+    "name": "Enredador",
+    "role": "Controle de grupo",
+    "hp": 18,
+    "defense": 1,
+    "basic": {
+      "name": "Laço",
+      "range": 2,
+      "target": "enemy",
+      "effects": [
+        {
+          "type": "apply_status",
+          "status": "move_penalty",
+          "amount": 2,
+          "duration": {
+            "unit": "champion_turns",
+            "value": 1
+          },
+          "control": true
+        }
+      ]
+    },
+    "passive": {
+      "name": "Presença Sufocante",
+      "effects": [
+        {
+          "type": "aura_adjacent_enemies_move_penalty",
+          "amount": 1
+        }
+      ]
+    }
+  },
+  {
+    "id": "curandeiro",
+    "name": "Curandeiro",
+    "role": "Suporte de vida",
+    "hp": 16,
+    "defense": 0,
+    "basic": {
+      "name": "Toque",
+      "range": 2,
+      "target": "ally",
+      "effects": [
+        {
+          "type": "heal",
+          "amount": 1
+        }
+      ]
+    },
+    "passive": {
+      "name": "Vida Compartilhada",
+      "effects": [
+        {
+          "type": "self_heal_when_healing_ally",
+          "amount": 1
+        }
+      ]
+    }
+  },
+  {
+    "id": "arquiteto",
+    "name": "Arquiteto",
+    "role": "Paredes e interagíveis",
+    "hp": 20,
+    "defense": 2,
+    "basic": {
+      "name": "Barreira",
+      "range": 1,
+      "target": "cell",
+      "effects": [
+        {
+          "type": "create_wall",
+          "kind": "weak",
+          "hp": 2
+        }
+      ]
+    },
+    "passive": {
+      "name": "Engenheiro",
+      "effects": [
+        {
+          "type": "pass_through_own_walls"
+        },
+        {
+          "type": "structure_bonus_hp",
+          "amount": 2
+        }
+      ]
+    }
+  }
+]

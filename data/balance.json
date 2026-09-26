@@ -1,0 +1,142 @@
+{
+  "_notes": "Parametros de balanceamento. Valores marcados como padrao ainda nao foram confirmados e serao ajustados pela simulacao. O motor deve ler tudo daqui, sem numeros fixos no codigo. HP, defesa, passivas e basicas dos campeoes ficam em data/champions.json.",
+  "board": {
+    "width": 15,
+    "height": 15,
+    "boss_position": { "x": 7, "y": 7 }
+  },
+  "teams": {
+    "count": 2,
+    "champions_per_team": 3,
+    "start_layout_2_teams": "opposite_sides",
+    "start_layout_3_or_4_teams": "corners",
+    "start_areas": {
+      "A": [
+        { "x": 1, "y": 6 }, { "x": 1, "y": 7 }, { "x": 1, "y": 8 },
+        { "x": 0, "y": 6 }, { "x": 0, "y": 7 }, { "x": 0, "y": 8 },
+        { "x": 2, "y": 6 }, { "x": 2, "y": 7 }, { "x": 2, "y": 8 }
+      ],
+      "B": [
+        { "x": 13, "y": 6 }, { "x": 13, "y": 7 }, { "x": 13, "y": 8 },
+        { "x": 14, "y": 6 }, { "x": 14, "y": 7 }, { "x": 14, "y": 8 },
+        { "x": 12, "y": 6 }, { "x": 12, "y": 7 }, { "x": 12, "y": 8 }
+      ]
+    }
+  },
+  "monsters": {
+    "rings": {
+      "near_start_per_team": 2,
+      "neutral_total": 4,
+      "near_boss_total": 2
+    },
+    "symmetric_map": true,
+    "attack_trigger": "champion_ends_movement_inside_range",
+    "reward": "fixed_card_to_last_hit_owner",
+    "reward_counts_toward_hand_limit": false,
+    "stronger_monsters_give_higher_cost_cards": true,
+    "respawn": false
+  },
+  "dice": {
+    "sides": 8,
+    "movement_mode": "up_to_value"
+  },
+  "movement": {
+    "directions": 8,
+    "diagonal_cost": 1,
+    "champions_are_solid": true
+  },
+  "range": {
+    "metric": "chebyshev",
+    "walls_block_range": true,
+    "low_walls_block_range": false,
+    "origin": "card_owner_champion"
+  },
+  "mana": {
+    "start": 0,
+    "gain_per_turn": 1,
+    "cap": 10,
+    "shared_by_team": true,
+    "unlimited_card_plays": true
+  },
+  "casting": {
+    "any_champion_can_cast_cards": true,
+    "requires_team_mana": true,
+    "basic_ability_only_main_champion": true,
+    "basic_ability_uses_per_turn": 1,
+    "basic_ability_cost": 0,
+    "silence_and_stun_apply_per_champion": true
+  },
+  "cards": {
+    "deck_size_min": 10
+  },
+  "hand": {
+    "max_size": 7,
+    "draw_per_turn": 1,
+    "first_turn_draw": 3,
+    "first_turn_replaces_normal_draw": true,
+    "player_chooses_deck_to_draw": true,
+    "discard_down_to_max_at_end_of_turn": true,
+    "monster_and_reward_cards_excluded_from_limit": true
+  },
+  "fast_cards": {
+    "enabled": true,
+    "usable_on_other_players_turns": true,
+    "max_chained_responses": 3,
+    "blocked_by_silence_and_stun": true,
+    "resolve_order": "stack_last_in_first_out",
+    "deaths_resolved_after_stack": true
+  },
+  "damage": {
+    "deterministic": true,
+    "order": ["base", "flat_bonuses", "multipliers", "defense", "shield", "hp"],
+    "defense_mode": "flat_subtraction",
+    "minimum_damage_if_base_at_least_1": 1,
+    "damage_over_time_ignores_defense": true,
+    "defense_applies_to_friendly_fire": true,
+    "healing_ignores_defense": true,
+    "healing_capped_at_max_hp": true,
+    "last_hit_counts_damage_over_time": true
+  },
+  "effects": {
+    "control_effects_count_in": "champion_turns",
+    "damage_over_time_counts_in": "rounds",
+    "terrain_effects_count_in": "rounds",
+    "max_control_effects_per_champion_per_round": 1,
+    "basic_abilities_obey_control_limit": true,
+    "friendly_fire": true,
+    "collision_damage": 0
+  },
+  "combat": {
+    "champions_can_attack_other_teams": true,
+    "kill_reward": "none"
+  },
+  "death": {
+    "return_to": "start_area",
+    "return_owned_cards_to_deck_and_shuffle": true,
+    "untargetable_until_end_of_first_own_turn": true,
+    "can_cast_cards_while_untargetable": true,
+    "resurrect_uses_per_game": 1,
+    "never_chosen_champion_exit_rule": false
+  },
+  "boss": {
+    "hp": 60,
+    "defense": 1,
+    "range": 4,
+    "deck_size": 11,
+    "activation": "start_of_turn_of_player_with_champion_in_range",
+    "target_types": ["closest", "last_attacker", "aura", "area"],
+    "last_attacker_fallback": "closest",
+    "max_active_auras": 1,
+    "new_aura_replaces_old": true,
+    "drawing_aura_skips_attack": true,
+    "reshuffle_discard_when_empty": true
+  },
+  "cards_special": {
+    "execution_damage_base": 8,
+    "execution_damage_total_if_marked": 12,
+    "execution_mark_included_in_total": true
+  },
+  "victory": {
+    "condition": "last_hit_on_boss"
+  }
+}

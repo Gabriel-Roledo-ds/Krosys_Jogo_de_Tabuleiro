@@ -1,0 +1,173 @@
+{
+  "hp": 60,
+  "defense": 1,
+  "range": 4,
+  "deck": [
+    {
+      "id": "garra",
+      "name": "Garra",
+      "target": "closest",
+      "effects": [
+        {
+          "type": "damage",
+          "amount": 3
+        }
+      ],
+      "text": "3 de dano ao alvo."
+    },
+    {
+      "id": "rugido",
+      "name": "Rugido",
+      "target": "area",
+      "radius": 3,
+      "effects": [
+        {
+          "type": "push",
+          "distance": 3,
+          "from": "boss"
+        },
+        {
+          "type": "damage",
+          "amount": 1
+        }
+      ],
+      "text": "Todos em raio 3 são empurrados 3 casas e recebem 1 de dano."
+    },
+    {
+      "id": "pisao",
+      "name": "Pisão",
+      "target": "closest",
+      "effects": [
+        {
+          "type": "damage",
+          "amount": 2,
+          "also_adjacent_to_target": true
+        }
+      ],
+      "text": "2 de dano no alvo e em quem estiver adjacente a ele."
+    },
+    {
+      "id": "sopro_gelido",
+      "name": "Sopro Gélido",
+      "target": "closest",
+      "effects": [
+        {
+          "type": "apply_status",
+          "status": "move_penalty",
+          "amount": 3,
+          "duration": {
+            "unit": "champion_turns",
+            "value": 1
+          }
+        }
+      ],
+      "text": "Alvo perde 3 de movimento no próximo turno."
+    },
+    {
+      "id": "devorar",
+      "name": "Devorar",
+      "target": "last_attacker",
+      "effects": [
+        {
+          "type": "damage",
+          "amount": 4
+        },
+        {
+          "type": "heal_boss",
+          "amount": 2
+        }
+      ],
+      "text": "4 de dano ao alvo, boss recupera 2 de vida."
+    },
+    {
+      "id": "prole",
+      "name": "Prole",
+      "target": "closest",
+      "effects": [
+        {
+          "type": "summon_minion",
+          "hp": 3,
+          "damage": 1,
+          "adjacent_to_target": true
+        }
+      ],
+      "text": "Invoca um lacaio (3 de vida, 1 de dano) adjacente ao alvo."
+    },
+    {
+      "id": "furia",
+      "name": "Fúria",
+      "target": "aura",
+      "aura_scope": "boss",
+      "effects": [
+        {
+          "type": "boss_bonus_damage",
+          "amount": 1,
+          "next_cards": 2
+        }
+      ],
+      "text": "Próximas 2 cartas do boss causam +1 de dano."
+    },
+    {
+      "id": "terremoto",
+      "name": "Terremoto",
+      "target": "aura",
+      "aura_scope": "radius",
+      "radius": 4,
+      "effects": [
+        {
+          "type": "damage_over_time",
+          "amount_per_round": 1,
+          "ignores_defense": true,
+          "champions_only": true
+        }
+      ],
+      "text": "Aura em raio 4: 1 de dano contínuo por rodada aos campeões (ignora defesa)."
+    },
+    {
+      "id": "agarrar",
+      "name": "Agarrar",
+      "target": "closest",
+      "effects": [
+        {
+          "type": "damage",
+          "amount": 2
+        },
+        {
+          "type": "apply_status",
+          "status": "immobilized",
+          "duration": {
+            "unit": "champion_turns",
+            "value": 1
+          }
+        }
+      ],
+      "text": "2 de dano e o alvo não se move no próximo turno."
+    },
+    {
+      "id": "maldicao",
+      "name": "Maldição",
+      "target": "last_attacker",
+      "effects": [
+        {
+          "type": "discard_random_card_from_hand",
+          "count": 1
+        }
+      ],
+      "text": "Alvo descarta 1 carta aleatória da mão."
+    },
+    {
+      "id": "carapaca",
+      "name": "Carapaça",
+      "target": "aura",
+      "aura_scope": "boss",
+      "effects": [
+        {
+          "type": "boss_damage_reduction",
+          "amount": 2,
+          "until": "boss_next_activation"
+        }
+      ],
+      "text": "Boss ignora 2 de dano até o próximo turno dele."
+    }
+  ]
+}
