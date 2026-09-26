@@ -1,6 +1,6 @@
 // Fim de rodada: efeitos que contam em rodadas (fogo, cura contínua, estruturas, aura do boss).
 
-import { balance, getChampionDef, monsterTypes } from "./data";
+import { balance, getChampionDef } from "./data";
 import { distance, samePos } from "./board";
 import { dealDamage, worldSource } from "./damage";
 import { getChampion, type GameState } from "./state";
@@ -62,12 +62,6 @@ export function tickRound(s: GameState): void {
   for (const u of [...s.monsters, ...s.minions, s.boss]) {
     for (const st of u.statuses) st.remaining -= 1;
     u.statuses = u.statuses.filter((st) => st.remaining > 0);
-  }
-
-  // Efeito contínuo dos monstros: o fraco regenera.
-  for (const m of s.monsters) {
-    const eff = monsterTypes[m.type].continuous_effect;
-    if (m.alive && eff.type === "regen_per_round") m.hp = Math.min(m.maxHp, m.hp + eff.amount);
   }
 
   resolveDeaths(s);

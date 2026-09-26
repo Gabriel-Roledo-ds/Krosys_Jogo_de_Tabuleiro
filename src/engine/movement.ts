@@ -3,7 +3,7 @@
 // Campeões, monstros, boss, lacaios, paredes e estruturas são sólidos.
 // Casas lentas (Teia) custam 2 para entrar.
 
-import { balance, getChampionDef, monsterTypes } from "./data";
+import { balance, getChampionDef } from "./data";
 import { DIRECTIONS, inBounds, isAdjacent, posKey, samePos, type Pos } from "./board";
 import { rngOf } from "./rng";
 import { allChampions, type ChampionState, type GameState, type Unit } from "./state";
@@ -152,11 +152,6 @@ export function movementBudget(s: GameState, c: ChampionState, die: number, bonu
     if (!other.alive || other.team === c.team || !isAdjacent(other.pos, c.pos)) continue;
     for (const e of getChampionDef(other.defId).passive.effects) {
       if (e.type === "aura_adjacent_enemies_move_penalty") penalty += e.amount;
-    }
-  }
-  for (const m of s.monsters) {
-    if (m.alive && isAdjacent(m.pos, c.pos) && monsterTypes[m.type].continuous_effect.type === "slow_aura_adjacent") {
-      penalty += monsterTypes[m.type].continuous_effect.amount;
     }
   }
   return calcMovement(die, bonus, penalty);

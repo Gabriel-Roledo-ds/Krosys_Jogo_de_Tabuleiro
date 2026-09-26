@@ -5,7 +5,7 @@
 import { balance, getChampionDef, monsterTypes } from "./data";
 import { distance, type Pos } from "./board";
 import { getChampion, log, type ChampionState, type GameState, type TeamId, type Unit } from "./state";
-import { isUntargetable } from "./world";
+import { isUntargetable, monsterZonesAt } from "./world";
 
 export interface DamageSource {
   team: TeamId | null;
@@ -32,6 +32,43 @@ export interface DamageOpts {
   /** evita repassar o dano pelo Elo e pelo reflexo */
   noChain?: boolean;
 }
+
+/** Arredonda o resultado de um multiplicador (padrão: meio para cima). */
+const roundMultiplied = (x: number): number => Math.floor(x + 0.5 + 1e-9);
+
+/**
+ * Multiplicadores de dano: bônus global dos campeões (balance.json) e passivas de monstros
+ * (raios no mapa). Devolve o produto e as notas para o registro de eventos.
+ */
+export function damageMultipliers(s: GameState, src: DamageSource, target: Unit): { mult: number; notes: string[] } {
+  let mult = 1;
+  const notes: string[] = [];
+  const cm = balance.damage.champion_damage_multiplier ?? 1;
+  if (cm !== 1 && src.team !== null && (src.kind === "champion" || src.kind === "world")) {
+    mult *= cm;
+    notes.push(`x${fmt(cm)} dano dos campeões`);
+  }
+  if (src.kind === "champion" && src.champion) {
+    const attacker = getChampion(s, src.champion);
+    for (const z of monsterZonesAt(s, attacker.pos)) {
+      if (z.passive.type === "aura_damage_dealt_multiplier") {
+        mult *= z.passive.multiplier;
+        notes.push(`x${fmt(z.passive.multiplier)} ${z.passive.name} (${label(z.monster)})`);
+      }
+    }
+  }
+  if (target.kind === "champion") {
+    for (const z of monsterZonesAt(s, target.pos)) {
+      if (z.passive.type === "aura_damage_taken_multiplier") {
+        mult *= z.passive.multiplier;
+        notes.push(`x${fmt(z.passive.multiplier)} ${z.passive.name} (${label(z.monster)})`);
+      }
+    }
+  }
+  return { mult, notes };
+}
+
+const fmt = (n: number): string => String(n).replace(".", ",");
 
 export const worldSource: DamageSource = { team: null, champion: null, kind: "world" };
 
@@ -66,6 +103,10 @@ export function computeDamage(s: GameState, src: DamageSource, target: Unit, bas
   }
 
   let total = base + bonus;
+  if (base >= 1) {
+    const { mult } = damageMultipliers(s, src, target);
+    if (mult !== 1) total = roundMultiplied(total * mult);
+  }
   const ignoresDefense = opts.dot || opts.ignoreDefense;
   if (!ignoresDefense) {
     total -= target.defense;
@@ -95,7 +136,8 @@ export function dealDamage(s: GameState, src: DamageSource, target: Unit, base: 
   }
   target.hp -= remaining;
   const by = src.label ?? (src.champion ? label(getChampion(s, src.champion)) : src.kind === "boss" ? "Boss" : undefined);
-  log(s, `${label(target)} sofre ${final} de dano${by ? ` de ${by}` : ""}${absorbed ? ` (${absorbed} absorvido pelo escudo)` : ""} [${Math.max(0, target.hp)}/${target.maxHp} PV]`);
+  const notes = base >= 1 ? damageMultipliers(s, src, target).notes : [];
+  log(s, `${label(target)} sofre ${final} de dano${by ? ` de ${by}` : ""}${notes.length ? ` [${notes.join(", ")}]` : ""}${absorbed ? ` (${absorbed} absorvido pelo escudo)` : ""} [${Math.max(0, target.hp)}/${target.maxHp} PV]`);
 
   if (src.champion && src.team) {
     target.lastHitBy = { team: src.team, champion: src.champion };
@@ -116,18 +158,8 @@ export function dealDamage(s: GameState, src: DamageSource, target: Unit, base: 
         if (partner.alive) dealDamage(s, src, partner, Math.max(1, Math.floor(final / 2)), { dot: true, noChain: true });
       }
     }
-    // Espinhos do monstro médio: reflete em quem bate de perto.
-    if (target.kind === "monster" && opts.direct && src.champion && src.from && distance(src.from, target.pos) === 1) {
-      const thorns = monsterThorns(target);
-      if (thorns > 0) dealDamage(s, { team: null, champion: null, kind: "monster", label: `Espinhos de ${label(target)}` }, getChampion(s, src.champion), thorns, { dot: true, noChain: true });
-    }
   }
   return final;
-}
-
-function monsterThorns(m: { type: string }): number {
-  const eff = monsterTypes[m.type].continuous_effect;
-  return eff.type === "thorns_adjacent" ? eff.amount : 0;
 }
 
 export function label(u: Unit): string {

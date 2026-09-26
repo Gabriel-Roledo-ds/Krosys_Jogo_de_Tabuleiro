@@ -112,7 +112,7 @@
       "name": "Terremoto",
       "target": "aura",
       "aura_scope": "radius",
-      "radius": 4,
+      "radius": 5,
       "effects": [
         {
           "type": "damage_over_time",

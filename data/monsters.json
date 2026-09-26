@@ -4,229 +4,222 @@
       "name": "Monstro Fraco",
       "hp": 4,
       "defense": 0,
-      "range": 1,
-      "attack": 1,
-      "continuous_effect": {
-        "type": "regen_per_round",
-        "amount": 1
-      },
-      "reward_card": "faisca_selvagem"
+      "reward_card": "faisca_selvagem",
+      "passive": {
+        "name": "Frenesi",
+        "type": "aura_damage_dealt_multiplier",
+        "multiplier": 1.5,
+        "radius": 1,
+        "text": "Campeões dentro do raio causam 1,5x de dano."
+      }
     },
     "medium": {
       "name": "Monstro Médio",
       "hp": 7,
       "defense": 0,
-      "range": 2,
-      "attack": 2,
-      "continuous_effect": {
-        "type": "thorns_adjacent",
-        "amount": 1
-      },
-      "reward_card": "couraca"
+      "reward_card": "couraca",
+      "passive": {
+        "name": "Fragilidade",
+        "type": "aura_damage_taken_multiplier",
+        "multiplier": 1.5,
+        "radius": 2,
+        "text": "Campeões dentro do raio recebem 1,5x de dano."
+      }
     },
     "strong": {
       "name": "Monstro Forte",
       "hp": 10,
       "defense": 1,
-      "range": 2,
-      "attack": 3,
-      "continuous_effect": {
-        "type": "slow_aura_adjacent",
-        "amount": 1
-      },
-      "reward_card": "investida_bruta"
+      "reward_card": "investida_bruta",
+      "passive": {
+        "name": "Pele de Pedra",
+        "type": "aura_damage_taken_multiplier",
+        "multiplier": 0.5,
+        "radius": 2,
+        "text": "Campeões dentro do raio recebem metade do dano."
+      }
     }
   },
   "placements": [
     {
-      "id": "m01_weak",
       "type": "weak",
-      "ring": "near_start_A",
-      "name": "Monstro Fraco",
-      "hp": 4,
-      "defense": 0,
-      "range": 1,
-      "attack": 1,
-      "continuous_effect": {
-        "type": "regen_per_round",
-        "amount": 1
-      },
-      "reward_card": "faisca_selvagem",
+      "ring": "near_start",
       "position": {
         "x": 3,
-        "y": 4
-      }
+        "y": 7
+      },
+      "id": "m01_weak"
     },
     {
-      "id": "m02_weak",
       "type": "weak",
-      "ring": "near_start_A",
-      "name": "Monstro Fraco",
-      "hp": 4,
-      "defense": 0,
-      "range": 1,
-      "attack": 1,
-      "continuous_effect": {
-        "type": "regen_per_round",
-        "amount": 1
-      },
-      "reward_card": "faisca_selvagem",
+      "ring": "near_start",
       "position": {
         "x": 3,
-        "y": 10
-      }
+        "y": 13
+      },
+      "id": "m02_weak"
     },
     {
-      "id": "m03_weak",
       "type": "weak",
-      "ring": "near_start_B",
-      "name": "Monstro Fraco",
-      "hp": 4,
-      "defense": 0,
-      "range": 1,
-      "attack": 1,
-      "continuous_effect": {
-        "type": "regen_per_round",
-        "amount": 1
-      },
-      "reward_card": "faisca_selvagem",
+      "ring": "near_start",
       "position": {
-        "x": 11,
+        "x": 17,
+        "y": 7
+      },
+      "id": "m03_weak"
+    },
+    {
+      "type": "weak",
+      "ring": "near_start",
+      "position": {
+        "x": 17,
+        "y": 13
+      },
+      "id": "m04_weak"
+    },
+    {
+      "type": "weak",
+      "ring": "second",
+      "position": {
+        "x": 5,
+        "y": 5
+      },
+      "id": "m05_weak"
+    },
+    {
+      "type": "weak",
+      "ring": "second",
+      "position": {
+        "x": 5,
+        "y": 15
+      },
+      "id": "m06_weak"
+    },
+    {
+      "type": "weak",
+      "ring": "second",
+      "position": {
+        "x": 15,
+        "y": 5
+      },
+      "id": "m07_weak"
+    },
+    {
+      "type": "weak",
+      "ring": "second",
+      "position": {
+        "x": 15,
+        "y": 15
+      },
+      "id": "m08_weak"
+    },
+    {
+      "type": "medium",
+      "ring": "middle",
+      "position": {
+        "x": 7,
         "y": 4
-      }
+      },
+      "id": "m09_medium"
     },
     {
-      "id": "m04_weak",
-      "type": "weak",
-      "ring": "near_start_B",
-      "name": "Monstro Fraco",
-      "hp": 4,
-      "defense": 0,
-      "range": 1,
-      "attack": 1,
-      "continuous_effect": {
-        "type": "regen_per_round",
-        "amount": 1
-      },
-      "reward_card": "faisca_selvagem",
+      "type": "medium",
+      "ring": "middle",
       "position": {
-        "x": 11,
+        "x": 4,
+        "y": 7
+      },
+      "id": "m10_medium"
+    },
+    {
+      "type": "medium",
+      "ring": "middle",
+      "position": {
+        "x": 7,
+        "y": 16
+      },
+      "id": "m11_medium"
+    },
+    {
+      "type": "medium",
+      "ring": "middle",
+      "position": {
+        "x": 4,
+        "y": 13
+      },
+      "id": "m12_medium"
+    },
+    {
+      "type": "medium",
+      "ring": "middle",
+      "position": {
+        "x": 13,
+        "y": 4
+      },
+      "id": "m13_medium"
+    },
+    {
+      "type": "medium",
+      "ring": "middle",
+      "position": {
+        "x": 16,
+        "y": 7
+      },
+      "id": "m14_medium"
+    },
+    {
+      "type": "medium",
+      "ring": "middle",
+      "position": {
+        "x": 13,
+        "y": 16
+      },
+      "id": "m15_medium"
+    },
+    {
+      "type": "medium",
+      "ring": "middle",
+      "position": {
+        "x": 16,
+        "y": 13
+      },
+      "id": "m16_medium"
+    },
+    {
+      "type": "strong",
+      "ring": "near_boss",
+      "position": {
+        "x": 10,
+        "y": 5
+      },
+      "id": "m17_strong"
+    },
+    {
+      "type": "strong",
+      "ring": "near_boss",
+      "position": {
+        "x": 10,
+        "y": 15
+      },
+      "id": "m18_strong"
+    },
+    {
+      "type": "strong",
+      "ring": "near_boss",
+      "position": {
+        "x": 5,
         "y": 10
-      }
-    },
-    {
-      "id": "m05_medium",
-      "type": "medium",
-      "ring": "neutral",
-      "name": "Monstro Médio",
-      "hp": 7,
-      "defense": 0,
-      "range": 2,
-      "attack": 2,
-      "continuous_effect": {
-        "type": "thorns_adjacent",
-        "amount": 1
       },
-      "reward_card": "couraca",
-      "position": {
-        "x": 5,
-        "y": 2
-      }
+      "id": "m19_strong"
     },
     {
-      "id": "m06_medium",
-      "type": "medium",
-      "ring": "neutral",
-      "name": "Monstro Médio",
-      "hp": 7,
-      "defense": 0,
-      "range": 2,
-      "attack": 2,
-      "continuous_effect": {
-        "type": "thorns_adjacent",
-        "amount": 1
-      },
-      "reward_card": "couraca",
-      "position": {
-        "x": 9,
-        "y": 2
-      }
-    },
-    {
-      "id": "m07_medium",
-      "type": "medium",
-      "ring": "neutral",
-      "name": "Monstro Médio",
-      "hp": 7,
-      "defense": 0,
-      "range": 2,
-      "attack": 2,
-      "continuous_effect": {
-        "type": "thorns_adjacent",
-        "amount": 1
-      },
-      "reward_card": "couraca",
-      "position": {
-        "x": 5,
-        "y": 12
-      }
-    },
-    {
-      "id": "m08_medium",
-      "type": "medium",
-      "ring": "neutral",
-      "name": "Monstro Médio",
-      "hp": 7,
-      "defense": 0,
-      "range": 2,
-      "attack": 2,
-      "continuous_effect": {
-        "type": "thorns_adjacent",
-        "amount": 1
-      },
-      "reward_card": "couraca",
-      "position": {
-        "x": 9,
-        "y": 12
-      }
-    },
-    {
-      "id": "m09_strong",
       "type": "strong",
       "ring": "near_boss",
-      "name": "Monstro Forte",
-      "hp": 10,
-      "defense": 1,
-      "range": 2,
-      "attack": 3,
-      "continuous_effect": {
-        "type": "slow_aura_adjacent",
-        "amount": 1
-      },
-      "reward_card": "investida_bruta",
       "position": {
-        "x": 7,
-        "y": 3
-      }
-    },
-    {
-      "id": "m10_strong",
-      "type": "strong",
-      "ring": "near_boss",
-      "name": "Monstro Forte",
-      "hp": 10,
-      "defense": 1,
-      "range": 2,
-      "attack": 3,
-      "continuous_effect": {
-        "type": "slow_aura_adjacent",
-        "amount": 1
+        "x": 15,
+        "y": 10
       },
-      "reward_card": "investida_bruta",
-      "position": {
-        "x": 7,
-        "y": 11
-      }
+      "id": "m20_strong"
     }
   ]
 }

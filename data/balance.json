@@ -1,14 +1,14 @@
 {
   "_notes": "Parametros de balanceamento. Valores marcados como padrao ainda nao foram confirmados e serao ajustados pela simulacao. O motor deve ler tudo daqui, sem numeros fixos no codigo. HP, defesa, passivas e basicas dos campeoes ficam em data/champions.json.",
   "board": {
-    "width": 15,
-    "height": 15,
+    "width": 21,
+    "height": 21,
     "boss_position": {
-      "x": 7,
-      "y": 7
+      "x": 10,
+      "y": 10
     },
     "shape": "diamond",
-    "_notes": "Losango: só existem casas com |x-7|+|y-7| <= 7. Equipes nas pontas esquerda (A) e direita (B)."
+    "_notes": "Losango raio 10: só existem casas com |x-10|+|y-10| <= 10 (221 casas). Equipes nas pontas esquerda (A) e direita (B)."
   },
   "teams": {
     "count": 2,
@@ -19,77 +19,77 @@
       "A": [
         {
           "x": 1,
-          "y": 6
+          "y": 9
         },
         {
           "x": 1,
-          "y": 7
+          "y": 10
         },
         {
           "x": 1,
-          "y": 8
+          "y": 11
         },
         {
           "x": 0,
-          "y": 7
+          "y": 10
         },
         {
           "x": 2,
-          "y": 6
+          "y": 9
         },
         {
           "x": 2,
-          "y": 7
+          "y": 10
         },
         {
           "x": 2,
-          "y": 8
+          "y": 11
         },
         {
           "x": 3,
-          "y": 6
+          "y": 9
         },
         {
           "x": 3,
-          "y": 8
+          "y": 11
         }
       ],
       "B": [
         {
-          "x": 13,
-          "y": 6
+          "x": 19,
+          "y": 9
         },
         {
-          "x": 13,
-          "y": 7
+          "x": 19,
+          "y": 10
         },
         {
-          "x": 13,
-          "y": 8
+          "x": 19,
+          "y": 11
         },
         {
-          "x": 14,
-          "y": 7
+          "x": 20,
+          "y": 10
         },
         {
-          "x": 12,
-          "y": 6
+          "x": 18,
+          "y": 9
         },
         {
-          "x": 12,
-          "y": 7
+          "x": 18,
+          "y": 10
         },
         {
-          "x": 12,
-          "y": 8
+          "x": 18,
+          "y": 11
         },
         {
-          "x": 11,
-          "y": 6
+          "x": 17,
+          "y": 9
         },
         {
-          "x": 11,
-          "y": 8
+          "x": 17,
+          "y": 11
         }
       ]
     }
@@ -97,15 +97,18 @@
   "monsters": {
     "rings": {
       "near_start_per_team": 2,
-      "neutral_total": 4,
-      "near_boss_total": 2
+      "second_ring_total": 4,
+      "middle_ring_total": 8,
+      "near_boss_total": 4
     },
     "symmetric_map": true,
-    "attack_trigger": "champion_ends_movement_inside_range",
+    "attack_trigger": "none",
     "reward": "fixed_card_to_last_hit_owner",
     "reward_counts_toward_hand_limit": false,
     "stronger_monsters_give_higher_cost_cards": true,
-    "respawn": false
+    "respawn": false,
+    "total": 20,
+    "passives_are_zone_multipliers": true
   },
   "dice": {
     "sides": 6,
@@ -124,7 +127,7 @@
   },
   "mana": {
     "start": 0,
-    "gain_per_turn": 2,
+    "gain_per_turn": 3,
     "cap": 10,
     "shared_by_team": true,
     "unlimited_card_plays": true
@@ -132,13 +135,15 @@
   "casting": {
     "any_champion_can_cast_cards": true,
     "requires_team_mana": true,
-    "basic_ability_only_main_champion": true,
+    "basic_ability_only_main_champion": false,
     "basic_ability_uses_per_turn": 1,
     "basic_ability_cost": 0,
-    "silence_and_stun_apply_per_champion": true
+    "silence_and_stun_apply_per_champion": true,
+    "basic_ability_once_per_champion_per_turn": true
   },
   "cards": {
-    "deck_size_min": 10
+    "deck_size_min": 10,
+    "beast_cards_shared_by_team": true
   },
   "hand": {
     "max_size": 7,
@@ -147,7 +152,8 @@
     "first_turn_replaces_normal_draw": true,
     "player_chooses_deck_to_draw": true,
     "discard_down_to_max_at_end_of_turn": true,
-    "monster_and_reward_cards_excluded_from_limit": true
+    "monster_and_reward_cards_excluded_from_limit": true,
+    "reshuffle_discard_when_draw_pile_empty": true
   },
   "fast_cards": {
     "enabled": true,
@@ -173,7 +179,9 @@
     "defense_applies_to_friendly_fire": true,
     "healing_ignores_defense": true,
     "healing_capped_at_max_hp": true,
-    "last_hit_counts_damage_over_time": true
+    "last_hit_counts_damage_over_time": true,
+    "champion_damage_multiplier": 1.5,
+    "multiplier_rounding": "half_up"
   },
   "effects": {
     "control_effects_count_in": "champion_turns",
@@ -199,7 +207,9 @@
     "never_chosen_champion_exit_rule": false,
     "return_hp": "full",
     "return_timing": "after_turns_out_at_start_of_own_turn",
-    "turns_out": 2
+    "turns_out": 2,
+    "beast_cards_lost_on_champion_death": 1,
+    "beast_cards_keep_at_least_one": true
   },
   "boss": {
     "hp": 40,

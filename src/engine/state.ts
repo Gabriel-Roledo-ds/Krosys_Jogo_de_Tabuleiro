@@ -227,7 +227,8 @@ export interface TurnState {
   moved: number;
   startPositions: Record<string, Pos>;
   trail: Pos[];
-  basicUsed: boolean;
+  /** Campeões que já usaram a habilidade básica neste turno (uma vez cada). */
+  basicUsed: string[];
   phasing: boolean;
   manaBonusGiven: boolean;
   /** Efeitos de controle do campeão principal, lidos ao escolhê-lo. */
@@ -381,7 +382,7 @@ export function newTurn(team: TeamId, phase: Phase): TurnState {
     moved: 0,
     startPositions: {},
     trail: [],
-    basicUsed: false,
+    basicUsed: [],
     phasing: false,
     manaBonusGiven: false,
     stunned: false,

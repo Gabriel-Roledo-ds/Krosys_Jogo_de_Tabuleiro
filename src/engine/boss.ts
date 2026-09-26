@@ -3,6 +3,7 @@
 import { getBossCard, type BossCardDef } from "./data";
 import { addPos, directionTo, distance, isAdjacent } from "./board";
 import { dealDamage, label } from "./damage";
+import { discardCard } from "./deck";
 import { onLand } from "./hazards";
 import { forcedMove } from "./movement";
 import { rngOf } from "./rng";
@@ -134,7 +135,7 @@ function applyBossEffects(s: GameState, card: BossCardDef, target: ChampionState
         for (let i = 0; i < e.count && team.hand.length > 0; i++) {
           const card = rngOf(s).pick(team.hand);
           team.hand = team.hand.filter((c) => c.uid !== card.uid);
-          if (!card.monster) s.teams[target.team].decks[card.owner].discard.push(card);
+          discardCard(s, card);
           log(s, `${label(target)} descarta ${card.cardId}`);
         }
         break;

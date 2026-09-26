@@ -9,7 +9,8 @@ const T = 32;
 const COLORS = { A: 0x4aa3ff, B: 0xff6b5a };
 const INITIAL: Record<string, string> = { atirador: "At", piromante: "Pi", andarilho: "An", enredador: "En", curandeiro: "Cu", arquiteto: "Ar" };
 const MONSTER_COLOR: Record<string, number> = { weak: 0x9bd14a, medium: 0xe0b040, strong: 0xd0603a };
-const monsterTypes = monstersData.types as Record<string, { range: number }>;
+const monsterTypes = monstersData.types as unknown as Record<string, { passive: { radius: number } }>;
+const N = balance.board.width;
 
 export interface Highlights {
   reach: Set<string>;
@@ -25,7 +26,7 @@ export interface BoardApi {
 
 export const key = (x: number, y: number) => `${x},${y}`;
 
-export const inDiamond = (x: number, y: number, w = 15, h = 15) =>
+export const inDiamond = (x: number, y: number, w = N, h = N) =>
   (balance.board as { shape?: string }).shape !== "diamond" || Math.abs(x - (w - 1) / 2) + Math.abs(y - (h - 1) / 2) <= (w - 1) / 2;
 
 export function createBoard(parent: HTMLElement, onCell: (x: number, y: number) => void): BoardApi {
@@ -38,8 +39,8 @@ export function createBoard(parent: HTMLElement, onCell: (x: number, y: number) 
   new Phaser.Game({
     type: Phaser.CANVAS,
     parent,
-    width: 15 * T,
-    height: 15 * T,
+    width: N * T,
+    height: N * T,
     backgroundColor: "#0d0a16",
     pixelArt: true,
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
@@ -50,7 +51,7 @@ export function createBoard(parent: HTMLElement, onCell: (x: number, y: number) 
         this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
           const x = Math.floor(p.worldX / T);
           const y = Math.floor(p.worldY / T);
-          if (x >= 0 && y >= 0 && x < 15 && y < 15 && inDiamond(x, y)) onCell(x, y);
+          if (x >= 0 && y >= 0 && x < N && y < N && inDiamond(x, y)) onCell(x, y);
         });
         draw();
       },
@@ -88,8 +89,8 @@ export function createBoard(parent: HTMLElement, onCell: (x: number, y: number) 
     gfx.clear();
     labels.forEach((l) => l.destroy());
     labels = [];
-    for (let y = 0; y < 15; y++)
-      for (let x = 0; x < 15; x++) {
+    for (let y = 0; y < N; y++)
+      for (let x = 0; x < N; x++) {
         if (!inDiamond(x, y)) continue;
         const px = x * T;
         const py = y * T;
@@ -101,13 +102,13 @@ export function createBoard(parent: HTMLElement, onCell: (x: number, y: number) 
     // contorno do losango
     gfx.lineStyle(3, 0x8a7bd0, 1);
     gfx.beginPath();
-    gfx.moveTo(7.5 * T, 0).lineTo(15 * T, 7.5 * T).lineTo(7.5 * T, 15 * T).lineTo(0, 7.5 * T).closePath().strokePath();
+    gfx.moveTo((N / 2) * T, 0).lineTo(N * T, (N / 2) * T).lineTo((N / 2) * T, N * T).lineTo(0, (N / 2) * T).closePath().strokePath();
     if (!view) return;
 
     // raios: monstros, boss e aura
     if (hl.showRadii) {
       for (const m of view.monsters) {
-        if (m.alive) zone(m.pos.x, m.pos.y, monsterTypes[m.type].range, MONSTER_COLOR[m.type], 0.13);
+        if (m.alive) zone(m.pos.x, m.pos.y, monsterTypes[m.type].passive.radius, MONSTER_COLOR[m.type], 0.13);
       }
       if (view.boss.alive) {
         zone(view.boss.pos.x, view.boss.pos.y, view.boss.range, 0xff3fa4, 0.09);
@@ -116,8 +117,8 @@ export function createBoard(parent: HTMLElement, onCell: (x: number, y: number) 
       for (const s of view.structures) zone(s.pos.x, s.pos.y, s.range, 0x8a6a3a, 0.1);
     }
 
-    for (let y = 0; y < 15; y++)
-      for (let x = 0; x < 15; x++) {
+    for (let y = 0; y < N; y++)
+      for (let x = 0; x < N; x++) {
         if (!inDiamond(x, y)) continue;
         const px = x * T, py = y * T, k = key(x, y);
         if (hl.reach.has(k)) gfx.fillStyle(0x4aa3ff, 0.4).fillRect(px, py, T, T);

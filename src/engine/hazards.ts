@@ -2,16 +2,17 @@
 // e ataque de monstros. Disparam quando uma unidade termina o movimento numa casa
 // (ou é jogada para ela por empurrão, puxão ou mola).
 
-import { distance, samePos } from "./board";
+import { distance, samePos, type Pos } from "./board";
 import { dealDamage, worldSource, championSource, label } from "./damage";
 import { getChampion, log, type ChampionState, type GameState } from "./state";
 import { forcedMove } from "./movement";
-import { monsterTypes } from "./data";
-import { inRange, isFreeCell } from "./world";
+import { inRange, isFreeCell, monsterZonesAt } from "./world";
 
 export interface LandOpts {
   /** Movimento andando (não forçado): monstros atacam. */
   voluntary: boolean;
+  /** De onde veio (para avisar só quando entra num raio novo). */
+  from?: Pos;
   /** Já passou por portal ou mola nesta chegada. */
   chained?: boolean;
 }
@@ -63,14 +64,13 @@ export function onLand(s: GameState, c: ChampionState, opts: LandOpts): void {
     }
   }
 
+  // Passivas de monstros: avisa quando o campeão para dentro de um raio novo.
+  for (const z of monsterZonesAt(s, c.pos)) {
+    if (opts.from && distance(z.monster.pos, opts.from) <= z.passive.radius) continue;
+    log(s, `${label(c)} entra no raio de ${label(z.monster)}: ${z.passive.name} — ${z.passive.text}`);
+  }
+
   if (opts.voluntary) {
-    for (const m of s.monsters) {
-      if (m.alive && distance(m.pos, c.pos) <= monsterTypes[m.type].range) {
-        log(s, `${label(c)} entra no raio de ${label(m)} (alcance ${monsterTypes[m.type].range})`);
-        log(s, `${label(m)} ataca ${label(c)}`);
-        dealDamage(s, { team: null, champion: null, kind: "monster", label: label(m) }, c, monsterTypes[m.type].attack);
-      }
-    }
     for (const m of s.minions) {
       if (m.alive && distance(m.pos, c.pos) <= 1) {
         log(s, `Lacaio do Boss ataca ${label(c)}`);

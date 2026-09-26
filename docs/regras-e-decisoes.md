@@ -244,3 +244,20 @@ O jogo estava lento. Estas regras substituem as anteriores onde houver conflito.
 - **Terremoto** (aura do boss): raio 5 (era 4). O alcance de ativação do boss continua 4. [PADRÃO]
 - **Interface:** raios de ataque dos monstros, do boss e da aura aparecem no mapa; clicar num campeão, monstro ou no boss abre uma ficha com vida, defesa, passiva, alcance e efeitos ativos com duração; um quadro à esquerda mostra os eventos (quem entrou no raio de quem, quem atacou, dano e efeitos) e os efeitos ativos. [DEFINIDO]
 - Correção: Ressurgir não é mais oferecido depois de usado.
+
+## 17. Segunda rodada de ritmo (26/09/2026) — todas [PADRÃO] salvo indicação
+
+Pedidos do dono do projeto: [DEFINIDO] +3 de mana por turno; monstros com passivas de multiplicador (sem ataques); mais monstros; tabuleiro maior; baralho reembaralha ao acabar; cartas de besta da equipe inteira; campeões com mais dano; básica por campeão a cada turno.
+
+- **Mana:** +3 por turno (teto 10).
+- **Tabuleiro:** losango 21x21 (221 casas), boss em (10,10), largadas em x=1..3 e x=17..19. Mais de 55% das casas ficam fora do alcance do boss.
+- **Monstros:** 20 no mapa (8 fracos, 8 médios, 4 fortes), simétricos em x e y. Não atacam nem regeneram. Cada um tem uma passiva de zona com raio marcado no mapa:
+  - Fraco, Frenesi (raio 1): quem ataca de dentro causa x1,5 de dano.
+  - Médio, Fragilidade (raio 2): quem está dentro recebe x1,5 de dano.
+  - Forte, Pele de Pedra (raio 2): quem está dentro recebe x0,5 de dano.
+  - Multiplicadores se acumulam; arredondamento meio para cima; aplicados depois de bônus fixos e antes da defesa. DoT também passa pelo multiplicador global, mas o dano contínuo do boss não.
+- **Dano dos campeões:** x1,5 em todo dano causado por campeões (`damage.champion_damage_multiplier`, ajustável). Não vale para boss, monstros ou lacaios.
+- **Baralho:** quando o baralho de compra de um campeão acaba, o descarte é embaralhado de volta na hora.
+- **Cartas de besta:** pertencem à equipe. Qualquer campeão vivo e sem silêncio pode lançá-las. Ao morrer um campeão, a equipe perde só uma carta de besta (a mais antiga), e só se tiver mais de uma.
+- **Habilidade básica:** cada campeão pode usar a sua uma vez por turno (antes: só uma por turno para a equipe).
+- **Resultado da simulação (60 partidas, bot guloso):** mediana 15 rodadas (mín 7, máx 44), 0,7 mortes de campeão por partida.

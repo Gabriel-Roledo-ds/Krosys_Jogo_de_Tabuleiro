@@ -35,7 +35,7 @@ describe("Atirador: básica e passiva", () => {
     expect(() => applyAction(s, "A", { type: "basic", target: { uid: dummy } })).toThrow(IllegalAction);
     place(s, dummy, 5, 7);
     applyAction(s, "A", { type: "basic", target: { uid: dummy } });
-    expect(() => applyAction(s, "A", { type: "basic", target: { uid: dummy } })).toThrow(/já foi usada/);
+    expect(() => applyAction(s, "A", { type: "basic", target: { uid: dummy } })).toThrow(/já usou/);
   });
 
   it("defesa subtrai e o dano mínimo é 1", () => {

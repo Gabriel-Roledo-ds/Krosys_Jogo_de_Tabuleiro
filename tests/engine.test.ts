@@ -124,10 +124,10 @@ describe("preparação da partida", () => {
 });
 
 describe("mana compartilhada", () => {
-  it("ganha +2 por turno", () => {
+  it("ganha +3 por turno", () => {
     const s = newGame();
-    expect(gainTurnMana(s, "A")).toBe(2);
-    expect(gainTurnMana(s, "A")).toBe(4);
+    expect(gainTurnMana(s, "A")).toBe(3);
+    expect(gainTurnMana(s, "A")).toBe(6);
     expect(s.teams.B.mana).toBe(0); // outra equipe não muda
   });
 

@@ -5,7 +5,7 @@ import { cardDefs, getCardDef } from "../engine/data";
 import { getChampion, type GameState, type TeamId } from "../engine/state";
 import { canPay } from "../engine/mana";
 import { moveOptionsFor, movementBudget, reachableMap } from "../engine/movement";
-import { cannotCast, handLimitCount, resurrectBlocked } from "../engine/turn";
+import { castersFor, handLimitCount, resurrectBlocked } from "../engine/turn";
 import { balance, getChampionDef } from "../engine/data";
 import { enumerateTargets } from "../engine/targeting";
 
@@ -47,18 +47,21 @@ export function viewFor(s: GameState, me: TeamId | null): unknown {
     const playable: Record<string, boolean> = {};
     const inWindow = !!s.pending && s.pending.priority === me;
     const myAct = !s.pending && s.turn.team === me && s.turn.phase === "act";
+    const casters: Record<string, string[]> = {};
     for (const c of mine.hand) {
       const def = getCardDef(c.cardId);
-      const owner = getChampion(s, c.owner);
-      let ok = (inWindow && def.fast) || myAct;
-      ok = ok && owner.alive && !cannotCast(owner) && canPay(s, me, def.cost) && !resurrectBlocked(s, me, def.effects);
-      playable[c.uid] = ok;
+      const who = castersFor(s, me, c);
+      casters[c.uid] = who.map((x) => x.uid);
+      playable[c.uid] = ((inWindow && def.fast) || myAct) && who.length > 0 && canPay(s, me, def.cost) && !resurrectBlocked(s, me, def.effects);
     }
     hints.playable = playable;
-    const targets: Record<string, unknown> = {};
+    hints.casters = casters;
+    // Alvos por lançador (cartas de besta podem ser lançadas por qualquer campeão).
+    const targets: Record<string, Record<string, unknown>> = {};
     for (const c of mine.hand) {
       if (!playable[c.uid]) continue;
-      targets[c.uid] = enumerateTargets(s, getChampion(s, c.owner), getCardDef(c.cardId), 0, 300);
+      targets[c.uid] = {};
+      for (const cu of casters[c.uid]) targets[c.uid][cu] = enumerateTargets(s, getChampion(s, cu), getCardDef(c.cardId), 0, 300);
     }
     hints.targets = targets;
     if (myAct) {
@@ -75,7 +78,7 @@ export function viewFor(s: GameState, me: TeamId | null): unknown {
           reach[c.uid] = stuck || budget <= 0 ? [] : [...reachableMap(s, c, budget, opts).values()].map((r) => ({ pos: r.pos, cost: r.cost }));
         }
         const stunned = c.statuses.some((x) => x.kind === "stunned" && !x.fresh);
-        if (!t.basicUsed && !stunned) {
+        if (!t.basicUsed.includes(c.uid) && !stunned) {
           const bdef = getChampionDef(c.defId).basic;
           basics[c.uid] = { name: bdef.name, target: bdef.target, range: bdef.range, targets: enumerateTargets(s, c, bdef, 0, 300) };
         }

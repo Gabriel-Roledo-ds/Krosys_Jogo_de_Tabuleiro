@@ -1,6 +1,6 @@
 // Consultas sobre o campo: quem está onde, casas sólidas, alcance e linha de visão.
 
-import { balance } from "./data";
+import { balance, monsterTypes, type MonsterPassive } from "./data";
 import { distance, inBounds, lineBetween, samePos, type Pos } from "./board";
 import { allChampions, type ChampionState, type GameState, type TeamId, type Unit } from "./state";
 
@@ -10,6 +10,17 @@ export function liveUnits(s: GameState): Unit[] {
   out.push(...s.monsters.filter((m) => m.alive));
   out.push(...s.minions.filter((m) => m.alive));
   if (s.boss.alive) out.push(s.boss);
+  return out;
+}
+
+/** Monstros vivos cujo raio passivo cobre a casa (Chebyshev). */
+export function monsterZonesAt(s: GameState, p: Pos): { monster: GameState["monsters"][number]; passive: MonsterPassive }[] {
+  const out: { monster: GameState["monsters"][number]; passive: MonsterPassive }[] = [];
+  for (const m of s.monsters) {
+    if (!m.alive) continue;
+    const passive = monsterTypes[m.type].passive;
+    if (distance(m.pos, p) <= passive.radius) out.push({ monster: m, passive });
+  }
   return out;
 }
 

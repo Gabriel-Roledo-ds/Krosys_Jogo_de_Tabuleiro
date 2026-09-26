@@ -4,6 +4,10 @@ import cards from "../data/cards.json";
 import boss from "../data/boss.json";
 import monsters from "../data/monsters.json";
 import balance from "../data/balance.json";
+import { useRealData } from "./compact";
+
+useRealData(); // estes testes conferem os arquivos de dados de verdade, não o tabuleiro compacto
+
 
 const championCards = cards.filter((c) => c.owner !== "monster");
 const monsterCards = cards.filter((c) => c.owner === "monster");
@@ -117,9 +121,10 @@ describe("boss", () => {
     expect(by("area")).toEqual(["rugido"]);
   });
 
-  it("Terremoto é aura de raio 4 com dano contínuo de 1 que ignora defesa", () => {
+  it("Terremoto é aura de raio 5 com dano contínuo de 1 que ignora defesa", () => {
     const t = boss.deck.find((c) => c.id === "terremoto") as any;
-    expect(t.radius).toBe(4);
+    expect(t.radius).toBe(5);
+    expect(balance.boss.terremoto_radius).toBe(5);
     expect(t.effects[0].amount_per_round).toBe(1);
     expect(t.effects[0].ignores_defense).toBe(true);
   });
@@ -128,12 +133,24 @@ describe("boss", () => {
 describe("monstros", () => {
   const { types, placements } = monsters;
 
-  it("são 10: 4 fracos, 4 médios, 2 fortes (bate com balance.json)", () => {
+  it("são 20: 8 fracos, 8 médios, 4 fortes (bate com balance.json)", () => {
     const count = (t: string) => placements.filter((m) => m.type === t).length;
-    expect(placements).toHaveLength(10);
-    expect(count("weak")).toBe(balance.monsters.rings.near_start_per_team * balance.teams.count);
-    expect(count("medium")).toBe(balance.monsters.rings.neutral_total);
+    expect(placements).toHaveLength(balance.monsters.total);
+    expect(count("weak")).toBe(balance.monsters.rings.near_start_per_team * balance.teams.count + balance.monsters.rings.second_ring_total);
+    expect(count("medium")).toBe(balance.monsters.rings.middle_ring_total);
     expect(count("strong")).toBe(balance.monsters.rings.near_boss_total);
+    expect(new Set(placements.map((m) => m.id)).size).toBe(20);
+  });
+
+  it("cada monstro tem uma passiva de multiplicador de dano com raio", () => {
+    for (const t of Object.values(types) as any[]) {
+      expect(["aura_damage_dealt_multiplier", "aura_damage_taken_multiplier"]).toContain(t.passive.type);
+      expect(t.passive.multiplier).toBeGreaterThan(0);
+      expect(t.passive.radius).toBeGreaterThanOrEqual(1);
+    }
+    expect((types.weak as any).passive.multiplier).toBe(1.5); // Frenesi: causa mais dano
+    expect((types.medium as any).passive.multiplier).toBe(1.5); // Fragilidade: recebe mais dano
+    expect((types.strong as any).passive.multiplier).toBe(0.5); // Pele de Pedra: recebe menos dano
   });
 
   it("cada tipo dá uma carta que existe, com custo 1, 2 e 3", () => {
@@ -143,7 +160,7 @@ describe("monstros", () => {
     expect(cost("strong")).toBe(3);
   });
 
-  it("mapa é simétrico no eixo x e cabe no tabuleiro", () => {
+  it("mapa é simétrico nos eixos x e y e cabe no tabuleiro", () => {
     const key = (m: { type: string; position: { x: number; y: number } }) => `${m.type}:${m.position.x}:${m.position.y}`;
     const keys = new Set(placements.map(key));
     for (const m of placements) {
@@ -153,6 +170,8 @@ describe("monstros", () => {
       expect(m.position.y).toBeLessThan(balance.board.height);
       const mirror = { type: m.type, position: { x: balance.board.width - 1 - m.position.x, y: m.position.y } };
       expect(keys.has(key(mirror)), key(m)).toBe(true);
+      const flip = { type: m.type, position: { x: m.position.x, y: balance.board.height - 1 - m.position.y } };
+      expect(keys.has(key(flip)), key(m)).toBe(true);
     }
   });
 
@@ -167,7 +186,7 @@ describe("monstros", () => {
 
 describe("balance.json", () => {
   it("confirma as decisões do dia", () => {
-    expect(balance.mana.gain_per_turn).toBe(2);
+    expect(balance.mana.gain_per_turn).toBe(3);
     expect(balance.mana.cap).toBe(10);
     expect(balance.fast_cards.max_chained_responses).toBe(3);
     expect(balance.effects.collision_damage).toBe(0);
@@ -188,12 +207,20 @@ describe("balance.json", () => {
 describe("losango", () => {
   it("largadas e monstros ficam dentro do tabuleiro e o boss no centro", async () => {
     const { inBounds } = await import("../src/engine/board");
+    const { width: w, height: h } = balance.board;
+    expect([w, h]).toEqual([21, 21]);
+    expect(balance.board.boss_position).toEqual({ x: 10, y: 10 });
     for (const team of ["A", "B"] as const) {
       expect(balance.teams.start_areas[team]).toHaveLength(9);
-      for (const p of balance.teams.start_areas[team]) expect(inBounds(p, 15, 15)).toBe(true);
+      for (const p of balance.teams.start_areas[team]) expect(inBounds(p, w, h)).toBe(true);
     }
-    const monsters = (await import("../data/monsters.json")).default;
-    for (const m of monsters.placements) expect(inBounds(m.position, 15, 15)).toBe(true);
-    expect(inBounds(balance.board.boss_position, 15, 15)).toBe(true);
+    for (const m of monsters.placements) expect(inBounds(m.position, w, h)).toBe(true);
+    let n = 0;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (inBounds({ x, y }, w, h)) n++;
+    expect(n).toBe(221);
+    // O boss só alcança uma parte do mapa: sobra bastante chão fora do alcance dele.
+    let outside = 0;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (inBounds({ x, y }, w, h) && Math.max(Math.abs(x - 10), Math.abs(y - 10)) > (boss as any).range) outside++;
+    expect(outside / n).toBeGreaterThan(0.55);
   });
 });

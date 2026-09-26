@@ -1,7 +1,7 @@
 // Morte, retorno, recompensa de monstro e vitória.
 // Chamado depois que toda a pilha de respostas rápidas termina.
 
-import { balance, getBossCard, getChampionDef, monsterTypes } from "./data";
+import { balance, getBossCard, getCardDef, getChampionDef, monsterTypes } from "./data";
 import { rngOf } from "./rng";
 import {
   allChampions,
@@ -73,8 +73,16 @@ export function killChampion(s: GameState, c: ChampionState): void {
   c.reflect = 0;
   c.statuses = [];
   const team = s.teams[c.team];
-  c.limbo = team.hand.filter((card) => card.owner === c.uid);
-  team.hand = team.hand.filter((card) => card.owner !== c.uid);
+  // Cartas de besta são da equipe: ficam na mão. As demais cartas dele ficam guardadas.
+  c.limbo = team.hand.filter((card) => card.owner === c.uid && !card.monster);
+  team.hand = team.hand.filter((card) => card.owner !== c.uid || card.monster);
+  // A equipe perde só uma carta de besta (a mais antiga), e só se tiver mais de uma.
+  const beasts = team.hand.filter((card) => card.monster);
+  if (beasts.length > balance.death.beast_cards_lost_on_champion_death) {
+    const lost = beasts[0];
+    team.hand = team.hand.filter((card) => card.uid !== lost.uid);
+    log(s, `Equipe ${c.team} perde a carta de besta ${getCardDef(lost.cardId).name}`);
+  }
   s.watches = s.watches.filter((w) => w.owner !== c.uid);
   c.pos = { x: -1, y: -1 };
 }

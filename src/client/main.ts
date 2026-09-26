@@ -22,7 +22,7 @@ let me: "A" | "B" | null = null;
 let lobby: any = null;
 let view: any = null;
 let myComp: string[] = [];
-let sel: { kind: "card"; uid: string } | { kind: "basic"; champion: string } | null = null;
+let sel: { kind: "card"; uid: string; caster?: string } | { kind: "basic"; champion: string } | null = null;
 let moving: string | null = null;
 let showRadii = true;
 let chooser: Target[] | null = null;
@@ -140,9 +140,6 @@ const BASIC_TEXT: Record<string, string> = {
   atirador: "Dano 2 em um alvo.", piromante: "Dano 1 de fogo em uma casa.", andarilho: "+1 de movimento; +1 de mana se andar 5 ou mais.",
   enredador: "Alvo perde 2 de movimento no próximo turno dele.", curandeiro: "Cura 1 de vida em um aliado.", arquiteto: "Cria uma parede fraca (2 de vida).",
 };
-const MONSTER_EFFECT: Record<string, string> = {
-  regen_per_round: "Regenera 1 de vida por rodada.", thorns_adjacent: "Reflete 1 de dano em quem bate de perto.", slow_aura_adjacent: "Quem está adjacente perde 1 de movimento.",
-};
 const durText = (s: any) => `${s.remaining} ${s.unit === "rounds" ? (s.remaining === 1 ? "rodada" : "rodadas") : s.remaining === 1 ? "turno do campeão" : "turnos do campeão"}`;
 const champName = (u: any) => champs[u.defId]?.name ?? "?";
 const unitName = (u: any) => (u.defId ? `${champName(u)} (${u.team})` : u.uid === "boss" ? "Boss" : u.type ? `${monsterTypes[u.type].name} (${u.uid.slice(0, 3)})` : "Lacaio do Boss");
@@ -165,11 +162,12 @@ const hints = () => view.hints ?? {};
 
 function candidateTargets(): Target[] {
   if (!sel) return [];
-  return sel.kind === "basic" ? hints().basics?.[sel.champion]?.targets ?? [] : hints().targets?.[sel.uid] ?? [];
+  return sel.kind === "basic" ? hints().basics?.[sel.champion]?.targets ?? [] : (sel.caster ? hints().targets?.[sel.uid]?.[sel.caster] : undefined) ?? [];
 }
 function selOwner(): any {
   if (!sel) return null;
   if (sel.kind === "basic") return unitByUid(sel.champion);
+  if (sel.caster) return unitByUid(sel.caster);
   const card = view.teams[me!].hand.find((c: any) => c.uid === (sel as any).uid);
   return card ? unitByUid(card.owner) : null;
 }
@@ -193,7 +191,7 @@ function describe(t: Target): string {
 function submitTarget(t: Target) {
   if (!sel) return;
   if (sel.kind === "basic") act({ type: "basic", champion: sel.champion, target: t });
-  else act({ type: "play", card: sel.uid, target: t });
+  else act({ type: "play", card: sel.uid, target: t, caster: sel.caster });
 }
 
 function onCell(x: number, y: number) {
@@ -273,6 +271,9 @@ function renderActions() {
   if (view.winner) html = `<button onclick="location.reload()">Voltar ao início</button>`;
   else if (chooser) {
     html = "Qual opção?" + chooser.map((t, i) => `<div><button data-i="${i}">${esc(describe(t))}</button></div>`).join("") + `<button id="cancel">Cancelar</button>`;
+  } else if (sel && sel.kind === "card" && !sel.caster) {
+    const cs: string[] = h.casters?.[sel.uid] ?? [];
+    html = "Carta de besta da equipe. Quem vai lançar?" + cs.map((u) => `<div><button data-caster="${u}">${esc(unitName(unitByUid(u)))}</button></div>`).join("") + `<div><button id="cancel">Cancelar</button></div>`;
   } else if (sel) {
     const noCell = candidateTargets().filter((t) => !cellOf(t));
     html = "Clique numa casa destacada." + noCell.map((t, i) => `<div><button data-nc="${i}">${esc(describe(t))}</button></div>`).join("") + `<div><button id="cancel">Cancelar</button></div>`;
@@ -298,7 +299,7 @@ function renderActions() {
           ${canStay ? `<button data-stay="${c.uid}">Ficar parado</button>` : ""}
           ${h.basics?.[c.uid] ? `<button data-basic="${c.uid}">${esc(h.basics[c.uid].name)}</button>` : ""}</div></div>`;
       }).join("");
-      html = `${rows}<div class="row"><button id="end">Encerrar turno</button></div><small>Cada campeão se move uma vez (até ${view.turn.die} casas). Só uma habilidade básica por turno${view.turn.basicUsed ? " — já usada" : ""}. Clique num campeão ou monstro no mapa para ver detalhes.</small>`;
+      html = `${rows}<div class="row"><button id="end">Encerrar turno</button></div><small>Cada campeão se move uma vez (até ${view.turn.die} casas). Cada campeão pode usar a habilidade básica uma vez por turno${view.turn.basicUsed.length ? ` (já usaram: ${view.turn.basicUsed.length})` : ""}. Clique num campeão ou monstro no mapa para ver detalhes.</small>`;
     } else if (ph === "discard") html = "Clique numa carta da mão para descartar.";
   } else html = "Aguarde…";
   A.innerHTML = html;
@@ -309,6 +310,7 @@ function renderActions() {
   A.querySelectorAll<HTMLElement>("[data-mv]").forEach((b) => (b.onclick = () => { moving = b.dataset.mv!; renderGame(); }));
   A.querySelectorAll<HTMLElement>("[data-stay]").forEach((b) => (b.onclick = () => act({ type: "stay", champion: b.dataset.stay })));
   A.querySelectorAll<HTMLElement>("[data-basic]").forEach((b) => (b.onclick = () => { sel = { kind: "basic", champion: b.dataset.basic! }; renderGame(); }));
+  A.querySelectorAll<HTMLElement>("[data-caster]").forEach((b) => (b.onclick = () => { if (sel && sel.kind === "card") { sel.caster = b.dataset.caster!; renderGame(); } }));
   on("cancel", () => { sel = null; chooser = null; renderGame(); });
   on("pass", () => act({ type: "pass" }));
   on("end", () => act({ type: "end" }));
@@ -330,9 +332,11 @@ function renderHand() {
       const uid = el.dataset.u!;
       if (h.mustDiscard) return act({ type: "discard", card: uid });
       if (!h.playable?.[uid]) return;
-      const cands: Target[] = h.targets?.[uid] ?? [];
-      if (cands.length === 1 && Object.keys(cands[0]).length === 0) return act({ type: "play", card: uid, target: {} });
-      sel = { kind: "card", uid };
+      const cs: string[] = h.casters?.[uid] ?? [];
+      const caster = cs.length === 1 ? cs[0] : cs.includes(hand.find((x) => x.uid === uid)?.owner) && !hand.find((x) => x.uid === uid)?.monster ? hand.find((x) => x.uid === uid).owner : undefined;
+      const cands: Target[] = caster ? h.targets?.[uid]?.[caster] ?? [] : [];
+      if (caster && cands.length === 1 && Object.keys(cands[0]).length === 0) return act({ type: "play", card: uid, target: {}, caster });
+      sel = { kind: "card", uid, caster };
       chooser = null;
       renderGame();
     };
@@ -423,8 +427,7 @@ function openModal(uid: string) {
     const t = monsterTypes[u.type];
     h += `<h2>${esc(t.name)}</h2><div class="sub">Monstro (${esc(u.uid)})</div>`;
     h += `<div class="row2">Vida ${u.hp}/${u.maxHp} · Defesa ${u.defense}</div>`;
-    h += `<div class="row2"><b>Ataque</b>: ${t.attack} de dano em quem terminar o movimento a até ${t.range} casa(s) dele.<div class="sub">O raio está marcado no mapa.</div></div>`;
-    h += `<div class="row2"><b>Efeito contínuo</b><div class="sub">${esc(MONSTER_EFFECT[t.continuous_effect.type] ?? t.continuous_effect.type)}</div></div>`;
+    h += `<div class="row2"><b>Passiva: ${esc(t.passive.name)}</b> (raio ${t.passive.radius})<div class="sub">${esc(t.passive.text)} O raio está marcado no mapa.</div></div>`;
     h += `<div class="row2"><b>Recompensa</b>: carta "${esc(cards[t.reward_card]?.name ?? t.reward_card)}" para quem der o último golpe.</div>`;
     h += `<div class="row2"><b>Efeitos ativos</b>${statuses(u.statuses)}</div>`;
   } else if (u.uid === "boss") {

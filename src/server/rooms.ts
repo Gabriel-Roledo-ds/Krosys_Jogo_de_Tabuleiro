@@ -129,7 +129,8 @@ export function sanitizeAction(raw: unknown): Action | null {
       return { type: "move", to: a.to, champion: a.champion as string | undefined };
     case "play": {
       const t = target(a.target);
-      return str(a.card) && t ? { type: "play", card: a.card, target: t } : null;
+      if (a.caster !== undefined && !str(a.caster)) return null;
+      return str(a.card) && t ? { type: "play", card: a.card, target: t, caster: a.caster as string | undefined } : null;
     }
     case "basic": {
       const t = target(a.target);

@@ -2,13 +2,14 @@
 //
 // Fases: boss -> draw -> act -> (discard) -> fim.
 // Na fase de ação, o time rola 1 dado; cada campeão pode se mover uma vez (até o valor do dado)
-// e só 1 habilidade básica é usada por turno, por qualquer campeão.
+// e cada campeão pode usar a própria habilidade básica uma vez.
 // Cartas e básicas vão para a pilha; o adversário pode responder com cartas rápidas
 // (a última carta jogada resolve primeiro). Mortes só são resolvidas no fim da pilha.
 
 import { balance, getCardDef, getChampionDef, type Effect } from "./data";
 import { posKey, type Pos } from "./board";
 import { beginBossActivation, bossShouldActivate, resolveBossItem } from "./boss";
+import { discardCard, refillIfEmpty } from "./deck";
 import { resolveDeaths, returnDeadChampions } from "./death";
 import { resolveItem } from "./effects";
 import { label } from "./damage";
@@ -37,7 +38,7 @@ export type Action =
   | { type: "skipDraw" }
   | { type: "move"; to: Pos; champion?: string }
   | { type: "stay"; champion: string }
-  | { type: "play"; card: string; target: Target }
+  | { type: "play"; card: string; target: Target; caster?: string }
   | { type: "basic"; target: Target; champion?: string }
   | { type: "pass" }
   | { type: "discard"; card: string }
@@ -131,22 +132,30 @@ const deckSize = (s: GameState, c: ChampionState): number => {
   return d.draw.length + d.discard.length;
 };
 
-/** Compra `n` cartas do baralho do campeão, reembaralhando o descarte se preciso. */
+/** Compra `n` cartas do baralho do campeão; se o monte acabar, o descarte volta embaralhado. */
 function drawFrom(s: GameState, c: ChampionState, n: number): number {
   const t = s.teams[c.team];
   const deck = t.decks[c.uid];
   let drawn = 0;
   for (let i = 0; i < n; i++) {
-    if (deck.draw.length === 0 && deck.discard.length > 0) {
-      deck.draw = rngOf(s).shuffle(deck.discard);
-      deck.discard = [];
-    }
+    if (deck.draw.length === 0) refillIfEmpty(s, c.uid);
     const card = deck.draw.shift();
     if (!card) break;
     t.hand.push(card);
     drawn++;
   }
+  refillIfEmpty(s, c.uid);
   return drawn;
+}
+
+/**
+ * Quem pode lançar a carta. Cartas de besta (de monstro) são da equipe: qualquer campeão vivo
+ * e sem silêncio pode lançá-las. As demais só o dono.
+ */
+export function castersFor(s: GameState, team: TeamId, card: CardInstance): ChampionState[] {
+  if (card.monster) return s.teams[team].champions.filter((c) => c.alive && !cannotCast(c));
+  const owner = getChampion(s, card.owner);
+  return owner.alive && !cannotCast(owner) ? [owner] : [];
 }
 
 // ---------- pilha de respostas rápidas ----------
@@ -157,15 +166,15 @@ export function canRespond(s: GameState, team: TeamId): boolean {
 }
 
 /** Jogadas rápidas possíveis para a equipe (usado também pelos bots). */
-export function fastPlays(s: GameState, team: TeamId): { card: CardInstance; target: Target }[] {
-  const out: { card: CardInstance; target: Target }[] = [];
+export function fastPlays(s: GameState, team: TeamId): { card: CardInstance; target: Target; caster?: string }[] {
+  const out: { card: CardInstance; target: Target; caster?: string }[] = [];
   for (const card of s.teams[team].hand) {
     const info = cardInfo(card);
     if (!info.fast || !canPay(s, team, info.cost) || resurrectBlocked(s, team, info.effects)) continue;
-    const owner = getChampion(s, card.owner);
-    if (!owner.alive || cannotCast(owner)) continue;
     const buff = s.teams[team].nextCardBuff;
-    for (const target of enumerateTargets(s, owner, info, buff?.range ?? 0, 6)) out.push({ card, target });
+    for (const owner of castersFor(s, team, card)) {
+      for (const target of enumerateTargets(s, owner, info, buff?.range ?? 0, 6)) out.push({ card, target, caster: card.monster ? owner.uid : undefined });
+    }
   }
   return out;
 }
@@ -225,7 +234,7 @@ export function applyAction(s: GameState, team: TeamId, a: Action): void {
     if (s.pending.priority !== team) fail("Não é a sua vez de responder");
     if (a.type === "pass") return resolveStack(s);
     if (a.type !== "play") fail("Responda com uma carta rápida ou passe");
-    return playCard(s, team, a.card, a.target, true);
+    return playCard(s, team, a.card, a.target, true, a.caster);
   }
 
   if (s.turn.team !== team) fail("Não é o seu turno");
@@ -275,25 +284,26 @@ export function applyAction(s: GameState, team: TeamId, a: Action): void {
       t.movementLeft -= cost;
       t.moved += cost;
       t.trail.push(...path);
+      const from = { ...c.pos };
       c.pos = { ...a.to };
       log(s, `${label(c)} anda até (${a.to.x},${a.to.y})`);
-      onLand(s, c, { voluntary: true });
+      onLand(s, c, { voluntary: true, from });
       checkStepBonus(s);
       resolveDeaths(s);
       return;
     }
     case "play":
-      return playCard(s, team, a.card, a.target, false);
+      return playCard(s, team, a.card, a.target, false, a.caster);
     case "basic": {
       if (t.phase !== "act") fail("Não é a fase de ação");
-      if (t.basicUsed) fail("A habilidade básica já foi usada neste turno");
       const c = a.champion ? getChampion(s, a.champion) : t.main ? getChampion(s, t.main) : fail("Escolha um campeão para a básica");
       if (c.team !== team || !c.alive) fail("Campeão inválido");
+      if (t.basicUsed.includes(c.uid)) fail("Esse campeão já usou a habilidade básica neste turno");
       if (cannotBasic(c)) fail("O campeão está atordoado");
       const info = basicInfo(c);
       const err = validateTarget(s, c, info, a.target);
       if (err) fail(err);
-      t.basicUsed = true;
+      t.basicUsed.push(c.uid);
       log(s, `${label(c)} usa ${getChampionDef(c.defId).basic.name}`);
       pushItem(s, { kind: "basic", team, owner: c.uid, cardId: `basic:${c.defId}`, target: a.target });
       checkStepBonus(s);
@@ -304,7 +314,7 @@ export function applyAction(s: GameState, team: TeamId, a: Action): void {
       const card = s.teams[team].hand.find((c) => c.uid === a.card);
       if (!card || card.monster) fail("Carta inválida para descarte");
       s.teams[team].hand = s.teams[team].hand.filter((c) => c.uid !== a.card);
-      s.teams[team].decks[card!.owner].discard.push(card!);
+      discardCard(s, card!);
       if (handLimitCount(s, team) <= balance.hand.max_size) finishTurn(s);
       return;
     }
@@ -350,7 +360,7 @@ function checkStepBonus(s: GameState): void {
   }
 }
 
-function playCard(s: GameState, team: TeamId, uid: string, target: Target, isResponse: boolean): void {
+function playCard(s: GameState, team: TeamId, uid: string, target: Target, isResponse: boolean, casterUid?: string): void {
   const t = s.turn;
   if (!isResponse && t.phase !== "act") fail("Não é a fase de ação");
   const hand = s.teams[team].hand;
@@ -358,9 +368,25 @@ function playCard(s: GameState, team: TeamId, uid: string, target: Target, isRes
   if (!card) return fail("Carta não está na mão");
   const info = cardInfo(card);
   if (isResponse && !info.fast) fail("Só cartas rápidas respondem");
-  const owner = getChampion(s, card.owner);
-  if (!owner.alive) fail("O dono da carta não está em campo");
-  if (cannotCast(owner)) fail("O campeão não pode usar cartas agora");
+  let owner: ChampionState;
+  if (card.monster) {
+    // Carta de besta: da equipe. Sem lançador indicado, usa o dono original ou o primeiro campeão apto.
+    const options = castersFor(s, team, card);
+    if (casterUid) {
+      const chosen = getChampion(s, casterUid);
+      if (chosen.team !== team || !chosen.alive) fail("Lançador inválido");
+      if (cannotCast(chosen)) fail("O campeão não pode usar cartas agora");
+      owner = chosen;
+    } else {
+      const preferred = options.find((c) => c.uid === card.owner) ?? options[0];
+      if (!preferred) fail("Nenhum campeão pode lançar essa carta");
+      owner = preferred;
+    }
+  } else {
+    owner = getChampion(s, card.owner);
+    if (!owner.alive) fail("O dono da carta não está em campo");
+    if (cannotCast(owner)) fail("O campeão não pode usar cartas agora");
+  }
   if (!canPay(s, team, info.cost)) fail("Mana insuficiente");
   const buff = s.teams[team].nextCardBuff ?? undefined;
   const err = validateTarget(s, owner, info, target, buff?.range ?? 0);
@@ -369,9 +395,9 @@ function playCard(s: GameState, team: TeamId, uid: string, target: Target, isRes
 
   spendMana(s, team, info.cost);
   s.teams[team].hand = hand.filter((c) => c.uid !== uid);
-  if (!card.monster) s.teams[team].decks[card.owner].discard.push(card);
+  discardCard(s, card);
   if (buff && !info.effects.some((e) => e.type === "buff_next_card")) s.teams[team].nextCardBuff = null;
-  log(s, `${label(owner)} usa ${getCardDef(card.cardId).name}`);
+  log(s, `${label(owner)} usa ${getCardDef(card.cardId).name}${card.monster ? " (carta de besta da equipe)" : ""}`);
   pushItem(s, { kind: "card", team, owner: owner.uid, cardId: card.cardId, target, buff });
   checkStepBonus(s);
 }
@@ -425,18 +451,17 @@ export function legalActions(s: GameState, team: TeamId): Action[] {
         }
         if (!active) out.push({ type: "stay", champion: c.uid });
       }
-      if (!t.basicUsed) {
-        for (const c of tm.champions) {
-          if (!c.alive || cannotBasic(c)) continue;
-          for (const target of enumerateTargets(s, c, basicInfo(c), 0, 12)) out.push({ type: "basic", target, champion: c.uid });
-        }
+      for (const c of tm.champions) {
+        if (!c.alive || cannotBasic(c) || t.basicUsed.includes(c.uid)) continue;
+        for (const target of enumerateTargets(s, c, basicInfo(c), 0, 12)) out.push({ type: "basic", target, champion: c.uid });
       }
       const buff = tm.nextCardBuff;
       for (const card of tm.hand) {
         const info = cardInfo(card);
-        const owner = getChampion(s, card.owner);
-        if (!owner.alive || cannotCast(owner) || !canPay(s, team, info.cost) || resurrectBlocked(s, team, info.effects)) continue;
-        for (const target of enumerateTargets(s, owner, info, buff?.range ?? 0, 10)) out.push({ type: "play", card: card.uid, target });
+        if (!canPay(s, team, info.cost) || resurrectBlocked(s, team, info.effects)) continue;
+        for (const owner of castersFor(s, team, card)) {
+          for (const target of enumerateTargets(s, owner, info, buff?.range ?? 0, 10)) out.push({ type: "play", card: card.uid, target, caster: card.monster ? owner.uid : undefined });
+        }
       }
       out.push({ type: "end" });
       break;

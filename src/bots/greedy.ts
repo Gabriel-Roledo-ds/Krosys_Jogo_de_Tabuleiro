@@ -8,6 +8,7 @@ import { balance, getChampionDef } from "../engine/data";
 import { applyAction, fastPlays, legalActions, type Action } from "../engine/turn";
 import { allChampions, getChampion, otherTeam, type ChampionState, type GameState, type TeamId } from "../engine/state";
 import { createRng, type Rng } from "../engine/rng";
+import { monsterZonesAt } from "../engine/world";
 import { getCardDef } from "../engine/data";
 
 export interface GreedyOptions {
@@ -118,10 +119,11 @@ export function greedyBot(opts: GreedyOptions = {}, rng: Rng = createRng(1)) {
         const threatened = ally.uid === targetUid || ally.hp <= ally.maxHp * 0.5;
         if (!threatened) continue;
         const cur = evaluate(s, team, aggression);
-        const val = simulate(s, team, { type: "play", card: p.card.uid, target: p.target });
+        const play: Action = { type: "play", card: p.card.uid, target: p.target, caster: p.caster };
+        const val = simulate(s, team, play);
         if (val !== null && val - cur > bestVal) {
           bestVal = val - cur;
-          best = { type: "play", card: p.card.uid, target: p.target };
+          best = play;
         }
       }
       return best ?? { type: "pass" };
@@ -178,8 +180,9 @@ export function greedyBot(opts: GreedyOptions = {}, rng: Rng = createRng(1)) {
           const gapNow = Math.max(0, distance(c.pos, goal) - want);
           const gap = Math.max(0, distance(a.to, goal) - want);
           let val = (gapNow - gap) * 1.5;
-          for (const m of s.monsters) {
-            if (m.alive && distance(m.pos, a.to) <= 1 && distance(m.pos, goal) > 0) val -= 2;
+          // Evita parar dentro de um raio que aumenta o dano recebido (a menos que seja o objetivo).
+          for (const z of monsterZonesAt(s, a.to)) {
+            if (z.passive.type === "aura_damage_taken_multiplier" && z.passive.multiplier > 1 && distance(z.monster.pos, goal) > 0) val -= 2;
           }
           val -= gap * 0.01;
           if (val > bestVal && val > 0.05) {

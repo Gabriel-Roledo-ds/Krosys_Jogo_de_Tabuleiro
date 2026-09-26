@@ -4,6 +4,9 @@ import { createGame } from "../src/engine/state";
 import { applyAction, startGame } from "../src/engine/turn";
 import { randomBot } from "../src/bots/random";
 import { createRng } from "../src/engine/rng";
+import { useRealData } from "./compact";
+
+useRealData();
 
 describe("partidas simuladas", () => {
   it("bot guloso contra bot guloso termina uma partida completa sem erro", () => {

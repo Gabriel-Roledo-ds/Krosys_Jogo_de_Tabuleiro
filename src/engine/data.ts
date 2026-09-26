@@ -61,14 +61,21 @@ export interface BossCardDef {
   text: string;
 }
 
+/** Passiva de monstro: multiplica o dano de quem está dentro do raio dele. */
+export interface MonsterPassive {
+  name: string;
+  type: "aura_damage_dealt_multiplier" | "aura_damage_taken_multiplier";
+  multiplier: number;
+  radius: number;
+  text: string;
+}
+
 export interface MonsterType {
   name: string;
   hp: number;
   defense: number;
-  range: number;
-  attack: number;
-  continuous_effect: { type: string; amount: number };
   reward_card: string;
+  passive: MonsterPassive;
 }
 
 export const balance = balanceJson;

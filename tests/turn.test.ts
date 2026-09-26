@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { activateChampion, applyAction, IllegalAction, legalActions, startGame } from "../src/engine/turn";
 import { createGame, getChampion, type GameState } from "../src/engine/state";
 import { resolveDeaths } from "../src/engine/death";
+import { computeDamage, championSource } from "../src/engine/damage";
 import { give, hp, place, play, scenario, uid } from "./helpers";
 import balance from "../data/balance.json";
 
@@ -38,7 +39,7 @@ describe("início da partida e primeiro turno", () => {
     applyAction(s, "A", { type: "draw", champion: uid("A", "atirador") });
     expect(s.teams.A.hand).toHaveLength(3);
     expect(s.teams.A.hand.every((c) => c.owner === uid("A", "atirador"))).toBe(true);
-    expect(s.teams.A.mana).toBe(2);
+    expect(s.teams.A.mana).toBe(3);
     expect(s.turn.phase).toBe("act");
     expect(s.turn.die).toBeGreaterThanOrEqual(1);
     expect(s.turn.die).toBeLessThanOrEqual(6);
@@ -118,7 +119,7 @@ describe("movimento: uma vez por campeão, uma básica por turno", () => {
     expect(s.turn.activated).toEqual([c.uid]);
   });
 
-  it("só uma habilidade básica por turno, de qualquer campeão", () => {
+  it("cada campeão usa a básica uma vez por turno", () => {
     const s = go();
     const a = getChampion(s, uid("A", "atirador"));
     const p = getChampion(s, uid("A", "piromante"));
@@ -126,8 +127,10 @@ describe("movimento: uma vez por campeão, uma básica por turno", () => {
     a.pos = { x: 5, y: 5 };
     p.pos = { x: 5, y: 6 };
     foe.pos = { x: 5, y: 7 };
+    p.pos = { x: 5, y: 8 };
     applyAction(s, "A", { type: "basic", champion: a.uid, target: { uid: foe.uid } });
-    expect(() => applyAction(s, "A", { type: "basic", champion: p.uid, target: { uid: foe.uid } })).toThrow(/básica/);
+    expect(() => applyAction(s, "A", { type: "basic", champion: a.uid, target: { uid: foe.uid } })).toThrow(/já usou/);
+    expect(s.turn.basicUsed).toEqual([a.uid]); // os outros campeões ainda têm a básica
   });
 
   it("legalActions traz movimentos de todos os campeões que ainda não se moveram", () => {
@@ -154,7 +157,7 @@ describe("turnos seguintes", () => {
     applyAction(s, "A", { type: "draw", champion: uid("A", "enredador") });
     expect(s.teams.A.hand).toHaveLength(before + 1);
     expect(s.teams.A.hand[before].owner).toBe(uid("A", "enredador"));
-    expect(s.teams.A.mana).toBe(before2 + 2);
+    expect(s.teams.A.mana).toBe(before2 + 3);
     expect(s.turn.phase).toBe("act");
   });
 
@@ -177,7 +180,7 @@ describe("turnos seguintes", () => {
     const mana = s.teams.A.mana;
     applyAction(s, "A", { type: "skipDraw" });
     expect(s.teams.A.hand).toHaveLength(7);
-    expect(s.teams.A.mana).toBe(mana + 2);
+    expect(s.teams.A.mana).toBe(mana + 3);
     expect(s.turn.phase).toBe("act");
   });
 
@@ -275,14 +278,31 @@ describe("morte e retorno", () => {
     expect(getChampion(s, uid("A", "atirador")).untargetable).toBe(false);
   });
 
-  it("carta de monstro da mão do morto volta ao baralho dele", () => {
+  it("carta de besta fica com a equipe; ao morrer, perde só uma (a mais antiga) se tiver mais de uma", () => {
     const s = scenario({ A: ["atirador", "piromante", "curandeiro"], B: ["atirador", "arquiteto", "andarilho"] });
     const v = getChampion(s, uid("B", "atirador"));
     s.teams.B.hand.push({ uid: "mc", cardId: "faisca_selvagem", owner: v.uid, monster: true });
     v.hp = 0;
     resolveDeaths(s);
-    expect(s.teams.B.hand).toHaveLength(0);
-    expect(v.limbo.map((c) => c.uid)).toContain("mc");
+    expect(s.teams.B.hand.map((c) => c.uid)).toEqual(["mc"]); // única: não perde
+
+    const s2 = scenario({ A: ["atirador", "piromante", "curandeiro"], B: ["atirador", "arquiteto", "andarilho"] });
+    const v2 = getChampion(s2, uid("B", "atirador"));
+    s2.teams.B.hand.push({ uid: "m1", cardId: "faisca_selvagem", owner: v2.uid, monster: true });
+    s2.teams.B.hand.push({ uid: "m2", cardId: "couraca", owner: v2.uid, monster: true });
+    v2.hp = 0;
+    resolveDeaths(s2);
+    expect(s2.teams.B.hand.map((c) => c.uid)).toEqual(["m2"]);
+  });
+
+  it("carta de besta pode ser lançada por qualquer campeão da equipe", () => {
+    const s = scenario({ A: ["atirador", "piromante", "curandeiro"], B: ["atirador", "arquiteto", "andarilho"] });
+    s.teams.A.hand.push({ uid: "fs", cardId: "faisca_selvagem", owner: uid("A", "atirador"), monster: true });
+    const p = getChampion(s, uid("A", "piromante"));
+    place(s, p.uid, 5, 5);
+    place(s, uid("B", "atirador"), 5, 7);
+    applyAction(s, "A", { type: "play", card: "fs", caster: p.uid, target: { uid: uid("B", "atirador") } });
+    expect(s.teams.A.hand.some((c) => c.uid === "fs")).toBe(false);
   });
 });
 
@@ -447,23 +467,13 @@ describe("monstros", () => {
     return s;
   };
 
-  it("monstro ataca quem termina o movimento dentro do alcance dele", () => {
+  it("monstros não atacam: só têm passivas de zona", () => {
     const s = withMonsters();
-    const m = s.monsters.find((x) => x.type === "weak")!; // alcance 1, ataque 1
+    const m = s.monsters.find((x) => x.type === "weak")!;
     const c = getChampion(s, uid("A", "atirador"));
     c.pos = { x: m.pos.x, y: m.pos.y + 3 };
     s.turn.movementLeft = 8;
     applyAction(s, "A", { type: "move", to: { x: m.pos.x, y: m.pos.y + 1 } });
-    expect(c.hp).toBe(14 - 1);
-  });
-
-  it("não ataca se o campeão para fora do alcance", () => {
-    const s = withMonsters();
-    const m = s.monsters.find((x) => x.type === "weak")!;
-    const c = getChampion(s, uid("A", "atirador"));
-    c.pos = { x: m.pos.x, y: m.pos.y + 4 };
-    s.turn.movementLeft = 8;
-    applyAction(s, "A", { type: "move", to: { x: m.pos.x, y: m.pos.y + 2 } });
     expect(c.hp).toBe(14);
   });
 
@@ -480,37 +490,36 @@ describe("monstros", () => {
     expect(reward.owner).toBe(c.uid);
   });
 
-  it("monstro forte reduz em 1 o movimento de quem está adjacente", () => {
-    const s = withMonsters();
-    const m = s.monsters.find((x) => x.type === "strong")!;
-    const c = getChampion(s, uid("A", "atirador"));
-    c.pos = { x: m.pos.x - 1, y: m.pos.y };
-    const other = getChampion(s, uid("A", "piromante"));
-    applyAction(s, "A", { type: "stay", champion: other.uid });
-    other.pos = { x: c.pos.x, y: c.pos.y + 1 };
-    // O atirador já foi ativado no início; o piromante está longe do monstro: dado cheio.
-    expect(s.turn.movementLeft).toBe(s.turn.die);
-    expect(c.pos).toEqual({ x: m.pos.x - 1, y: m.pos.y });
-  });
-
-  it("monstro médio reflete 1 de dano em quem bate de perto", () => {
-    const s = withMonsters();
-    const m = s.monsters.find((x) => x.type === "medium")!;
-    const c = getChampion(s, uid("A", "atirador"));
-    c.pos = { x: m.pos.x - 1, y: m.pos.y };
-    c.hp = 10;
-    applyAction(s, "A", { type: "basic", target: { uid: m.uid } });
-    expect(c.hp).toBe(9);
-  });
-
-  it("monstro fraco regenera 1 por rodada", () => {
+  it("Frenesi (fraco): quem ataca de dentro do raio causa x1,5 de dano", () => {
     const s = withMonsters();
     const m = s.monsters.find((x) => x.type === "weak")!;
-    m.hp = 2;
-    // fim de rodada
-    applyAction(s, "A", { type: "end" });
-    passTurn(s, "B");
-    expect(m.hp).toBe(3);
+    const c = getChampion(s, uid("A", "atirador"));
+    const foe = getChampion(s, uid("B", "arquiteto"));
+    c.pos = { x: m.pos.x + 1, y: m.pos.y };
+    foe.pos = { x: m.pos.x + 1, y: m.pos.y + 3 };
+    foe.defense = 0;
+    const before = foe.hp;
+    const base = computeDamage(s, championSource(c), foe, 3, { direct: true });
+    expect(base).toBe(6) // (3 + 1 do Atirador a 3 casas) x 1,5;
+    applyAction(s, "A", { type: "basic", target: { uid: foe.uid } });
+    expect(foe.hp).toBeLessThan(before);
+  });
+
+  it("Fragilidade (médio): quem está no raio recebe x1,5; Pele de Pedra (forte): x0,5", () => {
+    const s = withMonsters();
+    const med = s.monsters.find((x) => x.type === "medium")!;
+    const str = s.monsters.find((x) => x.type === "strong")!;
+    const a = getChampion(s, uid("A", "atirador"));
+    const foe = getChampion(s, uid("B", "arquiteto"));
+    foe.defense = 0;
+    for (const o of s.monsters) if (o !== med && o !== str) o.alive = false;
+    med.pos = { x: 2, y: 2 };
+    str.pos = { x: 12, y: 12 };
+    a.pos = { x: 0, y: 7 };
+    foe.pos = { x: med.pos.x, y: med.pos.y };
+    expect(computeDamage(s, championSource(a), foe, 4)).toBe(6);
+    foe.pos = { x: str.pos.x, y: str.pos.y + 1 };
+    expect(computeDamage(s, championSource(a), foe, 4)).toBe(2);
   });
 
   it("cartas de monstro: usar a Couraça dá escudo 4 e a carta some", () => {
