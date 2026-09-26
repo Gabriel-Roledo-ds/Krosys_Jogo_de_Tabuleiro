@@ -4,7 +4,17 @@
 
 Jogo de tabuleiro digital, por turnos, para jogar online com amigos. Duas equipes de três campeões começam em lados opostos de um tabuleiro 15x15. No centro está um boss, e pelo mapa há monstros que dão cartas ao serem derrotados. **Vence quem der o último golpe no boss.**
 
-Estado atual: definindo e testando as mecânicas. Narrativa e arte ficam para depois.
+Estado atual: **jogável** (MVP). Narrativa e arte final ficam para depois; os gráficos atuais são placeholders em estilo 16-bit.
+
+## Como rodar
+
+```
+npm install
+npm run build:client
+npm start          # http://localhost:3000
+```
+
+Um jogador cria a sala e passa o código para o amigo (ou joga contra o bot). Para jogar online, hospede o servidor Node em qualquer serviço que rode Node com WebSocket (Render, Fly.io, Railway); ele lê a porta da variável `PORT`. Outros comandos: `npm test`, `npm run sim` (bot contra bot), `npm run typecheck`.
 
 ## Ideia central
 

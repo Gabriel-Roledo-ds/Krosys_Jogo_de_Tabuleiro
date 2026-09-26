@@ -4,11 +4,11 @@ Sem prazos. Uma etapa só começa quando a anterior está pronta. Definição de
 
 ## Fazendo
 
-- Etapa 5: bots e simulação (bot guloso e aleatório, relatório; falta balancear)
-- Etapa 6: servidor online e cliente jogável
+- Etapa 7: balanceamento com simulação (bots ainda ignoram cartas de construção)
 
 ## Teste
 
+- Etapa 6: servidor (WebSocket, salas por código, bot) e cliente Phaser jogável; testado em Chromium headless (criar sala, bot, mover, atacar, turno do bot). Falta jogar com dois humanos de verdade
 - Etapas 3 e 4: motor e combate implementados, 182 testes passando; falta rodar simulação com bots inteligentes
 
 ## Backlog
