@@ -11,6 +11,11 @@ Sem prazos. Uma etapa só começa quando a anterior está pronta. Definição de
 - Etapa 6: servidor (WebSocket, salas por código, bot) e cliente Phaser jogável; testado em Chromium headless (criar sala, bot, mover, atacar, turno do bot). Falta jogar com dois humanos de verdade
 - Etapas 3 e 4: motor e combate implementados, 182 testes passando; falta rodar simulação com bots inteligentes
 
+## Feito nesta rodada
+
+- Ajustes de ritmo (d6, 1 movimento por campeão, 1 básica por turno, morte de 2 turnos, losango, mana +2, boss 40) com testes e simulação
+- Interface: raios no mapa, ficha de unidade, eventos e efeitos ativos
+
 ## Backlog
 
 - Etapa 7: balanceamento e arte definitiva

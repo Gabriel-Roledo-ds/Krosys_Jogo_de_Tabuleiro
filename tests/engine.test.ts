@@ -78,11 +78,11 @@ describe("geometria", () => {
 });
 
 describe("preparação da partida", () => {
-  it("tabuleiro 15x15 com boss no centro (7,7) com 60 de vida", () => {
+  it("tabuleiro 15x15 com boss no centro (7,7) com 40 de vida", () => {
     const s = newGame();
     expect([s.width, s.height]).toEqual([15, 15]);
     expect(s.boss.pos).toEqual({ x: 7, y: 7 });
-    expect(s.boss.hp).toBe(60);
+    expect(s.boss.hp).toBe(40);
     expect(s.boss.defense).toBe(1);
   });
 
@@ -124,10 +124,10 @@ describe("preparação da partida", () => {
 });
 
 describe("mana compartilhada", () => {
-  it("ganha +1 por turno", () => {
+  it("ganha +2 por turno", () => {
     const s = newGame();
-    expect(gainTurnMana(s, "A")).toBe(1);
     expect(gainTurnMana(s, "A")).toBe(2);
+    expect(gainTurnMana(s, "A")).toBe(4);
     expect(s.teams.B.mana).toBe(0); // outra equipe não muda
   });
 

@@ -28,7 +28,7 @@ import {
   type Target,
   type Unit,
 } from "./state";
-import { addStatus, heal, removeNegative, tryControl } from "./status";
+import { addStatus, durationText, heal, removeNegative, statusLabel, tryControl } from "./status";
 import { rangeOf, validateTarget } from "./targeting";
 import { addPosSafe } from "./util";
 import {
@@ -156,7 +156,7 @@ function applyStatusTo(ctx: Ctx, u: Unit, e: Effect): void {
     amount: e.status === "mark" ? e.bonus_damage : e.amount,
     negative: true,
   });
-  log(ctx.s, `${label(u)} recebe ${e.status}`);
+  log(ctx.s, `${label(u)} recebe ${statusLabel(e.status)} (${durationText(dur.unit, dur.value)})`);
 }
 
 function healUnit(ctx: Ctx, target: ChampionState, amount: number): void {

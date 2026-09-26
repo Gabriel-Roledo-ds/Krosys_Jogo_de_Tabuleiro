@@ -3,6 +3,20 @@
 import { balance } from "./data";
 import { type ChampionState, type GameState, type Status } from "./state";
 
+export const STATUS_LABELS: Record<string, string> = {
+  mark: "Marca",
+  move_penalty: "Lentidão",
+  immobilized: "Imobilizado",
+  stunned: "Atordoado",
+  silenced: "Silenciado",
+  hot: "Cura contínua",
+  link: "Elo",
+  control_immune: "Imune a controle",
+};
+export const statusLabel = (kind: string): string => STATUS_LABELS[kind] ?? kind;
+export const durationText = (unit: string, value: number): string =>
+  `${value} ${unit === "rounds" ? (value === 1 ? "rodada" : "rodadas") : value === 1 ? "turno do campeão" : "turnos do campeão"}`;
+
 type NewStatus = Omit<Status, "id" | "fresh">;
 
 export function addStatus(s: GameState, c: ChampionState, st: NewStatus): Status {

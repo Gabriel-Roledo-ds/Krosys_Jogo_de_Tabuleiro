@@ -4,18 +4,18 @@
 import { cardDefs, getCardDef } from "../engine/data";
 import { getChampion, type GameState, type TeamId } from "../engine/state";
 import { canPay } from "../engine/mana";
-import { moveOptionsFor, reachableMap } from "../engine/movement";
-import { cannotCast, handLimitCount } from "../engine/turn";
+import { moveOptionsFor, movementBudget, reachableMap } from "../engine/movement";
+import { cannotCast, handLimitCount, resurrectBlocked } from "../engine/turn";
 import { balance, getChampionDef } from "../engine/data";
 import { enumerateTargets } from "../engine/targeting";
 
 export type Awaiting =
-  | { team: TeamId; kind: "boss" | "draw" | "choose" | "act" | "discard" | "respond" | "over" };
+  | { team: TeamId; kind: "boss" | "draw" | "act" | "discard" | "respond" | "over" };
 
 export function awaiting(s: GameState): Awaiting {
   if (s.winner) return { team: s.turn.team, kind: "over" };
   if (s.pending) return { team: s.pending.priority, kind: "respond" };
-  return { team: s.turn.team, kind: s.turn.phase === "boss" ? "act" : (s.turn.phase as "draw" | "choose" | "act" | "discard") };
+  return { team: s.turn.team, kind: s.turn.phase === "boss" ? "act" : (s.turn.phase as "draw" | "act" | "discard") };
 }
 
 export function viewFor(s: GameState, me: TeamId | null): unknown {
@@ -51,7 +51,7 @@ export function viewFor(s: GameState, me: TeamId | null): unknown {
       const def = getCardDef(c.cardId);
       const owner = getChampion(s, c.owner);
       let ok = (inWindow && def.fast) || myAct;
-      ok = ok && owner.alive && !cannotCast(owner) && canPay(s, me, def.cost);
+      ok = ok && owner.alive && !cannotCast(owner) && canPay(s, me, def.cost) && !resurrectBlocked(s, me, def.effects);
       playable[c.uid] = ok;
     }
     hints.playable = playable;
@@ -61,14 +61,30 @@ export function viewFor(s: GameState, me: TeamId | null): unknown {
       targets[c.uid] = enumerateTargets(s, getChampion(s, c.owner), getCardDef(c.cardId), 0, 300);
     }
     hints.targets = targets;
-    if (myAct && s.turn.main) {
-      const main = getChampion(s, s.turn.main);
-      const stuck = main.statuses.some((x) => x.kind === "immobilized" && !x.fresh);
-      hints.reach = stuck || s.turn.movementLeft <= 0 ? [] : [...reachableMap(s, main, s.turn.movementLeft, moveOptionsFor(s, main)).values()];
-      const bdef = getChampionDef(main.defId).basic;
-      hints.basic = { name: bdef.name, target: bdef.target, range: bdef.range, targets: main.alive ? enumerateTargets(s, main, bdef, 0, 300) : [] };
-      hints.canBasic = !s.turn.basicUsed && !main.statuses.some((x) => x.kind === "stunned" && !x.fresh);
+    if (myAct) {
+      const t = s.turn;
+      const reach: Record<string, unknown[]> = {};
+      const basics: Record<string, unknown> = {};
+      for (const c of mine.champions) {
+        if (!c.alive) continue;
+        const active = t.main === c.uid;
+        const stuck = c.statuses.some((x) => x.kind === "immobilized" && !x.fresh);
+        if (active || !t.activated.includes(c.uid)) {
+          const budget = active ? t.movementLeft : movementBudget(s, c, t.die);
+          const opts = active ? moveOptionsFor(s, c) : { ...moveOptionsFor(s, c), phasing: false };
+          reach[c.uid] = stuck || budget <= 0 ? [] : [...reachableMap(s, c, budget, opts).values()].map((r) => ({ pos: r.pos, cost: r.cost }));
+        }
+        const stunned = c.statuses.some((x) => x.kind === "stunned" && !x.fresh);
+        if (!t.basicUsed && !stunned) {
+          const bdef = getChampionDef(c.defId).basic;
+          basics[c.uid] = { name: bdef.name, target: bdef.target, range: bdef.range, targets: enumerateTargets(s, c, bdef, 0, 300) };
+        }
+      }
+      hints.reach = reach;
+      hints.basics = basics;
+      hints.canStay = mine.champions.filter((c) => c.alive && t.main !== c.uid && !t.activated.includes(c.uid)).map((c) => c.uid);
     }
+    hints.canSkipDraw = !s.pending && s.turn.team === me && s.turn.phase === "draw" && handLimitCount(s, me) >= balance.hand.max_size;
     hints.mustDiscard = !s.pending && s.turn.team === me && s.turn.phase === "discard";
     hints.handLimit = balance.hand.max_size;
   }
@@ -84,6 +100,7 @@ export function viewFor(s: GameState, me: TeamId | null): unknown {
       team: s.turn.team,
       phase: s.turn.phase,
       main: s.turn.main,
+      activated: s.turn.activated,
       die: s.turn.die,
       movementLeft: s.turn.movementLeft,
       moved: s.turn.moved,
@@ -105,7 +122,7 @@ export function viewFor(s: GameState, me: TeamId | null): unknown {
     structures: s.structures,
     portals: s.portals,
     watches: s.watches.filter((w) => w.team === me),
-    log: s.log.slice(-80),
+    log: s.log.slice(-150),
     hints,
     foe,
     cardCount: cardDefs.length,

@@ -18,7 +18,7 @@ Documentos relacionados: planejamento-jogo.md (etapas, cartas, boss), fichas-cam
 
 ## 2. Componentes
 
-- Tabuleiro: grade quadrada grande, 15x15 como ponto de partida. Boss no centro, monstros espalhados. [DEFINIDO: grade grande; PADRÃO: 15x15]
+- Tabuleiro: grade quadrada grande, 15x15 como ponto de partida. [SUBSTITUÍDO pela seção 16: losango] Boss no centro, monstros espalhados. [DEFINIDO: grade grande; PADRÃO: 15x15]
 - Equipes: 2 no MVP, estrutura pronta para 3 ou 4. [PADRÃO]
 - Cada equipe tem 3 campeões, e os três devem se complementar. [DEFINIDO]
 - Cada campeão tem uma **ficha técnica**: HP, defesa, passiva única, habilidade básica e o alcance da básica. Ver fichas-campeoes.md. [DEFINIDO]
@@ -35,7 +35,7 @@ Documentos relacionados: planejamento-jogo.md (etapas, cartas, boss), fichas-cam
 - Monstros em três anéis: perto de cada largada (fáceis, recompensa pequena), na região neutra (mais fortes) e perto do boss (os melhores). Mapa simétrico entre os lados. [PADRÃO]
 - 3 tipos de monstro no MVP: fraco (carta de custo 1), médio (custo 2) e forte (custo 3). Fichas em data/monsters.json. [PADRÃO]
 - Mana inicial 0. [PADRÃO]
-- No primeiro turno do jogo, ao escolher o campeão principal, o jogador saca 3 cartas do baralho desse campeão. [DEFINIDO]
+- No primeiro turno do jogo, o jogador saca 3 cartas do baralho de um campeão à escolha (no lugar da compra normal). [DEFINIDO; ajustado na seção 16]
 - No primeiro turno do jogador não há a compra normal de 1 carta: as 3 cartas a substituem. [PADRÃO]
 
 ## 4. Estrutura do turno
@@ -45,7 +45,7 @@ Os jogadores se alternam. Em cada turno:
 0. **Boss:** se algum campeão do jogador estiver dentro do alcance do boss, o boss ativa a carta do topo do seu baralho (ver seção 10). [DEFINIDO: ativa no início do turno; PADRÃO: acontece antes da compra]
 1. **Compra:** o jogador escolhe de qual baralho de campeão comprar 1 carta. [DEFINIDO]
 2. **Ganha energia:** mana da equipe sobe (+1, teto 10), compartilhada por toda a equipe. [DEFINIDO: mana compartilhada e teto maior; CONFIRMADO: +1 e 10]
-3. **Escolhe o campeão principal:** o campeão que vai se movimentar e usar a habilidade básica. Efeitos de duração desse campeão são processados agora (ver seção 8). [DEFINIDO; PADRÃO: momento de processar efeitos]
+3. **(Substituído na seção 16: não há mais campeão principal; cada campeão se move uma vez.)** Escolhe o campeão principal: o campeão que vai se movimentar e usar a habilidade básica. Efeitos de duração desse campeão são processados agora (ver seção 8). [DEFINIDO; PADRÃO: momento de processar efeitos]
 4. **Joga o dado** de 8 lados. [DEFINIDO]
 5. **Calcula as casas:** valor do dado mais bônus de habilidades e efeitos (ex.: Passo Ágil +1, lentidão reduz). [DEFINIDO]
 6. **Anda** até o valor calculado. [DEFINIDO]
@@ -68,7 +68,7 @@ As fases 6 e 7 podem trocar de ordem, por escolha do jogador (usar carta antes d
 - **Qualquer campeão da equipe pode usar suas cartas, desde que a equipe tenha mana para pagar.** Não precisa ser o campeão principal. [DEFINIDO]
 - O alcance e a linha de visão de uma carta contam a partir do campeão dono dela, esteja onde estiver. [PADRÃO]
 - Cartas podem ser usadas quantas vezes o jogador tiver mana para pagar, dentro do mesmo turno. [DEFINIDO]
-- **A habilidade básica só pode ser usada pelo campeão principal do turno**, 1 vez por turno, custo 0. [DEFINIDO]
+- **A habilidade básica: 1 por turno para a equipe, usada por qualquer campeão (seção 16)**, custo 0. [DEFINIDO]
 - Cartas usadas vão para o descarte do baralho do campeão dono. Quando o baralho de compra acaba, o descarte é embaralhado de volta. [PADRÃO]
 - Custos em aberto: com teto 10, pode ser necessário criar cartas de custo 6 a 8. Decidir após os primeiros testes. [PADRÃO]
 - Silêncio e atordoamento valem por campeão: um campeão silenciado não usa cartas, mas os outros dois usam normalmente. [PADRÃO]
@@ -122,7 +122,7 @@ Regras complementares:
 
 ## 8. Duração dos efeitos
 
-- **Controle em campeão** ("próximo turno", paralisia, lentidão, silêncio, atordoamento): dura até o campeão afetado ser escolhido como campeão principal e gastar esse turno. Se ele não for escolhido, o efeito continua. O jogador precisa gastar um turno com ele para "descongelar". [DEFINIDO]
+- **Controle em campeão** ("próximo turno", paralisia, lentidão, silêncio, atordoamento): dura até o campeão afetado gastar o movimento do turno (ver seção 16). Se ele não for escolhido, o efeito continua. O jogador precisa gastar um turno com ele para "descongelar". [DEFINIDO]
 - Habilidades de suporte podem remover controle e descongelar aliados (por exemplo, Purificar do Curandeiro). [DEFINIDO]
 - **Dano ao longo do tempo (queimadura, Fogo Fátuo, Regeneração, Torre de Vigia)** conta em **rodadas**, não em turnos do campeão. O fogo continua queimando mesmo que o campeão não seja escolhido. [CONFIRMADO]
 - Efeitos de terreno e estruturas (Chão em Chamas, Muralha, Muro de Chamas, Torre de Vigia) duram em **rodadas** (uma rodada = todos os jogadores jogaram um turno). [PADRÃO]
@@ -225,3 +225,22 @@ Regras que o motor precisou fechar e que o planejamento não definia. Os número
 - **Ricochete:** o segundo alvo é o inimigo mais próximo do primeiro, a até 2 casas.
 - **Passo Ágil:** o +1 de mana vale se, depois de usar a básica, o total andado no turno chegar a 5.
 - **Elo:** o parceiro sofre metade do dano final (arredondado para baixo, mínimo 1), sem defesa e sem repassar de novo.
+
+## 16. Ajustes de ritmo (26/09/2026, pedidos do dono do projeto após jogar)
+
+O jogo estava lento. Estas regras substituem as anteriores onde houver conflito. Marcadas [DEFINIDO] são pedidos ou respostas do dono; [PADRÃO] são escolhas da implementação, valem até serem confirmadas.
+
+- **Dado:** d6 (antes d8), rolado **uma vez por turno**, no começo da fase de ação, valendo para o time inteiro. [DEFINIDO]
+- **Sem campeão principal.** No turno, **cada campeão pode se mover uma vez**, até o valor do dado (menos penalidades). O movimento de um campeão pode ser dividido em etapas enquanto ele é o último a se mover; ao mover outro campeão, o anterior não anda mais. [DEFINIDO: uma vez por campeão; PADRÃO: divisão em etapas]
+- **Só uma habilidade básica por turno**, usada por qualquer campeão da equipe (não precisa ser o que se moveu). [DEFINIDO]
+- **Cartas:** qualquer campeão vivo usa cartas com a mana da equipe, como antes.
+- **Controle** (imobilizado, atordoado, silenciado, lentidão): dura até o campeão afetado gastar o movimento do turno dele. Quem está imobilizado usa "ficar parado" para gastar o movimento e se soltar; mover outro campeão não solta ninguém. Controle aplicado a quem já se moveu neste turno só começa a valer no turno seguinte da equipe. [DEFINIDO: gasta o próprio movimento; PADRÃO: detalhes]
+- **Compra:** continua 1 carta por turno, do baralho de um campeão à escolha. **Com 7 ou mais cartas de habilidade na mão dá para não comprar** (a mana do turno é ganha do mesmo jeito). [DEFINIDO]
+- **Primeiro turno do jogo:** compra 3 cartas de um baralho (era ao escolher o principal). [PADRÃO]
+- **Mana:** +2 por turno (era +1), teto 10. [PADRÃO, sob teste na simulação]
+- **Boss:** 40 de vida (era 60). [PADRÃO, sob teste na simulação]
+- **Morte:** o campeão fica **fora por 2 turnos da própria equipe** e volta no início do terceiro, na largada, com vida cheia e intocável até o fim desse turno. A mão dele fica guardada e volta ao baralho quando ele retorna. Ressurgir continua trazendo o aliado na hora. [DEFINIDO: 2 rodadas fora; PADRÃO: contagem em turnos da equipe]
+- **Tabuleiro em losango** 15x15: só existem casas com |x-7|+|y-7| <= 7 (113 casas). Equipe A na ponta esquerda, equipe B na ponta direita, boss no centro. Movimento, alcance e áreas continuam em distância de Chebyshev; o que cai fora do losango não existe (empurrões param na borda). [DEFINIDO: losango com um time em cada ponta; PADRÃO: raio 7]
+- **Terremoto** (aura do boss): raio 5 (era 4). O alcance de ativação do boss continua 4. [PADRÃO]
+- **Interface:** raios de ataque dos monstros, do boss e da aura aparecem no mapa; clicar num campeão, monstro ou no boss abre uma ficha com vida, defesa, passiva, alcance e efeitos ativos com duração; um quadro à esquerda mostra os eventos (quem entrou no raio de quem, quem atacou, dano e efeitos) e os efeitos ativos. [DEFINIDO]
+- Correção: Ressurgir não é mais oferecido depois de usado.

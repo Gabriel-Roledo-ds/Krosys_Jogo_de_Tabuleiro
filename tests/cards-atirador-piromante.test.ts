@@ -183,6 +183,6 @@ describe("Execução com marca", () => {
     give(s, "A", "execucao");
     play(s, "A", "marca_cacador", { uid: "boss" });
     play(s, "A", "execucao", { uid: "boss" });
-    expect(s.boss.hp).toBe(60 - 11);
+    expect(s.boss.hp).toBe(s.boss.maxHp - 11);
   });
 });

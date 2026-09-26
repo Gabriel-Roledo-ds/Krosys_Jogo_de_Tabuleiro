@@ -3,7 +3,7 @@
 // (ou é jogada para ela por empurrão, puxão ou mola).
 
 import { distance, samePos } from "./board";
-import { dealDamage, worldSource, championSource } from "./damage";
+import { dealDamage, worldSource, championSource, label } from "./damage";
 import { getChampion, log, type ChampionState, type GameState } from "./state";
 import { forcedMove } from "./movement";
 import { monsterTypes } from "./data";
@@ -25,14 +25,14 @@ export function onLand(s: GameState, c: ChampionState, opts: LandOpts): void {
       const dest = samePos(portal.a, c.pos) ? portal.b : portal.a;
       if (isFreeCell(s, dest)) {
         c.pos = { ...dest };
-        log(s, `${c.uid} atravessa um portal`);
+        log(s, `${label(c)} atravessa um portal`);
       }
       return onLand(s, c, { ...opts, chained: true });
     }
     const spring = s.springs.find((sp) => samePos(sp.pos, c.pos));
     if (spring) {
       forcedMove(s, c, spring.dir, spring.distance);
-      log(s, `${c.uid} é lançado por uma mola`);
+      log(s, `${label(c)} é lançado por uma mola`);
       return onLand(s, c, { ...opts, chained: true });
     }
   }
@@ -40,13 +40,14 @@ export function onLand(s: GameState, c: ChampionState, opts: LandOpts): void {
   const trap = s.traps.find((t) => samePos(t.pos, c.pos));
   if (trap) {
     s.traps = s.traps.filter((t) => t.id !== trap.id);
-    log(s, `${c.uid} pisa numa armadilha`);
-    dealDamage(s, { team: trap.team, champion: null, kind: "world" }, c, trap.damage);
+    log(s, `${label(c)} pisa numa armadilha`);
+    dealDamage(s, { team: trap.team, champion: null, kind: "world", label: "Armadilha" }, c, trap.damage);
   }
 
   for (const g of s.ground) {
     if (g.kind === "fire_wall" && samePos(g.pos, c.pos)) {
-      dealDamage(s, { team: g.team, champion: null, kind: "world" }, c, g.damage, { element: "fire" });
+      log(s, `${label(c)} entra no Muro de Chamas`);
+      dealDamage(s, { team: g.team, champion: null, kind: "world", label: "Muro de Chamas" }, c, g.damage, { element: "fire" });
     }
   }
 
@@ -57,7 +58,7 @@ export function onLand(s: GameState, c: ChampionState, opts: LandOpts): void {
     if (!owner.alive) continue;
     if (distance(owner.pos, c.pos) <= w.range && inRange(s, owner.pos, c.pos, w.range)) {
       s.watches = s.watches.filter((x) => x.id !== w.id);
-      log(s, `Vigia de ${w.owner} atinge ${c.uid}`);
+      log(s, `${label(c)} entra no alcance da Vigia de ${label(owner)}`);
       dealDamage(s, championSource(owner), c, w.damage, { direct: true });
     }
   }
@@ -65,13 +66,15 @@ export function onLand(s: GameState, c: ChampionState, opts: LandOpts): void {
   if (opts.voluntary) {
     for (const m of s.monsters) {
       if (m.alive && distance(m.pos, c.pos) <= monsterTypes[m.type].range) {
-        log(s, `${m.uid} ataca ${c.uid}`);
-        dealDamage(s, { team: null, champion: null, kind: "monster" }, c, monsterTypes[m.type].attack);
+        log(s, `${label(c)} entra no raio de ${label(m)} (alcance ${monsterTypes[m.type].range})`);
+        log(s, `${label(m)} ataca ${label(c)}`);
+        dealDamage(s, { team: null, champion: null, kind: "monster", label: label(m) }, c, monsterTypes[m.type].attack);
       }
     }
     for (const m of s.minions) {
       if (m.alive && distance(m.pos, c.pos) <= 1) {
-        dealDamage(s, { team: null, champion: null, kind: "monster" }, c, m.damage);
+        log(s, `Lacaio do Boss ataca ${label(c)}`);
+        dealDamage(s, { team: null, champion: null, kind: "monster", label: "Lacaio do Boss" }, c, m.damage);
       }
     }
   }

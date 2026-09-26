@@ -11,6 +11,7 @@ import { posKey, type Pos } from "./board";
 import { beginBossActivation, bossShouldActivate, resolveBossItem } from "./boss";
 import { resolveDeaths, returnDeadChampions } from "./death";
 import { resolveItem } from "./effects";
+import { label } from "./damage";
 import { onLand } from "./hazards";
 import { addMana, canPay, gainTurnMana, spendMana } from "./mana";
 import { moveOptionsFor, movePath, movementBudget, reachableMap, rollMovementDie } from "./movement";
@@ -73,6 +74,10 @@ function basicInfo(c: ChampionState): CardDefLike {
   const b = getChampionDef(c.defId).basic;
   return { range: b.range, target: b.target, effects: b.effects, cost: 0, fast: false };
 }
+
+/** Ressurgir só pode ser usado uma vez por partida, por equipe. */
+export const resurrectBlocked = (s: GameState, team: TeamId, effects: Effect[]): boolean =>
+  effects.some((e) => e.type === "resurrect") && s.teams[team].resurrectUsed;
 
 export const handLimitCount = (s: GameState, team: TeamId): number => s.teams[team].hand.filter((c) => !c.monster).length;
 
@@ -156,7 +161,7 @@ export function fastPlays(s: GameState, team: TeamId): { card: CardInstance; tar
   const out: { card: CardInstance; target: Target }[] = [];
   for (const card of s.teams[team].hand) {
     const info = cardInfo(card);
-    if (!info.fast || !canPay(s, team, info.cost)) continue;
+    if (!info.fast || !canPay(s, team, info.cost) || resurrectBlocked(s, team, info.effects)) continue;
     const owner = getChampion(s, card.owner);
     if (!owner.alive || cannotCast(owner)) continue;
     const buff = s.teams[team].nextCardBuff;
@@ -251,7 +256,7 @@ export function applyAction(s: GameState, team: TeamId, a: Action): void {
       if (c.team !== team || !c.alive) fail("Campeão inválido");
       if (t.activated.includes(c.uid)) fail("Esse campeão já gastou o movimento");
       activate(s, c);
-      log(s, `${getChampionDef(c.defId).name} gasta o turno parado`);
+      log(s, `${label(c)} gasta o movimento parado`);
       return;
     }
     case "move": {
@@ -271,6 +276,7 @@ export function applyAction(s: GameState, team: TeamId, a: Action): void {
       t.moved += cost;
       t.trail.push(...path);
       c.pos = { ...a.to };
+      log(s, `${label(c)} anda até (${a.to.x},${a.to.y})`);
       onLand(s, c, { voluntary: true });
       checkStepBonus(s);
       resolveDeaths(s);
@@ -288,6 +294,7 @@ export function applyAction(s: GameState, team: TeamId, a: Action): void {
       const err = validateTarget(s, c, info, a.target);
       if (err) fail(err);
       t.basicUsed = true;
+      log(s, `${label(c)} usa ${getChampionDef(c.defId).basic.name}`);
       pushItem(s, { kind: "basic", team, owner: c.uid, cardId: `basic:${c.defId}`, target: a.target });
       checkStepBonus(s);
       return;
@@ -326,7 +333,7 @@ function activate(s: GameState, c: ChampionState): void {
   t.stepBonus = null;
   t.manaBonusGiven = false;
   t.movementLeft = movementBudget(s, c, t.die);
-  log(s, `${getChampionDef(c.defId).name} se move (até ${t.movementLeft} casas)`);
+  log(s, `${label(c)} usa o movimento do turno (até ${t.movementLeft} casas)`);
 }
 
 /** Usado por testes e bots: ativa um campeão sem passar pela ação. */
@@ -358,13 +365,13 @@ function playCard(s: GameState, team: TeamId, uid: string, target: Target, isRes
   const buff = s.teams[team].nextCardBuff ?? undefined;
   const err = validateTarget(s, owner, info, target, buff?.range ?? 0);
   if (err) fail(err);
-  if (info.effects.some((e) => e.type === "resurrect") && s.teams[team].resurrectUsed) fail("Ressurgir já foi usado");
+  if (resurrectBlocked(s, team, info.effects)) fail("Ressurgir já foi usado");
 
   spendMana(s, team, info.cost);
   s.teams[team].hand = hand.filter((c) => c.uid !== uid);
   if (!card.monster) s.teams[team].decks[card.owner].discard.push(card);
   if (buff && !info.effects.some((e) => e.type === "buff_next_card")) s.teams[team].nextCardBuff = null;
-  log(s, `${getChampionDef(owner.defId).name} usa ${getCardDef(card.cardId).name}`);
+  log(s, `${label(owner)} usa ${getCardDef(card.cardId).name}`);
   pushItem(s, { kind: "card", team, owner: owner.uid, cardId: card.cardId, target, buff });
   checkStepBonus(s);
 }
@@ -428,7 +435,7 @@ export function legalActions(s: GameState, team: TeamId): Action[] {
       for (const card of tm.hand) {
         const info = cardInfo(card);
         const owner = getChampion(s, card.owner);
-        if (!owner.alive || cannotCast(owner) || !canPay(s, team, info.cost)) continue;
+        if (!owner.alive || cannotCast(owner) || !canPay(s, team, info.cost) || resurrectBlocked(s, team, info.effects)) continue;
         for (const target of enumerateTargets(s, owner, info, buff?.range ?? 0, 10)) out.push({ type: "play", card: card.uid, target });
       }
       out.push({ type: "end" });

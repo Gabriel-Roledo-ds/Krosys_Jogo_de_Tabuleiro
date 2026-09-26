@@ -7,7 +7,7 @@ import { onLand } from "./hazards";
 import { forcedMove } from "./movement";
 import { rngOf } from "./rng";
 import { getChampion, log, otherTeam, type ChampionState, type GameState, type StackItem, type TeamId } from "./state";
-import { addStatus, heal, tryControl } from "./status";
+import { addStatus, durationText, heal, statusLabel, tryControl } from "./status";
 import { isFreeCell, isUntargetable, liveUnits, unitsInRadius } from "./world";
 import { addPosSafe } from "./util";
 
@@ -43,7 +43,6 @@ export function beginBossActivation(s: GameState, team: TeamId): StackItem {
   s.boss.damageReduction = 0; // Carapaça dura até a próxima ativação
   const cardId = drawBossCardId(s);
   const card = getBossCard(cardId);
-  log(s, `Boss ativa ${card.name}`);
   const item: StackItem = { kind: "boss", team, cardId, target: {} };
 
   if (card.target === "closest") {
@@ -53,6 +52,8 @@ export function beginBossActivation(s: GameState, team: TeamId): StackItem {
     const valid = last && last.alive && !last.untargetable && distance(last.pos, s.boss.pos) <= s.boss.range;
     item.target.uid = (valid ? last : closestTo(s, championsInBossRange(s, team)))?.uid;
   }
+  const who = item.target.uid ? getChampion(s, item.target.uid) : null;
+  log(s, `Boss ativa ${card.name}${who ? ` em ${label(who)}` : ""}: ${card.text ?? ""}`.trim());
   return item;
 }
 
@@ -114,7 +115,7 @@ function applyBossEffects(s: GameState, card: BossCardDef, target: ChampionState
       case "apply_status":
         if (tryControl(s, target)) {
           addStatus(s, target, { kind: e.status, unit: e.duration.unit, remaining: e.duration.value, amount: e.amount, negative: true });
-          log(s, `${label(target)} sofre ${e.status}`);
+          log(s, `${label(target)} recebe ${statusLabel(e.status)} (${durationText(e.duration.unit, e.duration.value)})`);
         }
         break;
       case "heal_boss":

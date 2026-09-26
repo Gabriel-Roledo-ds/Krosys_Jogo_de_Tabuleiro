@@ -12,6 +12,8 @@ export interface DamageSource {
   /** uid do campeão que causou (para último hit e Devorar) */
   champion: string | null;
   kind: "champion" | "boss" | "monster" | "world";
+  /** nome de quem causou, para o registro de eventos ("Monstro Fraco", "Armadilha") */
+  label?: string;
   /** de onde o golpe partiu, para passivas que dependem de distância */
   from?: Pos;
 }
@@ -92,7 +94,8 @@ export function dealDamage(s: GameState, src: DamageSource, target: Unit, base: 
     if (target.shield === 0) target.reflect = 0;
   }
   target.hp -= remaining;
-  log(s, `${label(target)} sofre ${final} de dano${absorbed ? ` (${absorbed} absorvido pelo escudo)` : ""}`);
+  const by = src.label ?? (src.champion ? label(getChampion(s, src.champion)) : src.kind === "boss" ? "Boss" : undefined);
+  log(s, `${label(target)} sofre ${final} de dano${by ? ` de ${by}` : ""}${absorbed ? ` (${absorbed} absorvido pelo escudo)` : ""} [${Math.max(0, target.hp)}/${target.maxHp} PV]`);
 
   if (src.champion && src.team) {
     target.lastHitBy = { team: src.team, champion: src.champion };
@@ -116,7 +119,7 @@ export function dealDamage(s: GameState, src: DamageSource, target: Unit, base: 
     // Espinhos do monstro médio: reflete em quem bate de perto.
     if (target.kind === "monster" && opts.direct && src.champion && src.from && distance(src.from, target.pos) === 1) {
       const thorns = monsterThorns(target);
-      if (thorns > 0) dealDamage(s, { team: null, champion: null, kind: "monster" }, getChampion(s, src.champion), thorns, { dot: true, noChain: true });
+      if (thorns > 0) dealDamage(s, { team: null, champion: null, kind: "monster", label: `Espinhos de ${label(target)}` }, getChampion(s, src.champion), thorns, { dot: true, noChain: true });
     }
   }
   return final;
@@ -130,12 +133,12 @@ function monsterThorns(m: { type: string }): number {
 export function label(u: Unit): string {
   switch (u.kind) {
     case "champion":
-      return getChampionDef(u.defId).name + `(${u.team})`;
+      return `${getChampionDef(u.defId).name} (${u.team})`;
     case "boss":
       return "Boss";
     case "monster":
-      return `Monstro ${u.type} ${u.uid}`;
+      return `${monsterTypes[u.type].name} (${u.uid.slice(0, 3)})`;
     default:
-      return "Lacaio";
+      return "Lacaio do Boss";
   }
 }

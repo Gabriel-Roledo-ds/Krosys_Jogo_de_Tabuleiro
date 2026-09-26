@@ -126,7 +126,7 @@ describe("Piromante: 10 cartas", () => {
     give(s, "A", "chuva_de_faiscas");
     play(s, "A", "chuva_de_faiscas");
     // O boss (7,7) também está no alcance: são 4 candidatos, e 3 são sorteados.
-    const lost = [14 - hp(s, b1), 16 - hp(s, b2), 16 - hp(s, b3), 60 - s.boss.hp];
+    const lost = [14 - hp(s, b1), 16 - hp(s, b2), 16 - hp(s, b3), s.boss.maxHp - s.boss.hp];
     expect(lost.filter((x) => x === 1)).toHaveLength(3);
     expect(lost.filter((x) => x === 0)).toHaveLength(1);
   });

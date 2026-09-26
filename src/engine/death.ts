@@ -1,7 +1,7 @@
 // Morte, retorno, recompensa de monstro e vitória.
 // Chamado depois que toda a pilha de respostas rápidas termina.
 
-import { balance, getBossCard, getChampionDef } from "./data";
+import { balance, getBossCard, getChampionDef, monsterTypes } from "./data";
 import { rngOf } from "./rng";
 import {
   allChampions,
@@ -40,7 +40,7 @@ export function resolveDeaths(s: GameState): void {
     for (const m of s.monsters) {
       if (m.alive && m.hp <= 0) {
         m.alive = false;
-        log(s, `Monstro ${m.uid} derrotado`);
+        log(s, `${monsterTypes[m.type].name} (${m.uid.slice(0, 3)}) derrotado`);
         const hit = m.lastHitBy;
         if (hit) {
           const killer = allChampions(s).find((c) => c.uid === hit.champion);

@@ -95,8 +95,8 @@ describe("cartas", () => {
 });
 
 describe("boss", () => {
-  it("tem 60 de vida, defesa 1, alcance 4 e 11 cartas", () => {
-    expect(boss.hp).toBe(60);
+  it("tem 40 de vida, defesa 1, alcance 4 e 11 cartas", () => {
+    expect(boss.hp).toBe(40);
     expect(boss.defense).toBe(1);
     expect(boss.range).toBe(4);
     expect(boss.deck).toHaveLength(11);
@@ -167,7 +167,7 @@ describe("monstros", () => {
 
 describe("balance.json", () => {
   it("confirma as decisões do dia", () => {
-    expect(balance.mana.gain_per_turn).toBe(1);
+    expect(balance.mana.gain_per_turn).toBe(2);
     expect(balance.mana.cap).toBe(10);
     expect(balance.fast_cards.max_chained_responses).toBe(3);
     expect(balance.effects.collision_damage).toBe(0);
@@ -182,5 +182,18 @@ describe("balance.json", () => {
     expect(B).toHaveLength(9);
     const all = [...A, ...B].map((p) => `${p.x},${p.y}`);
     expect(new Set(all).size).toBe(18);
+  });
+});
+
+describe("losango", () => {
+  it("largadas e monstros ficam dentro do tabuleiro e o boss no centro", async () => {
+    const { inBounds } = await import("../src/engine/board");
+    for (const team of ["A", "B"] as const) {
+      expect(balance.teams.start_areas[team]).toHaveLength(9);
+      for (const p of balance.teams.start_areas[team]) expect(inBounds(p, 15, 15)).toBe(true);
+    }
+    const monsters = (await import("../data/monsters.json")).default;
+    for (const m of monsters.placements) expect(inBounds(m.position, 15, 15)).toBe(true);
+    expect(inBounds(balance.board.boss_position, 15, 15)).toBe(true);
   });
 });

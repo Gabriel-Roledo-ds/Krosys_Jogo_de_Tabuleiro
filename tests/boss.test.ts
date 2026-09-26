@@ -110,12 +110,12 @@ describe("11 cartas do boss", () => {
     const s = mk();
     place(s, near, 7, 4);
     place(s, far, 7, 5);
-    s.boss.hp = 50;
+    s.boss.hp = s.boss.maxHp - 10;
     s.boss.lastAttacker = far;
     bossPlays(s, "devorar");
     expect(hp(s, far)).toBe(10);
     expect(hp(s, near)).toBe(14);
-    expect(s.boss.hp).toBe(52);
+    expect(s.boss.hp).toBe(s.boss.maxHp - 8);
   });
 
   it("último a atacar fora do alcance: cai para o mais próximo", () => {

@@ -14,7 +14,7 @@ export function tickRound(s: GameState): void {
     if (g.kind === "fire") {
       for (const u of liveUnits(s)) {
         if (samePos(u.pos, g.pos) && !isUntargetable(u)) {
-          dealDamage(s, { team: g.team, champion: null, kind: "world" }, u, g.damage, { dot: true, element: "fire" });
+          dealDamage(s, { team: g.team, champion: null, kind: "world", label: "Chão em chamas" }, u, g.damage, { dot: true, element: "fire" });
         }
       }
     }
@@ -34,7 +34,7 @@ export function tickRound(s: GameState): void {
   for (const st of s.structures) {
     for (const u of liveUnits(s)) {
       if (u.kind === "champion" && u.team !== st.team && !isUntargetable(u) && inRange(s, st.pos, u.pos, st.range)) {
-        dealDamage(s, { team: st.team, champion: null, kind: "world" }, u, st.damage, { dot: true });
+        dealDamage(s, { team: st.team, champion: null, kind: "world", label: "Torre de Vigia" }, u, st.damage, { dot: true });
       }
     }
   }
@@ -43,7 +43,7 @@ export function tickRound(s: GameState): void {
   if (s.boss.alive && s.boss.aura?.cardId === "terremoto") {
     for (const c of s.teams.A.champions.concat(s.teams.B.champions)) {
       if (c.alive && !c.untargetable && distance(c.pos, s.boss.pos) <= balance.boss.terremoto_radius) {
-        dealDamage(s, { team: null, champion: null, kind: "boss" }, c, 1, { dot: true });
+        dealDamage(s, { team: null, champion: null, kind: "boss", label: "Terremoto" }, c, 1, { dot: true });
       }
     }
   }

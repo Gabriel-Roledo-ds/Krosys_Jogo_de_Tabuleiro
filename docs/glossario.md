@@ -18,9 +18,9 @@ Termos com significado fixo. Toda carta, teste e trecho de código deve usar est
 
 - **Turno:** vez de um jogador, seguindo as fases do documento de regras.
 - **Rodada:** todos os jogadores jogaram um turno.
-- **Campeão principal:** o campeão escolhido na fase 3 para se movimentar naquele turno. Só ele usa a habilidade básica. Qualquer campeão da equipe pode usar cartas, se houver mana.
+- **Campeão principal:** conceito removido (seção 16 das regras). Agora todo campeão se move uma vez por turno; o campeão ativo é o último que se moveu.
 - **Campeão dono da carta:** o campeão a quem a carta pertence. Alcance e linha de visão contam a partir dele.
-- **Turno do campeão:** turno em que aquele campeão foi escolhido como campeão principal.
+- **Turno do campeão:** turno da equipe em que aquele campeão gastou o movimento (andando ou ficando parado).
 - **Próximo turno (efeito em campeão):** o próximo turno do campeão afetado. Se ele não for escolhido, o efeito permanece (o campeão fica "congelado" até gastar um turno).
 - **Duração em rodadas:** usada por dano ao longo do tempo (queimadura), efeitos de terreno e estruturas.
 
@@ -31,7 +31,7 @@ Termos com significado fixo. Toda carta, teste e trecho de código deve usar est
 - **Baralho:** pilha de compra de um campeão. Cada campeão tem o seu.
 - **Mão:** cartas do jogador (máximo 7). Cada carta lembra qual campeão é o dono.
 - **Descarte:** cartas já usadas de um campeão. Volta ao baralho quando ele acaba.
-- **Habilidade básica:** ação de 0 mana, exclusiva do campeão, fora do baralho. Só o campeão principal do turno a usa, 1 vez por turno.
+- **Habilidade básica:** ação de 0 mana, exclusiva do campeão, fora do baralho. A equipe usa 1 por turno, com qualquer campeão.
 - **Carta de monstro:** carta fixa recebida ao derrotar um monstro. Não conta para o limite da mão.
 - **Efeito rápido:** carta que também pode ser usada no turno de outros jogadores, em resposta a qualquer fase.
 - **Pilha:** ordem de resolução das respostas rápidas. A última carta jogada resolve primeiro.

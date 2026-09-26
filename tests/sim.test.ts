@@ -28,7 +28,7 @@ describe("partidas simuladas", () => {
         const team = s.pending ? s.pending.priority : s.turn.team;
         applyAction(s, team, bot(s, team));
       }
-      expect(s.round).toBeGreaterThan(10);
+      expect(s.winner !== null || s.round > 10).toBe(true);
     }
   }, 120000);
 

@@ -1,6 +1,6 @@
 # Fichas dos campeões
 
-Valores provisórios, ajustados pela simulação. Cada ficha tem: HP, defesa, habilidade básica (0 mana, só o campeão principal do turno usa, 1 vez por turno), alcance da básica e passiva única.
+Valores provisórios, ajustados pela simulação. Cada ficha tem: HP, defesa, habilidade básica (0 mana, 1 por turno para a equipe, qualquer campeão usa), alcance da básica e passiva única.
 
 Regra de desenho: alcance da básica indica o estilo. Distância maior significa campeão frágil; alcance curto significa campeão que precisa chegar perto e compensa com HP ou defesa.
 

@@ -124,7 +124,7 @@
   },
   "mana": {
     "start": 0,
-    "gain_per_turn": 1,
+    "gain_per_turn": 2,
     "cap": 10,
     "shared_by_team": true,
     "unlimited_card_plays": true
@@ -202,7 +202,7 @@
     "turns_out": 2
   },
   "boss": {
-    "hp": 60,
+    "hp": 40,
     "defense": 1,
     "range": 4,
     "deck_size": 11,

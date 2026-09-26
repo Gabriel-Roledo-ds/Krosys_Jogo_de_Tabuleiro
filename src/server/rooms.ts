@@ -30,7 +30,7 @@ export interface Room {
 
 const rooms = new Map<string, Room>();
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const BOT_DELAY_MS = 450;
+const BOT_DELAY_MS = 220;
 
 function newCode(): string {
   for (;;) {

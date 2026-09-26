@@ -38,7 +38,7 @@ describe("início da partida e primeiro turno", () => {
     applyAction(s, "A", { type: "draw", champion: uid("A", "atirador") });
     expect(s.teams.A.hand).toHaveLength(3);
     expect(s.teams.A.hand.every((c) => c.owner === uid("A", "atirador"))).toBe(true);
-    expect(s.teams.A.mana).toBe(1);
+    expect(s.teams.A.mana).toBe(2);
     expect(s.turn.phase).toBe("act");
     expect(s.turn.die).toBeGreaterThanOrEqual(1);
     expect(s.turn.die).toBeLessThanOrEqual(6);
@@ -150,10 +150,11 @@ describe("turnos seguintes", () => {
     expect(s.turn.team).toBe("A");
     expect(s.turn.phase).toBe("draw");
     const before = s.teams.A.hand.length;
+    const before2 = s.teams.A.mana;
     applyAction(s, "A", { type: "draw", champion: uid("A", "enredador") });
     expect(s.teams.A.hand).toHaveLength(before + 1);
     expect(s.teams.A.hand[before].owner).toBe(uid("A", "enredador"));
-    expect(s.teams.A.mana).toBe(2);
+    expect(s.teams.A.mana).toBe(before2 + 2);
     expect(s.turn.phase).toBe("act");
   });
 
@@ -176,7 +177,7 @@ describe("turnos seguintes", () => {
     const mana = s.teams.A.mana;
     applyAction(s, "A", { type: "skipDraw" });
     expect(s.teams.A.hand).toHaveLength(7);
-    expect(s.teams.A.mana).toBe(mana + 1);
+    expect(s.teams.A.mana).toBe(mana + 2);
     expect(s.turn.phase).toBe("act");
   });
 
@@ -532,5 +533,18 @@ describe("monstros", () => {
     play(s, "A", "investida_bruta", { uid: uid("B", "atirador") });
     expect(hp(s, uid("B", "atirador"))).toBe(7);
     expect(getChampion(s, uid("B", "atirador")).pos).toEqual({ x: 5, y: 8 });
+  });
+});
+
+describe("Ressurgir", () => {
+  it("não é oferecido nem aceito depois de usado", () => {
+    const s = scenario({ A: ["curandeiro", "atirador", "piromante"], B: ["atirador", "arquiteto", "andarilho"] });
+    const card = give(s, "A", "ressurgir");
+    const dead = getChampion(s, uid("A", "atirador"));
+    dead.alive = false;
+    dead.hp = 0;
+    s.teams.A.resurrectUsed = true;
+    expect(legalActions(s, "A").some((a) => a.type === "play" && a.card === card.uid)).toBe(false);
+    expect(() => applyAction(s, "A", { type: "play", card: card.uid, target: { uid: uid("A", "atirador") } })).toThrow(/Ressurgir/);
   });
 });
