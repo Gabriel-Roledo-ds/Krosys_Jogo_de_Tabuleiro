@@ -6,7 +6,9 @@
     "boss_position": {
       "x": 7,
       "y": 7
-    }
+    },
+    "shape": "diamond",
+    "_notes": "Losango: só existem casas com |x-7|+|y-7| <= 7. Equipes nas pontas esquerda (A) e direita (B)."
   },
   "teams": {
     "count": 2,
@@ -29,26 +31,26 @@
         },
         {
           "x": 0,
-          "y": 6
-        },
-        {
-          "x": 0,
           "y": 7
         },
         {
-          "x": 0,
+          "x": 2,
+          "y": 6
+        },
+        {
+          "x": 2,
+          "y": 7
+        },
+        {
+          "x": 2,
           "y": 8
         },
         {
-          "x": 2,
+          "x": 3,
           "y": 6
         },
         {
-          "x": 2,
-          "y": 7
-        },
-        {
-          "x": 2,
+          "x": 3,
           "y": 8
         }
       ],
@@ -67,26 +69,26 @@
         },
         {
           "x": 14,
-          "y": 6
-        },
-        {
-          "x": 14,
           "y": 7
         },
         {
-          "x": 14,
+          "x": 12,
+          "y": 6
+        },
+        {
+          "x": 12,
+          "y": 7
+        },
+        {
+          "x": 12,
           "y": 8
         },
         {
-          "x": 12,
+          "x": 11,
           "y": 6
         },
         {
-          "x": 12,
-          "y": 7
-        },
-        {
-          "x": 12,
+          "x": 11,
           "y": 8
         }
       ]
@@ -106,7 +108,7 @@
     "respawn": false
   },
   "dice": {
-    "sides": 8,
+    "sides": 6,
     "movement_mode": "up_to_value"
   },
   "movement": {
@@ -196,7 +198,8 @@
     "resurrect_uses_per_game": 1,
     "never_chosen_champion_exit_rule": false,
     "return_hp": "full",
-    "return_timing": "start_of_own_next_turn"
+    "return_timing": "after_turns_out_at_start_of_own_turn",
+    "turns_out": 2
   },
   "boss": {
     "hp": 60,
@@ -214,7 +217,8 @@
     "max_active_auras": 1,
     "new_aura_replaces_old": true,
     "drawing_aura_skips_attack": true,
-    "reshuffle_discard_when_empty": true
+    "reshuffle_discard_when_empty": true,
+    "terremoto_radius": 5
   },
   "cards_special": {
     "execution_damage_base": 8,

@@ -1,7 +1,7 @@
 // Morte, retorno, recompensa de monstro e vitória.
 // Chamado depois que toda a pilha de respostas rápidas termina.
 
-import { getBossCard, getChampionDef } from "./data";
+import { balance, getBossCard, getChampionDef } from "./data";
 import { rngOf } from "./rng";
 import {
   allChampions,
@@ -67,6 +67,7 @@ export function resolveDeaths(s: GameState): void {
 export function killChampion(s: GameState, c: ChampionState): void {
   log(s, `${getChampionDef(c.defId).name} (${c.team}) morreu`);
   c.alive = false;
+  c.outTurns = balance.death.turns_out;
   c.hp = 0;
   c.shield = 0;
   c.reflect = 0;
@@ -82,6 +83,11 @@ export function killChampion(s: GameState, c: ChampionState): void {
 export function returnDeadChampions(s: GameState, team: TeamId): void {
   for (const c of s.teams[team].champions) {
     if (c.alive) continue;
+    if (c.outTurns > 0) {
+      c.outTurns -= 1;
+      log(s, `${getChampionDef(c.defId).name} (${team}) ainda está fora (${c.outTurns > 0 ? c.outTurns + " turno(s)" : "volta no próximo turno"})`);
+      continue;
+    }
     c.alive = true;
     c.hp = c.maxHp;
     c.pos = freeStartCell(s, team);

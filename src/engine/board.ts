@@ -1,5 +1,7 @@
 // Geometria do tabuleiro. Distância de Chebyshev: diagonal conta como 1 casa.
 
+import balance from "../../data/balance.json";
+
 export interface Pos {
   x: number;
   y: number;
@@ -17,8 +19,15 @@ export function distance(a: Pos, b: Pos): number {
 /** Adjacente = distância 1 (inclui diagonais). */
 export const isAdjacent = (a: Pos, b: Pos): boolean => distance(a, b) === 1;
 
+const DIAMOND = (balance.board as { shape?: string }).shape === "diamond";
+
+/** Casa que existe no tabuleiro. No losango, só valem as casas com |x-cx|+|y-cy| <= raio. */
 export const inBounds = (p: Pos, width: number, height: number): boolean =>
-  p.x >= 0 && p.y >= 0 && p.x < width && p.y < height;
+  p.x >= 0 &&
+  p.y >= 0 &&
+  p.x < width &&
+  p.y < height &&
+  (!DIAMOND || Math.abs(p.x - (width - 1) / 2) + Math.abs(p.y - (height - 1) / 2) <= (width - 1) / 2);
 
 /** As 8 direções de movimento. */
 export const DIRECTIONS: readonly Pos[] = [

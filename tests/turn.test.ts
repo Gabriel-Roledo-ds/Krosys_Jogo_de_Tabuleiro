@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { applyAction, IllegalAction, legalActions, startGame } from "../src/engine/turn";
+import { activateChampion, applyAction, IllegalAction, legalActions, startGame } from "../src/engine/turn";
 import { createGame, getChampion, type GameState } from "../src/engine/state";
 import { resolveDeaths } from "../src/engine/death";
 import { give, hp, place, play, scenario, uid } from "./helpers";
@@ -13,49 +13,134 @@ const fresh = (seed = 3): GameState => {
   return s;
 };
 
+/** Compra do campeão (primeiro turno: 3 cartas) e ativa o campeão para ele poder se mover. */
+const startAs = (s: GameState, team: "A" | "B", champion: string) => {
+  applyAction(s, team, { type: "draw", champion: uid(team, champion) });
+  activateChampion(s, getChampion(s, uid(team, champion)));
+};
+
+/** Passa o turno da equipe: compra do primeiro campeão vivo se houver fase de compra, e encerra. */
+const passTurn = (s: GameState, team: "A" | "B") => {
+  while (s.pending) applyAction(s, s.pending.priority, { type: "pass" });
+  if (s.turn.phase === "draw") {
+    const d = legalActions(s, team).find((a) => a.type === "draw")!;
+    applyAction(s, team, d);
+  }
+  applyAction(s, team, { type: "end" });
+};
+
 describe("início da partida e primeiro turno", () => {
-  it("primeiro turno: sem compra, mana +1, escolhe o campeão e saca 3 cartas dele", () => {
+  it("primeiro turno: compra 3 cartas de um baralho, ganha mana e o dado é rolado para o time todo", () => {
     const s = fresh();
     expect(s.turn.team).toBe("A");
-    expect(s.turn.phase).toBe("choose");
-    expect(s.teams.A.mana).toBe(1);
-    applyAction(s, "A", { type: "choose", champion: uid("A", "atirador") });
+    expect(s.turn.phase).toBe("draw");
+    expect(s.teams.A.mana).toBe(0);
+    applyAction(s, "A", { type: "draw", champion: uid("A", "atirador") });
     expect(s.teams.A.hand).toHaveLength(3);
     expect(s.teams.A.hand.every((c) => c.owner === uid("A", "atirador"))).toBe(true);
+    expect(s.teams.A.mana).toBe(1);
     expect(s.turn.phase).toBe("act");
     expect(s.turn.die).toBeGreaterThanOrEqual(1);
-    expect(s.turn.die).toBeLessThanOrEqual(8);
+    expect(s.turn.die).toBeLessThanOrEqual(6);
   });
 
-  it("casas de movimento = dado (sem bônus nem penalidade)", () => {
+  it("o dado é d6 e o mesmo valor vale para todos os campeões do turno", () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const s = fresh(seed);
+      applyAction(s, "A", { type: "draw", champion: uid("A", "atirador") });
+      expect(s.turn.die).toBeGreaterThanOrEqual(1);
+      expect(s.turn.die).toBeLessThanOrEqual(6);
+    }
     const s = fresh();
-    applyAction(s, "A", { type: "choose", champion: uid("A", "piromante") });
-    expect(s.turn.movementLeft).toBe(s.turn.die);
+    applyAction(s, "A", { type: "draw", champion: uid("A", "atirador") });
+    const die = s.turn.die;
+    applyAction(s, "A", { type: "stay", champion: uid("A", "piromante") });
+    expect(s.turn.movementLeft).toBe(die);
+    applyAction(s, "A", { type: "stay", champion: uid("A", "enredador") });
+    expect(s.turn.movementLeft).toBe(die);
+    expect(s.turn.die).toBe(die);
   });
 
   it("a equipe errada não pode agir e fases fora de ordem são recusadas", () => {
     const s = fresh();
-    expect(() => applyAction(s, "B", { type: "choose", champion: uid("B", "arquiteto") })).toThrow(/turno/);
+    expect(() => applyAction(s, "B", { type: "draw", champion: uid("B", "arquiteto") })).toThrow(/turno/);
     expect(() => applyAction(s, "A", { type: "end" })).toThrow(IllegalAction);
-    expect(() => applyAction(s, "A", { type: "draw", champion: uid("A", "atirador") })).toThrow(IllegalAction);
+    expect(() => applyAction(s, "A", { type: "move", to: { x: 3, y: 7 }, champion: uid("A", "atirador") })).toThrow(IllegalAction);
   });
 
   it("mesma seed, mesma partida", () => {
     const run = () => {
       const s = fresh(11);
-      applyAction(s, "A", { type: "choose", champion: uid("A", "atirador") });
+      applyAction(s, "A", { type: "draw", champion: uid("A", "atirador") });
       return [s.turn.die, s.teams.A.hand.map((c) => c.cardId)];
     };
     expect(run()).toEqual(run());
   });
 });
 
+describe("movimento: uma vez por campeão, uma básica por turno", () => {
+  const go = () => {
+    const s = fresh();
+    applyAction(s, "A", { type: "draw", champion: uid("A", "atirador") });
+    s.turn.die = 6;
+    return s;
+  };
+
+  it("cada campeão se move uma vez; o dado vale para os três", () => {
+    const s = go();
+    const c1 = getChampion(s, uid("A", "atirador"));
+    const c2 = getChampion(s, uid("A", "piromante"));
+    const start1 = { ...c1.pos };
+    applyAction(s, "A", { type: "move", champion: c1.uid, to: { x: c1.pos.x + 3, y: c1.pos.y } });
+    expect(c1.pos).toEqual({ x: start1.x + 3, y: start1.y });
+    expect(s.turn.movementLeft).toBe(3);
+    // O segundo campeão recebe o dado inteiro (6), não o que sobrou do primeiro.
+    applyAction(s, "A", { type: "move", champion: c2.uid, to: { x: c2.pos.x + 3, y: c2.pos.y } });
+    expect(s.turn.movementLeft).toBe(3);
+    // Volta ao primeiro: já gastou o movimento.
+    expect(() => applyAction(s, "A", { type: "move", champion: c1.uid, to: { x: c1.pos.x, y: c1.pos.y + 1 } })).toThrow(/já se moveu/);
+  });
+
+  it("o campeão ativo pode dividir o movimento em várias etapas", () => {
+    const s = go();
+    const c = getChampion(s, uid("A", "atirador"));
+    applyAction(s, "A", { type: "move", champion: c.uid, to: { x: c.pos.x + 2, y: c.pos.y } });
+    applyAction(s, "A", { type: "move", to: { x: c.pos.x + 2, y: c.pos.y + 2 } });
+    expect(s.turn.movementLeft).toBe(2);
+  });
+
+  it("movimento inválido não gasta o movimento do campeão", () => {
+    const s = go();
+    const c = getChampion(s, uid("A", "piromante"));
+    expect(() => applyAction(s, "A", { type: "move", champion: c.uid, to: { x: c.pos.x + 9, y: c.pos.y } })).toThrow(IllegalAction);
+    expect(s.turn.activated).toEqual([]);
+    applyAction(s, "A", { type: "move", champion: c.uid, to: { x: c.pos.x + 1, y: c.pos.y } });
+    expect(s.turn.activated).toEqual([c.uid]);
+  });
+
+  it("só uma habilidade básica por turno, de qualquer campeão", () => {
+    const s = go();
+    const a = getChampion(s, uid("A", "atirador"));
+    const p = getChampion(s, uid("A", "piromante"));
+    const foe = getChampion(s, uid("B", "arquiteto"));
+    a.pos = { x: 5, y: 5 };
+    p.pos = { x: 5, y: 6 };
+    foe.pos = { x: 5, y: 7 };
+    applyAction(s, "A", { type: "basic", champion: a.uid, target: { uid: foe.uid } });
+    expect(() => applyAction(s, "A", { type: "basic", champion: p.uid, target: { uid: foe.uid } })).toThrow(/básica/);
+  });
+
+  it("legalActions traz movimentos de todos os campeões que ainda não se moveram", () => {
+    const s = go();
+    const moved = new Set(legalActions(s, "A").filter((a) => a.type === "move").map((a) => (a as { champion?: string }).champion));
+    expect(moved.size).toBe(3);
+  });
+});
+
 describe("turnos seguintes", () => {
   const playFirstRound = (s: GameState) => {
-    applyAction(s, "A", { type: "choose", champion: uid("A", "atirador") });
-    applyAction(s, "A", { type: "end" });
-    applyAction(s, "B", { type: "choose", champion: uid("B", "andarilho") });
-    applyAction(s, "B", { type: "end" });
+    passTurn(s, "A");
+    passTurn(s, "B");
   };
 
   it("depois da rodada 1 há fase de compra: escolhe o baralho, saca 1 e ganha mana", () => {
@@ -69,20 +154,35 @@ describe("turnos seguintes", () => {
     expect(s.teams.A.hand).toHaveLength(before + 1);
     expect(s.teams.A.hand[before].owner).toBe(uid("A", "enredador"));
     expect(s.teams.A.mana).toBe(2);
-    expect(s.turn.phase).toBe("choose");
+    expect(s.turn.phase).toBe("act");
   });
 
   it("legalActions lista as ações de cada fase", () => {
     const s = fresh();
-    expect(legalActions(s, "A").map((a) => a.type)).toEqual(["choose", "choose", "choose"]);
+    expect(legalActions(s, "A").map((a) => a.type)).toEqual(["draw", "draw", "draw"]);
     expect(legalActions(s, "B")).toEqual([]);
     playFirstRound(s);
     expect(legalActions(s, "A").every((a) => a.type === "draw")).toBe(true);
   });
 
+  it("com 7 cartas na mão dá para não comprar (e ainda ganha mana); com menos, não", () => {
+    const s = fresh();
+    playFirstRound(s);
+    expect(() => applyAction(s, "A", { type: "skipDraw" })).toThrow(/mão cheia/);
+    expect(legalActions(s, "A").some((a) => a.type === "skipDraw")).toBe(false);
+    s.teams.A.hand = [];
+    for (const id of ["tiro_rapido", "tiro_perfurante", "execucao", "ricochete", "vigia", "mira_total", "disparo_duplo"]) give(s, "A", id);
+    expect(legalActions(s, "A").some((a) => a.type === "skipDraw")).toBe(true);
+    const mana = s.teams.A.mana;
+    applyAction(s, "A", { type: "skipDraw" });
+    expect(s.teams.A.hand).toHaveLength(7);
+    expect(s.teams.A.mana).toBe(mana + 1);
+    expect(s.turn.phase).toBe("act");
+  });
+
   it("mão acima de 7: precisa descartar até 7 ao encerrar; cartas de monstro não contam", () => {
     const s = fresh();
-    applyAction(s, "A", { type: "choose", champion: uid("A", "atirador") });
+    applyAction(s, "A", { type: "draw", champion: uid("A", "atirador") });
     s.teams.A.hand = [];
     for (const id of ["tiro_rapido", "tiro_perfurante", "execucao", "ricochete", "vigia", "mira_total", "disparo_duplo", "recuo_tatico", "marca_cacador"]) give(s, "A", id);
     s.teams.A.hand.push({ uid: "m1", cardId: "faisca_selvagem", owner: uid("A", "atirador"), monster: true });
@@ -98,7 +198,7 @@ describe("turnos seguintes", () => {
 
   it("descarte vai para o descarte do baralho do campeão dono", () => {
     const s = fresh();
-    applyAction(s, "A", { type: "choose", champion: uid("A", "atirador") });
+    applyAction(s, "A", { type: "draw", champion: uid("A", "atirador") });
     s.teams.A.hand = [];
     for (const id of ["tiro_rapido", "tiro_perfurante", "execucao", "ricochete", "vigia", "mira_total", "disparo_duplo", "recuo_tatico"]) give(s, "A", id);
     applyAction(s, "A", { type: "end" });
@@ -112,13 +212,14 @@ describe("turnos seguintes", () => {
     playFirstRound(s);
     const d = s.teams.A.decks[uid("A", "enredador")];
     d.discard = d.draw.splice(0);
+    const total = d.discard.length;
     applyAction(s, "A", { type: "draw", champion: uid("A", "enredador") });
-    expect(d.draw.length + d.discard.length).toBe(9);
+    expect(d.draw.length + d.discard.length).toBe(total - 1);
   });
 });
 
 describe("morte e retorno", () => {
-  it("morrer tira o campeão do tabuleiro e guarda a mão dele; volta no início do próximo turno da equipe", () => {
+  it("morrer tira o campeão do tabuleiro e guarda a mão dele; fica fora por 2 turnos da equipe e volta no início do terceiro", () => {
     const s = scenario({ A: ["atirador", "piromante", "curandeiro"], B: ["atirador", "arquiteto", "andarilho"] });
     const victim = uid("B", "atirador");
     place(s, uid("A", "atirador"), 5, 5);
@@ -131,7 +232,16 @@ describe("morte e retorno", () => {
     expect(getChampion(s, victim).alive).toBe(false);
     expect(s.teams.B.hand.some((x) => x.uid === c.uid)).toBe(false);
     applyAction(s, "A", { type: "end" });
-    // Turno de B: o campeão volta à largada, imune e com vida cheia.
+    // 1º turno de B depois da morte: continua fora.
+    expect(getChampion(s, victim).alive).toBe(false);
+    passTurn(s, "B");
+    passTurn(s, "A");
+    // 2º turno de B: continua fora.
+    expect(s.turn.team).toBe("B");
+    expect(getChampion(s, victim).alive).toBe(false);
+    passTurn(s, "B");
+    passTurn(s, "A");
+    // 3º turno de B: volta à largada, imune e com vida cheia.
     const v = getChampion(s, victim);
     expect(v.alive).toBe(true);
     expect(v.hp).toBe(v.maxHp);
@@ -139,7 +249,7 @@ describe("morte e retorno", () => {
     expect(balance.teams.start_areas.B.some((p) => p.x === v.pos.x && p.y === v.pos.y)).toBe(true);
     // As cartas dele voltaram ao baralho.
     const deck = s.teams.B.decks[victim];
-    expect([...deck.draw, ...deck.discard].some((x) => x.uid === c.uid)).toBe(true);
+    expect([...deck.draw, ...deck.discard, ...s.teams.B.hand].some((x) => x.uid === c.uid)).toBe(true);
   });
 
   it("imune até o fim do primeiro turno em que for o principal; não pode ser alvo nem atingido por área", () => {
@@ -158,7 +268,7 @@ describe("morte e retorno", () => {
   it("perde a imunidade ao fim do turno em que é o principal", () => {
     const s = fresh();
     getChampion(s, uid("A", "atirador")).untargetable = true;
-    applyAction(s, "A", { type: "choose", champion: uid("A", "atirador") });
+    applyAction(s, "A", { type: "draw", champion: uid("A", "atirador") });
     expect(getChampion(s, uid("A", "atirador")).untargetable).toBe(true);
     applyAction(s, "A", { type: "end" });
     expect(getChampion(s, uid("A", "atirador")).untargetable).toBe(false);
@@ -197,26 +307,35 @@ describe("vitória", () => {
 });
 
 describe("controle: dura até o campeão gastar um turno", () => {
-  it("imobilizado fica com 0 casas no turno dele e depois se liberta", () => {
+  it("imobilizado não se move; gasta o turno parado e depois se liberta", () => {
     const s = fresh();
     const foe = getChampion(s, uid("B", "andarilho"));
     foe.statuses.push({ id: 1, kind: "immobilized", unit: "champion_turns", remaining: 1, negative: true });
-    applyAction(s, "A", { type: "choose", champion: uid("A", "atirador") });
-    applyAction(s, "A", { type: "end" });
-    applyAction(s, "B", { type: "choose", champion: uid("B", "arquiteto") });
-    expect(s.turn.movementLeft).toBeGreaterThan(0);
+    passTurn(s, "A");
+    applyAction(s, "B", { type: "draw", champion: uid("B", "arquiteto") });
+    // Mover outro campeão não gasta o controle do andarilho.
+    const arq = getChampion(s, uid("B", "arquiteto"));
+    applyAction(s, "B", { type: "move", champion: arq.uid, to: { x: arq.pos.x - 1, y: arq.pos.y } });
     applyAction(s, "B", { type: "end" });
-    // O andarilho não foi escolhido: continua congelado.
     expect(foe.statuses.some((x) => x.kind === "immobilized")).toBe(true);
-    applyAction(s, "A", { type: "draw", champion: uid("A", "atirador") });
-    applyAction(s, "A", { type: "choose", champion: uid("A", "atirador") });
-    applyAction(s, "A", { type: "end" });
+    passTurn(s, "A");
     applyAction(s, "B", { type: "draw", champion: uid("B", "andarilho") });
-    applyAction(s, "B", { type: "choose", champion: uid("B", "andarilho") });
-    expect(s.turn.movementLeft).toBe(0);
-    expect(() => applyAction(s, "B", { type: "move", to: { x: 12, y: 8 } })).toThrow(IllegalAction);
+    expect(() => applyAction(s, "B", { type: "move", champion: foe.uid, to: { x: 12, y: 8 } })).toThrow(/imobilizado/);
+    expect(s.turn.activated).toEqual([]); // tentar não gastou o turno
+    applyAction(s, "B", { type: "stay", champion: foe.uid });
+    expect(foe.statuses.some((x) => x.kind === "immobilized")).toBe(true); // ainda vale neste turno
     applyAction(s, "B", { type: "end" });
     expect(foe.statuses.some((x) => x.kind === "immobilized")).toBe(false);
+  });
+
+  it("controle aplicado a quem já se moveu neste turno só vale a partir do próximo", () => {
+    const s = fresh();
+    applyAction(s, "A", { type: "draw", champion: uid("A", "atirador") });
+    const c = getChampion(s, uid("A", "piromante"));
+    applyAction(s, "A", { type: "stay", champion: c.uid });
+    c.statuses.push({ id: 9, kind: "immobilized", unit: "champion_turns", remaining: 1, negative: true, fresh: true });
+    applyAction(s, "A", { type: "end" });
+    expect(c.statuses.some((x) => x.kind === "immobilized")).toBe(true);
   });
 });
 
@@ -323,7 +442,7 @@ describe("monstros", () => {
   const withMonsters = () => {
     const s = createGame({ A: ["atirador", "piromante", "curandeiro"], B: ["atirador", "arquiteto", "andarilho"] }, 5);
     startGame(s);
-    applyAction(s, "A", { type: "choose", champion: uid("A", "atirador") });
+    startAs(s, "A", "atirador");
     return s;
   };
 
@@ -331,9 +450,9 @@ describe("monstros", () => {
     const s = withMonsters();
     const m = s.monsters.find((x) => x.type === "weak")!; // alcance 1, ataque 1
     const c = getChampion(s, uid("A", "atirador"));
-    c.pos = { x: m.pos.x - 3, y: m.pos.y };
+    c.pos = { x: m.pos.x, y: m.pos.y + 3 };
     s.turn.movementLeft = 8;
-    applyAction(s, "A", { type: "move", to: { x: m.pos.x - 1, y: m.pos.y } });
+    applyAction(s, "A", { type: "move", to: { x: m.pos.x, y: m.pos.y + 1 } });
     expect(c.hp).toBe(14 - 1);
   });
 
@@ -341,9 +460,9 @@ describe("monstros", () => {
     const s = withMonsters();
     const m = s.monsters.find((x) => x.type === "weak")!;
     const c = getChampion(s, uid("A", "atirador"));
-    c.pos = { x: m.pos.x - 4, y: m.pos.y };
+    c.pos = { x: m.pos.x, y: m.pos.y + 4 };
     s.turn.movementLeft = 8;
-    applyAction(s, "A", { type: "move", to: { x: m.pos.x - 2, y: m.pos.y } });
+    applyAction(s, "A", { type: "move", to: { x: m.pos.x, y: m.pos.y + 2 } });
     expect(c.hp).toBe(14);
   });
 
@@ -365,11 +484,12 @@ describe("monstros", () => {
     const m = s.monsters.find((x) => x.type === "strong")!;
     const c = getChampion(s, uid("A", "atirador"));
     c.pos = { x: m.pos.x - 1, y: m.pos.y };
-    s.teams.A.turnsTaken = 1;
-    s.turn.main = null;
-    s.turn.phase = "choose";
-    applyAction(s, "A", { type: "choose", champion: c.uid });
-    expect(s.turn.movementLeft).toBe(Math.max(0, s.turn.die - 1));
+    const other = getChampion(s, uid("A", "piromante"));
+    applyAction(s, "A", { type: "stay", champion: other.uid });
+    other.pos = { x: c.pos.x, y: c.pos.y + 1 };
+    // O atirador já foi ativado no início; o piromante está longe do monstro: dado cheio.
+    expect(s.turn.movementLeft).toBe(s.turn.die);
+    expect(c.pos).toEqual({ x: m.pos.x - 1, y: m.pos.y });
   });
 
   it("monstro médio reflete 1 de dano em quem bate de perto", () => {
@@ -388,8 +508,7 @@ describe("monstros", () => {
     m.hp = 2;
     // fim de rodada
     applyAction(s, "A", { type: "end" });
-    applyAction(s, "B", { type: "choose", champion: uid("B", "arquiteto") });
-    applyAction(s, "B", { type: "end" });
+    passTurn(s, "B");
     expect(m.hp).toBe(3);
   });
 

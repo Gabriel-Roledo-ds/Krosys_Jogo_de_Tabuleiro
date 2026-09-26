@@ -120,22 +120,28 @@ export function sanitizeAction(raw: unknown): Action | null {
   };
   switch (a.type) {
     case "draw":
-    case "choose":
-      return str(a.champion) ? { type: a.type, champion: a.champion } : null;
+      return str(a.champion) ? { type: "draw", champion: a.champion } : null;
+    case "stay":
+      return str(a.champion) ? { type: "stay", champion: a.champion } : null;
     case "move":
-      return pos(a.to) ? { type: "move", to: a.to } : null;
+      if (!pos(a.to)) return null;
+      if (a.champion !== undefined && !str(a.champion)) return null;
+      return { type: "move", to: a.to, champion: a.champion as string | undefined };
     case "play": {
       const t = target(a.target);
       return str(a.card) && t ? { type: "play", card: a.card, target: t } : null;
     }
     case "basic": {
       const t = target(a.target);
-      return t ? { type: "basic", target: t } : null;
+      if (!t) return null;
+      if (a.champion !== undefined && !str(a.champion)) return null;
+      return { type: "basic", target: t, champion: a.champion as string | undefined };
     }
     case "discard":
       return str(a.card) ? { type: "discard", card: a.card } : null;
     case "pass":
     case "end":
+    case "skipDraw":
       return { type: a.type };
     default:
       return null;

@@ -48,7 +48,7 @@ Definição de pronto: regra escrita no documento, teste automático passando e 
 | 5 | Devorar | last_attacker | 4 de dano ao alvo, boss recupera 2 de vida |
 | 6 | Prole | closest | Invoca um lacaio (3 de vida, 1 de dano) adjacente ao alvo |
 | 7 | Fúria | aura (boss) | Próximas 2 cartas do boss causam +1 de dano |
-| 8 | Terremoto | aura (raio 4) | 1 de dano contínuo por rodada a todos os campeões em raio 4 (ignora defesa) |
+| 8 | Terremoto | aura (raio 5) | 1 de dano contínuo por rodada a todos os campeões em raio 5 (ignora defesa) |
 | 9 | Agarrar | closest | 2 de dano e o alvo não se move no próximo turno |
 | 10 | Maldição | last_attacker | Alvo descarta 1 carta aleatória da mão |
 | 11 | Carapaça | aura (boss) | Boss ignora 2 de dano até o próximo turno dele |

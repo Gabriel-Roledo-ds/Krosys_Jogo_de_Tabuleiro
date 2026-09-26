@@ -1,6 +1,8 @@
 // Fluxo do turno e ações do jogador. Toda mudança no jogo passa por applyAction.
 //
-// Fases: boss -> draw -> choose -> act -> (discard) -> fim.
+// Fases: boss -> draw -> act -> (discard) -> fim.
+// Na fase de ação, o time rola 1 dado; cada campeão pode se mover uma vez (até o valor do dado)
+// e só 1 habilidade básica é usada por turno, por qualquer campeão.
 // Cartas e básicas vão para a pilha; o adversário pode responder com cartas rápidas
 // (a última carta jogada resolve primeiro). Mortes só são resolvidas no fim da pilha.
 
@@ -31,10 +33,11 @@ import { enumerateTargets, validateTarget } from "./targeting";
 
 export type Action =
   | { type: "draw"; champion: string }
-  | { type: "choose"; champion: string }
-  | { type: "move"; to: Pos }
+  | { type: "skipDraw" }
+  | { type: "move"; to: Pos; champion?: string }
+  | { type: "stay"; champion: string }
   | { type: "play"; card: string; target: Target }
-  | { type: "basic"; target: Target }
+  | { type: "basic"; target: Target; champion?: string }
   | { type: "pass" }
   | { type: "discard"; card: string }
   | { type: "end" };
@@ -99,19 +102,23 @@ function beginTurn(s: GameState): void {
 function enterDrawPhase(s: GameState): void {
   const team = s.turn.team;
   const t = s.teams[team];
-  if (t.turnsTaken === 0) {
-    // Primeiro turno: sem compra normal; as 3 cartas vêm ao escolher o campeão principal.
-    gainTurnMana(s, team);
-    s.turn.phase = "choose";
-    return;
-  }
   const anyCards = t.champions.some((c) => c.alive && deckSize(s, c) > 0);
   if (!anyCards) {
     gainTurnMana(s, team);
-    s.turn.phase = "choose";
+    startAct(s);
     return;
   }
   s.turn.phase = "draw";
+}
+
+/** Começa a fase de ação: um dado para o time inteiro e as posições de largada do turno. */
+function startAct(s: GameState): void {
+  const t = s.turn;
+  const team = s.teams[t.team];
+  t.phase = "act";
+  t.die = rollMovementDie(s);
+  t.startPositions = Object.fromEntries(team.champions.filter((x) => x.alive).map((x) => [x.uid, { ...x.pos }]));
+  log(s, `Dado do turno: ${t.die}`);
 }
 
 const deckSize = (s: GameState, c: ChampionState): number => {
@@ -224,26 +231,42 @@ export function applyAction(s: GameState, team: TeamId, a: Action): void {
       if (t.phase !== "draw") fail("Não é a fase de compra");
       const c = getChampion(s, a.champion);
       if (c.team !== team || !c.alive) fail("Campeão inválido");
-      if (drawFrom(s, c, balance.hand.draw_per_turn) === 0) fail("Esse baralho está vazio");
+      const n = s.teams[team].turnsTaken === 0 ? balance.hand.first_turn_draw : balance.hand.draw_per_turn;
+      if (drawFrom(s, c, n) === 0) fail("Esse baralho está vazio");
       gainTurnMana(s, team);
-      t.phase = "choose";
+      startAct(s);
       return;
     }
-    case "choose": {
-      if (t.phase !== "choose") fail("Não é a fase de escolha");
+    case "skipDraw": {
+      if (t.phase !== "draw") fail("Não é a fase de compra");
+      if (handLimitCount(s, team) < balance.hand.max_size) fail("Só dá para não comprar com a mão cheia");
+      log(s, `Equipe ${team} não compra carta (mão cheia)`);
+      gainTurnMana(s, team);
+      startAct(s);
+      return;
+    }
+    case "stay": {
+      if (t.phase !== "act") fail("Não é a fase de ação");
       const c = getChampion(s, a.champion);
       if (c.team !== team || !c.alive) fail("Campeão inválido");
-      chooseMain(s, c);
+      if (t.activated.includes(c.uid)) fail("Esse campeão já gastou o movimento");
+      activate(s, c);
+      log(s, `${getChampionDef(c.defId).name} gasta o turno parado`);
       return;
     }
     case "move": {
       if (t.phase !== "act") fail("Não é a fase de ação");
-      const c = getChampion(s, t.main!);
+      const c = a.champion ? getChampion(s, a.champion) : t.main ? getChampion(s, t.main) : fail("Escolha um campeão para mover");
+      if (c.team !== team || !c.alive) fail("Campeão inválido");
+      const isActive = t.main === c.uid;
+      if (!isActive && t.activated.includes(c.uid)) fail("Esse campeão já se moveu neste turno");
       if (c.statuses.some((x) => x.kind === "immobilized" && !x.fresh)) fail("O campeão está imobilizado");
-      const opts = moveOptionsFor(s, c);
-      const path = movePath(s, c, a.to, t.movementLeft, opts);
+      const budget = isActive ? t.movementLeft : movementBudget(s, c, t.die);
+      const opts = isActive ? moveOptionsFor(s, c) : { ...moveOptionsFor(s, c), phasing: false };
+      const path = movePath(s, c, a.to, budget, opts);
       if (!path) fail("Movimento inválido");
-      const cost = reachableMap(s, c, t.movementLeft, opts).get(posKey(a.to))!.cost;
+      const cost = reachableMap(s, c, budget, opts).get(posKey(a.to))!.cost;
+      if (!isActive) activate(s, c);
       t.movementLeft -= cost;
       t.moved += cost;
       t.trail.push(...path);
@@ -257,8 +280,9 @@ export function applyAction(s: GameState, team: TeamId, a: Action): void {
       return playCard(s, team, a.card, a.target, false);
     case "basic": {
       if (t.phase !== "act") fail("Não é a fase de ação");
-      if (t.basicUsed) fail("A básica já foi usada neste turno");
-      const c = getChampion(s, t.main!);
+      if (t.basicUsed) fail("A habilidade básica já foi usada neste turno");
+      const c = a.champion ? getChampion(s, a.champion) : t.main ? getChampion(s, t.main) : fail("Escolha um campeão para a básica");
+      if (c.team !== team || !c.alive) fail("Campeão inválido");
       if (cannotBasic(c)) fail("O campeão está atordoado");
       const info = basicInfo(c);
       const err = validateTarget(s, c, info, a.target);
@@ -291,17 +315,23 @@ export function applyAction(s: GameState, team: TeamId, a: Action): void {
   }
 }
 
-function chooseMain(s: GameState, c: ChampionState): void {
+/** O campeão gasta o movimento do turno: vira o campeão ativo e recebe as casas do dado. */
+function activate(s: GameState, c: ChampionState): void {
   const t = s.turn;
-  const team = s.teams[t.team];
-  if (team.turnsTaken === 0) drawFrom(s, c, balance.hand.first_turn_draw);
+  t.activated.push(c.uid);
   t.main = c.uid;
-  t.startPositions = Object.fromEntries(team.champions.filter((x) => x.alive).map((x) => [x.uid, { ...x.pos }]));
   t.trail = [];
-  t.die = rollMovementDie(s);
+  t.moved = 0;
+  t.phasing = false;
+  t.stepBonus = null;
+  t.manaBonusGiven = false;
   t.movementLeft = movementBudget(s, c, t.die);
-  t.phase = "act";
-  log(s, `${getChampionDef(c.defId).name} é o campeão principal (dado ${t.die}, ${t.movementLeft} casas)`);
+  log(s, `${getChampionDef(c.defId).name} se move (até ${t.movementLeft} casas)`);
+}
+
+/** Usado por testes e bots: ativa um campeão sem passar pela ação. */
+export function activateChampion(s: GameState, c: ChampionState): void {
+  activate(s, c);
 }
 
 function checkStepBonus(s: GameState): void {
@@ -342,11 +372,8 @@ function playCard(s: GameState, team: TeamId, uid: string, target: Target, isRes
 function finishTurn(s: GameState): void {
   const t = s.turn;
   const team = s.teams[t.team];
-  if (t.main) {
-    const main = getChampion(s, t.main);
-    expireTurnStatuses(main);
-    main.untargetable = false;
-  }
+  for (const uid of t.activated) expireTurnStatuses(getChampion(s, uid));
+  for (const c of team.champions) c.untargetable = false;
   team.turnsTaken += 1;
   team.nextCardBuff = null;
   const next = otherTeam(t.team);
@@ -375,17 +402,27 @@ export function legalActions(s: GameState, team: TeamId): Action[] {
   switch (t.phase) {
     case "draw":
       for (const c of tm.champions) if (c.alive && deckSize(s, c) > 0) out.push({ type: "draw", champion: c.uid });
-      break;
-    case "choose":
-      for (const c of tm.champions) if (c.alive) out.push({ type: "choose", champion: c.uid });
+      if (handLimitCount(s, team) >= balance.hand.max_size) out.push({ type: "skipDraw" });
       break;
     case "act": {
-      const main = getChampion(s, t.main!);
-      if (!main.statuses.some((x) => x.kind === "immobilized" && !x.fresh) && t.movementLeft > 0) {
-        for (const r of reachableMap(s, main, t.movementLeft, moveOptionsFor(s, main)).values()) out.push({ type: "move", to: r.pos });
+      for (const c of tm.champions) {
+        if (!c.alive) continue;
+        const active = t.main === c.uid;
+        if (!active && t.activated.includes(c.uid)) continue;
+        if (!c.statuses.some((x) => x.kind === "immobilized" && !x.fresh)) {
+          const budget = active ? t.movementLeft : movementBudget(s, c, t.die);
+          if (budget > 0) {
+            const opts = active ? moveOptionsFor(s, c) : { ...moveOptionsFor(s, c), phasing: false };
+            for (const r of reachableMap(s, c, budget, opts).values()) out.push({ type: "move", to: r.pos, champion: c.uid });
+          }
+        }
+        if (!active) out.push({ type: "stay", champion: c.uid });
       }
-      if (!t.basicUsed && !cannotBasic(main)) {
-        for (const target of enumerateTargets(s, main, basicInfo(main), 0, 12)) out.push({ type: "basic", target });
+      if (!t.basicUsed) {
+        for (const c of tm.champions) {
+          if (!c.alive || cannotBasic(c)) continue;
+          for (const target of enumerateTargets(s, c, basicInfo(c), 0, 12)) out.push({ type: "basic", target, champion: c.uid });
+        }
       }
       const buff = tm.nextCardBuff;
       for (const card of tm.hand) {

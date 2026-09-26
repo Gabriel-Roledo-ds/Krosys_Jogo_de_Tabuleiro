@@ -61,8 +61,19 @@ describe("geometria", () => {
   });
 
   it("raio na borda é cortado pelo tabuleiro", () => {
-    expect(cellsInRadius({ x: 0, y: 0 }, 1, 15, 15)).toHaveLength(4);
+    expect(cellsInRadius({ x: 0, y: 7 }, 1, 15, 15)).toHaveLength(4); // ponta esquerda do losango
     expect(inBounds({ x: 15, y: 0 }, 15, 15)).toBe(false);
+  });
+
+  it("o tabuleiro é um losango: só existem casas com |x-7|+|y-7| <= 7", () => {
+    expect(inBounds({ x: 0, y: 7 }, 15, 15)).toBe(true);
+    expect(inBounds({ x: 14, y: 7 }, 15, 15)).toBe(true);
+    expect(inBounds({ x: 7, y: 0 }, 15, 15)).toBe(true);
+    expect(inBounds({ x: 0, y: 0 }, 15, 15)).toBe(false);
+    expect(inBounds({ x: 1, y: 1 }, 15, 15)).toBe(false);
+    let n = 0;
+    for (let y = 0; y < 15; y++) for (let x = 0; x < 15; x++) if (inBounds({ x, y }, 15, 15)) n++;
+    expect(n).toBe(113);
   });
 });
 
@@ -159,10 +170,10 @@ describe("movimento", () => {
   it("anda em 8 direções, diagonal custa 1", () => {
     const s = newGame();
     const c = s.teams.A.champions[0];
-    c.pos = { x: 5, y: 2 };
+    c.pos = { x: 5, y: 5 };
     const cells = reachableCells(s, c, 1);
     expect(cells).toHaveLength(8);
-    expect(cells).toContainEqual({ x: 6, y: 3 });
+    expect(cells).toContainEqual({ x: 6, y: 6 });
   });
 
   it("é até o valor: alcança tudo a distância N ou menos, e nada além", () => {

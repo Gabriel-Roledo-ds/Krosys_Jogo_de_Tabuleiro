@@ -43,7 +43,7 @@ describe("ativação do boss", () => {
     s.boss.deck = ["garra", ...s.boss.deck.filter((c) => c !== "garra")];
     applyAction(s, "A", { type: "end" });
     place(s, uid("B", "atirador"), 12, 12);
-    applyAction(s, "B", { type: "choose", champion: uid("B", "atirador") });
+    applyAction(s, "B", { type: "draw", champion: uid("B", "atirador") });
     applyAction(s, "B", { type: "end" });
     expect(hp(s, near)).toBe(14 - 3);
     expect(s.boss.discard).toContain("garra");

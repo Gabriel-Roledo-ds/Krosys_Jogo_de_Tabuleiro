@@ -142,8 +142,8 @@ describe("Atirador: 10 cartas", () => {
 
   it("Mira Total: próxima carta ganha +3 de alcance e +2 de dano", () => {
     const s = atirador();
-    place(s, uid("A", "atirador"), 2, 5);
-    place(s, dummy, 2, 12); // distância 7 = alcance 4 + 3
+    place(s, uid("A", "atirador"), 6, 1);
+    place(s, dummy, 6, 8); // distância 7 = alcance 4 + 3
     give(s, "A", "mira_total");
     give(s, "A", "tiro_perfurante");
     play(s, "A", "mira_total");

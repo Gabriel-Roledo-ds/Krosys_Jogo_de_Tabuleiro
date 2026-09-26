@@ -138,21 +138,14 @@ export function greedyBot(opts: GreedyOptions = {}, rng: Rng = createRng(1)) {
 
     switch (s.turn.phase) {
       case "draw": {
+        // Mão cheia: melhor não comprar do que descartar depois.
+        const skip = actions.find((a) => a.type === "skipDraw");
+        if (skip) return skip;
         // Compra do campeão com menos cartas na mão.
         const counts = (uid: string) => s.teams[team].hand.filter((c) => c.owner === uid).length;
         const drawable = actions.filter((a): a is Extract<Action, { type: "draw" }> => a.type === "draw");
         drawable.sort((a, b) => counts(a.champion) - counts(b.champion));
         return drawable[0];
-      }
-      case "choose": {
-        // Move quem está mais atrás em relação ao alvo; ninguém fica parado para sempre.
-        const cs = actions.filter((a): a is Extract<Action, { type: "choose" }> => a.type === "choose");
-        const score = (uid: string) => {
-          const c = getChampion(s, uid);
-          return distance(c.pos, goal) - desiredRange(c) + rng.next() * 0.5;
-        };
-        cs.sort((a, b) => score(b.champion) - score(a.champion));
-        return cs[0];
       }
       case "discard": {
         const list = actions.filter((a) => a.type === "discard");
@@ -160,7 +153,6 @@ export function greedyBot(opts: GreedyOptions = {}, rng: Rng = createRng(1)) {
       }
       case "act": {
         const base = evaluate(s, team, aggression);
-        const main = getChampion(s, s.turn.main!);
         let best: Action | null = null;
         let bestVal = 0.05;
 
@@ -178,11 +170,12 @@ export function greedyBot(opts: GreedyOptions = {}, rng: Rng = createRng(1)) {
           }
         }
 
-        // Movimento: aproxima do alvo até a distância ideal, evitando ficar ao alcance de monstros à toa.
-        const want = desiredRange(main);
-        const gapNow = Math.max(0, distance(main.pos, goal) - want);
+        // Movimento: cada campeão se aproxima do alvo até a distância ideal, sem parar à toa ao alcance de monstros.
         for (const a of actions) {
-          if (a.type !== "move") continue;
+          if (a.type !== "move" || !a.champion) continue;
+          const c = getChampion(s, a.champion);
+          const want = desiredRange(c);
+          const gapNow = Math.max(0, distance(c.pos, goal) - want);
           const gap = Math.max(0, distance(a.to, goal) - want);
           let val = (gapNow - gap) * 1.5;
           for (const m of s.monsters) {
@@ -194,7 +187,7 @@ export function greedyBot(opts: GreedyOptions = {}, rng: Rng = createRng(1)) {
             best = a;
           }
         }
-        if (best && actionsThisTurn < 60) return best;
+        if (best && actionsThisTurn < 90) return best;
         return { type: "end" };
       }
       default:

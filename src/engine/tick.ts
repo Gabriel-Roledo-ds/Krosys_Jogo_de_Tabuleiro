@@ -1,6 +1,6 @@
 // Fim de rodada: efeitos que contam em rodadas (fogo, cura contínua, estruturas, aura do boss).
 
-import { getChampionDef, monsterTypes } from "./data";
+import { balance, getChampionDef, monsterTypes } from "./data";
 import { distance, samePos } from "./board";
 import { dealDamage, worldSource } from "./damage";
 import { getChampion, type GameState } from "./state";
@@ -42,7 +42,7 @@ export function tickRound(s: GameState): void {
   // Aura Terremoto do boss.
   if (s.boss.alive && s.boss.aura?.cardId === "terremoto") {
     for (const c of s.teams.A.champions.concat(s.teams.B.champions)) {
-      if (c.alive && !c.untargetable && distance(c.pos, s.boss.pos) <= 4) {
+      if (c.alive && !c.untargetable && distance(c.pos, s.boss.pos) <= balance.boss.terremoto_radius) {
         dealDamage(s, { team: null, champion: null, kind: "boss" }, c, 1, { dot: true });
       }
     }

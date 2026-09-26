@@ -6,7 +6,7 @@ import { type ChampionState, type GameState, type Status } from "./state";
 type NewStatus = Omit<Status, "id" | "fresh">;
 
 export function addStatus(s: GameState, c: ChampionState, st: NewStatus): Status {
-  const fresh = s.turn.main === c.uid && s.turn.phase === "act";
+  const fresh = s.turn.phase === "act" && s.turn.activated.includes(c.uid);
   const status: Status = { ...st, id: s.nextId++, fresh };
   // Mesmo tipo de marca ou de imunidade: renova em vez de empilhar.
   if (st.kind === "mark" || st.kind === "control_immune") {

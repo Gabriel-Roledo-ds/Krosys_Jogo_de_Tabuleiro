@@ -150,7 +150,7 @@ Regras complementares:
 - Classificação das 11 cartas: [PADRÃO]
   - Mais próximo: Garra, Pisão, Agarrar, Sopro Gélido, Prole.
   - Último a atacar: Devorar, Maldição.
-  - Aura: Terremoto (raio 4, 1 de dano contínuo por rodada), Fúria, Carapaça.
+  - Aura: Terremoto (raio 5, 1 de dano contínuo por rodada), Fúria, Carapaça.
   - Área: Rugido (raio 3).
 - No máximo 1 aura ativa por vez; a nova substitui a anterior. [PADRÃO]
 - Ao sacar uma aura, o boss só a ativa e não ataca naquela ativação. [PADRÃO]

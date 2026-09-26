@@ -42,6 +42,8 @@ export interface ChampionState {
   defense: number;
   pos: Pos;
   alive: boolean;
+  /** Turnos da equipe que ainda faltam para voltar da morte. */
+  outTurns: number;
   /** Imune depois de voltar da morte, até o fim do primeiro turno em que for o principal. */
   untargetable: boolean;
   statuses: Status[];
@@ -211,12 +213,15 @@ export interface PendingState {
   chain: number;
 }
 
-export type Phase = "boss" | "draw" | "choose" | "act" | "discard" | "over";
+export type Phase = "boss" | "draw" | "act" | "discard" | "over";
 
 export interface TurnState {
   team: TeamId;
   phase: Phase;
+  /** Campeão que está se movendo agora (o último ativado neste turno). */
   main: string | null;
+  /** Campeões que já gastaram o movimento deste turno. */
+  activated: string[];
   die: number;
   movementLeft: number;
   moved: number;
@@ -287,6 +292,7 @@ export function createGame(comp: Record<TeamId, string[]>, seed: number): GameSt
         defense: def.defense,
         pos: { ...startCells[i] },
         alive: true,
+        outTurns: 0,
         untargetable: false,
         statuses: [],
         shield: 0,
@@ -369,6 +375,7 @@ export function newTurn(team: TeamId, phase: Phase): TurnState {
     team,
     phase,
     main: null,
+    activated: [],
     die: 0,
     movementLeft: 0,
     moved: 0,

@@ -134,9 +134,9 @@ describe("Andarilho", () => {
 
   it("Vento Lateral: todos os aliados se movem 2 casas", () => {
     const s = mkA();
-    place(s, AND, 2, 2);
-    place(s, ally, 2, 3);
-    place(s, uid("A", "curandeiro"), 2, 4);
+    place(s, AND, 2, 5);
+    place(s, ally, 2, 7);
+    place(s, uid("A", "curandeiro"), 2, 9);
     const before = ["andarilho", "atirador", "curandeiro"].map((d) => distance(pos(s, uid("A", d)), s.boss.pos));
     give(s, "A", "vento_lateral");
     play(s, "A", "vento_lateral");
