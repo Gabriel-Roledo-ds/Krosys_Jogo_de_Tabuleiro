@@ -5,7 +5,7 @@
 import type { Hex } from "../design/hexGrid";
 import { hexBoard, startAreaCells, type HexBoardConfig } from "../design/hexBoard";
 import { rngOf, type RngHolder } from "../engine/rng";
-import { balance } from "../engine/data";
+import { balance, bossDef } from "../engine/data";
 import { deckCardIdsV2, getChampionDefV2 } from "./data";
 
 export type TeamId = "A" | "B";
@@ -62,6 +62,8 @@ export interface ChampionStateV2 {
   limbo: CardInstanceV2[];
   /** Não pode ser alvo nem atingido por áreas: campeão recém-voltado da morte, até o fim do próprio turno. */
   untargetable: boolean;
+  /** Morreu depois da morte do boss: não volta mais (ver boss.ts/death.ts). */
+  permaDead: boolean;
 }
 
 /**
@@ -103,6 +105,35 @@ export interface WallV2 {
 export interface DeckStateV2 {
   draw: CardInstanceV2[];
   discard: CardInstanceV2[];
+}
+
+/** Aura ativa do boss (no máximo 1 por vez) — ver boss.ts. */
+export interface BossAuraV2 {
+  cardId: string;
+  /** Cartas restantes com o bônus (ex. Fúria: +dano nas próximas 2). undefined = sem contagem (dura até ser substituída). */
+  cardsLeft?: number;
+}
+
+/**
+ * Boss v2 — mesmo baralho/números do boss do MVP (data/boss.json), reaproveitado
+ * por enquanto porque não existe design de boss específico pro roster v2 ainda
+ * [PADRÃO, ver regras-e-decisoes.md §10/§18]. Ativa no alcance dele (em casas
+ * hexagonais) igual ao MVP; ver src/engine-v2/boss.ts.
+ */
+export interface BossStateV2 {
+  hp: number;
+  maxHp: number;
+  defense: number;
+  pos: Hex;
+  range: number;
+  deck: string[];
+  discard: string[];
+  alive: boolean;
+  aura: BossAuraV2 | null;
+  /** Carapaça (Carapaça do boss): reduz dano recebido até a próxima ativação dele. */
+  damageReduction: number;
+  /** Último campeão que acertou o boss (carta "Devorar"). */
+  lastAttacker: string | null;
 }
 
 export interface TeamStateV2 {
@@ -164,6 +195,9 @@ export interface GameStateV2 {
   walls: WallV2[];
   turn: TurnStateV2;
   pending: PendingV2 | null;
+  boss: BossStateV2;
+  /** Equipe que causa dano x2 no boss (último golpe), até ele cair. */
+  bountyTeam: TeamId | null;
 }
 
 export function newTurnV2(team: TeamId, phase: PhaseV2): TurnStateV2 {
@@ -228,6 +262,7 @@ export function createGameV2(seed: number, options: CreateGameV2Options = {}): G
         outTurns: 0,
         limbo: [],
         untargetable: false,
+        permaDead: false,
       };
     });
     teams[teamId] = {
@@ -242,6 +277,22 @@ export function createGameV2(seed: number, options: CreateGameV2Options = {}): G
     };
   }
 
+  // Embaralhado por último (depois dos baralhos de campeão), senão o rngState
+  // salvo no retorno abaixo não contaria essa entropia consumida.
+  const boss: BossStateV2 = {
+    hp: bossDef.hp,
+    maxHp: bossDef.hp,
+    defense: bossDef.defense,
+    pos: { ...board.boss },
+    range: bossDef.range,
+    deck: rng.shuffle(bossDef.deck.map((c) => c.id)),
+    discard: [],
+    alive: true,
+    aura: null,
+    damageReduction: 0,
+    lastAttacker: null,
+  };
+
   return {
     board,
     teams,
@@ -254,6 +305,8 @@ export function createGameV2(seed: number, options: CreateGameV2Options = {}): G
     walls: [],
     turn: newTurnV2("A", "draw"),
     pending: null,
+    boss,
+    bountyTeam: null,
   };
 }
 

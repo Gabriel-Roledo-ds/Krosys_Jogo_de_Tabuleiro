@@ -6,8 +6,10 @@
 //
 // Simplificações assumidas nesta primeira versão (documentadas, não
 // silenciosas — ver KANBAN.md):
-// - Sem boss v2 ainda: o turno começa direto na fase de compra, sem a fase 0
-//   que o MVP tem pra ativação do boss.
+// - Boss v2 (item 6) ativa no começo do turno (beginTurn), igual ao MVP, mas
+//   resolve na hora — não passa pela pilha de respostas rápidas (um jogador
+//   não pode responder à ativação do boss com uma carta rápida ainda, ver
+//   boss.ts).
 // - Silêncio/atordoamento não bloqueiam cartas/básicas aqui: esses status já
 //   existem no catálogo de effects.ts mas ainda não há a checagem
 //   cannotCast/cannotBasic do MVP ligada ao turno v2.
@@ -22,6 +24,7 @@ import type { Hex } from "../design/hexGrid";
 import { hexKey } from "../design/hexGrid";
 import { discardCardV2, deckSizeV2, drawFromV2 } from "./deck";
 import { resolveDeathsV2, returnDeadChampionsV2 } from "./death";
+import { activateBossV2 } from "./boss";
 import { IllegalActionV2, rankRangeV2, resolveBasicEffectsV2, resolveCardEffectsV2, resurrectBlockedV2 } from "./cardPlay";
 
 export { IllegalActionV2 };
@@ -64,6 +67,9 @@ export function startGameV2(game: GameStateV2): void {
 function beginTurn(game: GameStateV2): void {
   const team = game.turn.team;
   returnDeadChampionsV2(game, team);
+  activateBossV2(game, team);
+  resolveDeathsV2(game, team);
+  if (game.winner) return;
   logV2(game, `Turno da equipe ${team} (rodada ${game.round})`);
   enterDrawPhase(game);
 }

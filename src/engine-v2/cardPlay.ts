@@ -16,15 +16,22 @@
 // - "wall"/"two_cells" com efeitos ainda não implementados (create_walls_line,
 //   create_portal_pair) — a carta valida o alvo mas applyEffectV2 lança erro
 //   claro ao tentar aplicar, igual qualquer outro tipo não implementado.
-// - boss v2 (item 6) e tudo que depende dele.
 // - silêncio/atordoamento bloqueando cartas e básicas: o motor v2 ainda não
 //   tem esses status de controle ligados aqui (fica pra quando a fase de
 //   turno/pilha de respostas existir de verdade, junto com silenced/stunned).
+//
+// Boss (item 6 do KANBAN, ver boss.ts): quando o alvo escolhido é o boss (uid
+// BOSS_UID_V2, só em cartas/básicas de alvo único "enemy"), os blocos de
+// efeito `damage` da carta acertam o boss via `attackBossV2` (dedicado, fora
+// do pipeline genérico de effects.ts, que só conhece ChampionStateV2) — outros
+// tipos de efeito (apply_status, heal, etc.) contra o boss são ignorados por
+// enquanto [PADRÃO, gap documentado em boss.ts].
 
 import { rngOf } from "../engine/rng";
 import type { Effect } from "../engine/data";
 import { hexDirectionTo } from "../design/hexGrid";
 import { applyEffectV2, type EffectContextV2 } from "./effects";
+import { attackBossV2, BOSS_UID_V2 } from "./boss";
 import { discardCardV2 } from "./deck";
 import { canPayV2, spendManaV2 } from "./mana";
 import { basicTargetV2, getCardDefV2, getCardRankV2, getChampionDefV2, type BasicDefV2, type CardDefV2, type CardRank } from "./data";
@@ -37,9 +44,9 @@ function fail(msg: string): never {
   throw new IllegalActionV2(msg);
 }
 
-/** Ressurgir (resurrect) só pode ser usado 1x por partida, por equipe (ver death.ts). */
+/** Ressurgir (resurrect) só pode ser usado 1x por partida, por equipe, e para de funcionar depois que o boss cai (regras-e-decisoes.md §18). */
 export const resurrectBlockedV2 = (game: GameStateV2, team: TeamId, effects: Effect[]): boolean =>
-  effects.some((e) => e.type === "resurrect") && game.teams[team].resurrectUsed;
+  effects.some((e) => e.type === "resurrect") && (game.teams[team].resurrectUsed || !game.boss.alive);
 
 /** `rank.range` vem como number | "self" | null (direction/line sem alcance numérico) — null é tratado como 0 pra validação, já que esses targets não checam alcance por casa (ex. "direction"). */
 export function rankRangeV2(rank: CardRank): number | "self" {
@@ -52,6 +59,8 @@ export interface TargetResolutionV2 {
   /** Alvos-campeão escolhidos pelo jogador, já validados — a entrada "padrão" de applyEffectV2 pra quem não tem resolução própria (around_self/random_targets/etc., tratados em effects.ts ou aqui mesmo). */
   targets: ChampionStateV2[];
   ctxExtra: Partial<EffectContextV2>;
+  /** true se o alvo escolhido foi o boss (uid BOSS_UID_V2) — ver resolveCardEffectsV2/resolveBasicEffectsV2. */
+  bossTarget?: boolean;
 }
 
 /**
@@ -79,6 +88,9 @@ export function resolveCardTargetsV2(owner: ChampionStateV2, cardTarget: string,
       }
       break;
     case "enemy":
+      if (t.uid === BOSS_UID_V2) return { targets: [], ctxExtra, bossTarget: true };
+      if (t.uid) targets = [getChampionV2(game, t.uid)];
+      break;
     case "ally":
     case "champion":
     case "champion_in_line":
@@ -139,7 +151,12 @@ export interface PlayCardResultV2 {
  * no ato de jogar; em turn.ts, no ato de EMPILHAR, não no de resolver).
  */
 export function resolveCardEffectsV2(game: GameStateV2, owner: ChampionStateV2, def: CardDefV2, rank: CardRank, t: TargetV2, bonusDamage?: number): void {
-  const { targets, ctxExtra } = resolveCardTargetsV2(owner, def.target, t, game);
+  const { targets, ctxExtra, bossTarget } = resolveCardTargetsV2(owner, def.target, t, game);
+  if (bossTarget) {
+    applyCardEffectsToBossV2(game, owner, rank.effects, bonusDamage);
+    logV2(game, `${owner.defId} (${owner.team}) usa ${def.name} (rank ${rank.rank}) no Boss`);
+    return;
+  }
   const ctx: EffectContextV2 = {
     game,
     attacker: owner,
@@ -152,6 +169,19 @@ export function resolveCardEffectsV2(game: GameStateV2, owner: ChampionStateV2, 
     applyEffectV2(ctx, effect, effectTargets);
   }
   logV2(game, `${owner.defId} (${owner.team}) usa ${def.name} (rank ${rank.rank})`);
+}
+
+/**
+ * Blocos `damage` de uma carta/básica contra o boss (ver cabeçalho do
+ * arquivo/boss.ts). Outros tipos de efeito (apply_status, heal, shield etc.)
+ * não têm consequência nenhuma no boss por enquanto — gap documentado, fora
+ * do escopo desta etapa.
+ */
+function applyCardEffectsToBossV2(game: GameStateV2, owner: ChampionStateV2, effects: Effect[], bonusDamage?: number): void {
+  for (const effect of effects) {
+    if (effect.type !== "damage") continue;
+    attackBossV2(game, owner, (effect.amount ?? 0) + (bonusDamage ?? 0), { ignoreDefense: effect.ignore_defense });
+  }
 }
 
 /**
@@ -197,7 +227,12 @@ export interface PlayBasicResultV2 {
 /** Mesma ideia de resolveCardEffectsV2, mas pra habilidade básica (sem rank/mana/descarte). */
 export function resolveBasicEffectsV2(game: GameStateV2, owner: ChampionStateV2, basic: BasicDefV2, t: TargetV2): void {
   const target = basicTargetV2(basic);
-  const { targets, ctxExtra } = resolveCardTargetsV2(owner, target, t, game);
+  const { targets, ctxExtra, bossTarget } = resolveCardTargetsV2(owner, target, t, game);
+  if (bossTarget) {
+    applyCardEffectsToBossV2(game, owner, basic.effects);
+    logV2(game, `${owner.defId} (${owner.team}) usa a básica (${basic.name}) no Boss`);
+    return;
+  }
   const ctx: EffectContextV2 = {
     game,
     attacker: owner,

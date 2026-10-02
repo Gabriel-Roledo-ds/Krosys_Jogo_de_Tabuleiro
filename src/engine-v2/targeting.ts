@@ -1,13 +1,18 @@
 // Validação de alvos de cartas/habilidades no motor hexagonal (roster v2).
 // Equivalente a src/engine/targeting.ts, mas em coordenadas axiais. "wall" já
-// resolve de verdade (ver world.ts); "dead_ally" continua "ainda não
-// implementado" — depende do campeão morto poder ser escolhido como alvo
-// (resurrect), o que ainda não foi ligado (ver KANBAN.md).
+// resolve de verdade (ver world.ts); "dead_ally" já valida de verdade (resurrect,
+// ver death.ts).
+//
+// Boss (item 6 do KANBAN): só o alvo único "enemy" pode escolher o boss
+// (uid BOSS_UID_V2 de boss.ts) — random_enemies/área continuam só entre
+// campeões por enquanto [PADRÃO, ver boss.ts/cardPlay.ts pro porquê do escopo
+// menor aqui].
 
 import { hexAdjacent, hexDistance, hexesInRadius, HEX_DIRECTIONS, isHexInLine, sameHex, type Hex } from "../design/hexGrid";
 import { inHexBoard } from "../design/hexBoard";
 import { allChampionsV2, getChampionV2, type ChampionStateV2, type GameStateV2, type TeamId } from "./state";
 import { hasLineOfSightV2, wallAtV2 } from "./world";
+import { BOSS_UID_V2 } from "./boss";
 
 export interface TargetableV2 {
   range: number | "self";
@@ -42,6 +47,11 @@ export function validateTargetV2(s: GameStateV2, owner: ChampionStateV2, def: Ta
   const range = rangeOfV2(def, rangeBonus);
 
   const enemyAt = (uid?: string): string | null => {
+    if (uid === BOSS_UID_V2) {
+      if (!s.boss.alive) return "boss não está em campo";
+      if (!inRange(s, owner.pos, s.boss.pos, range)) return "fora de alcance";
+      return null;
+    }
     const u = findChampion(s, uid);
     if (!u) return "alvo inexistente";
     if (!u.alive) return "alvo não está em campo";
@@ -174,6 +184,7 @@ export function enumerateTargetsV2(s: GameStateV2, owner: ChampionStateV2, def: 
       break;
     case "enemy":
       for (const c of enemiesInRange(s, owner, def, rangeBonus)) push({ uid: c.uid });
+      if (s.boss.alive && inRange(s, owner.pos, s.boss.pos, range)) push({ uid: BOSS_UID_V2 });
       break;
     case "ally":
     case "champion":

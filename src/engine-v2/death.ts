@@ -1,11 +1,12 @@
 // Morte, retorno e vitória no motor hexagonal (roster v2) — igual a
-// src/engine/death.ts, adaptado pro tabuleiro hexagonal e simplificado por
-// enquanto: o motor v2 ainda não tem boss (ver KANBAN.md), então não existe a
-// regra "morte vira definitiva quando o boss cai" do MVP — aqui toda morte é
-// temporária (volta depois de outTurns, sempre). Revisar quando o boss v2
-// entrar. Também não há cartas de besta/monstro ainda (recompensa do mapa
-// novo é pessoal, não de equipe — ver claude/monstros-mapa.md), então a regra
-// de "perder 1 carta de besta ao morrer" do MVP não se aplica aqui.
+// src/engine/death.ts, adaptado pro tabuleiro hexagonal. Com o boss v2 (item 6
+// do KANBAN) chegou a regra do MVP: enquanto o boss está vivo, toda morte é
+// temporária (volta depois de outTurns); quando ele cai, toda morte seguinte
+// é definitiva (permaDead) e Ressurgir para de funcionar (ver
+// resurrectBlockedV2 em cardPlay.ts). Também não há cartas de besta/monstro
+// ainda (recompensa do mapa novo é pessoal, não de equipe — ver
+// claude/monstros-mapa.md), então a regra de "perder 1 carta de besta ao
+// morrer" do MVP não se aplica aqui.
 
 import { balance } from "../engine/data";
 import { rngOf } from "../engine/rng";
@@ -69,7 +70,13 @@ export function killChampionV2(s: GameStateV2, c: ChampionStateV2): void {
   logV2(s, `${c.defId} (${c.team}) morreu`);
   c.alive = false;
   c.deaths += 1;
-  c.outTurns = balance.death.turns_out_base + balance.death.extra_turns_per_previous_death * (c.deaths - 1);
+  if (!s.boss.alive) {
+    c.permaDead = true;
+    c.outTurns = 0;
+    logV2(s, `${c.defId} (${c.team}) morreu de vez (Boss já caiu)`);
+  } else {
+    c.outTurns = balance.death.turns_out_base + balance.death.extra_turns_per_previous_death * (c.deaths - 1);
+  }
   c.hp = 0;
   c.shield = 0;
   c.reflect = 0;
@@ -80,10 +87,10 @@ export function killChampionV2(s: GameStateV2, c: ChampionStateV2): void {
   team.hand = team.hand.filter((card) => card.owner !== c.uid);
 }
 
-/** Início do turno: campeões mortos da equipe voltam à largada, imunes até o fim do próprio turno, vida cheia, mão devolvida ao baralho. */
+/** Início do turno: campeões mortos da equipe voltam à largada, imunes até o fim do próprio turno, vida cheia, mão devolvida ao baralho. Quem morreu de vez (Boss já caiu) não volta. */
 export function returnDeadChampionsV2(s: GameStateV2, team: TeamId): void {
   for (const c of s.teams[team].champions) {
-    if (c.alive) continue;
+    if (c.alive || c.permaDead) continue;
     if (c.outTurns > 0) {
       c.outTurns -= 1;
       logV2(s, `${c.defId} (${team}) ainda está fora (${c.outTurns > 0 ? c.outTurns + " turno(s)" : "volta no próximo turno"})`);
@@ -105,8 +112,22 @@ export function checkEliminationV2(s: GameStateV2, teamToFavorOnDoubleWipe: Team
   logV2(s, `Todos os campeões da equipe ${winner === "A" ? "B" : "A"} caíram de uma vez. Vence a equipe ${winner}.`);
 }
 
-/** Mata todo campeão com hp <= 0 e checa eliminação. Chamado depois de qualquer dano. */
+/**
+ * Boss cai: perde a recompensa de dano x2, para de ativar. Dali em diante toda
+ * morte de campeão (`killChampionV2`) passa a ser definitiva. Chamado antes de
+ * resolver as mortes, igual ao MVP (src/engine/death.ts).
+ */
+export function resolveBossDeathV2(s: GameStateV2): void {
+  if (!s.boss.alive || s.boss.hp > 0) return;
+  s.boss.alive = false;
+  s.boss.hp = 0;
+  s.bountyTeam = null;
+  logV2(s, "O Boss cai! Daqui em diante as mortes de campeões são definitivas.");
+}
+
+/** Mata o boss (se caiu), todo campeão com hp <= 0, e checa eliminação. Chamado depois de qualquer dano. */
 export function resolveDeathsV2(s: GameStateV2, teamToFavorOnDoubleWipe: TeamId): void {
+  resolveBossDeathV2(s);
   for (const c of allChampionsV2(s)) {
     if (c.alive && c.hp <= 0) killChampionV2(s, c);
   }
