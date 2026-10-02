@@ -90,6 +90,21 @@ export function cardsOf(championId: string): CardDefV2[] {
   return cardsV2.filter((c) => c.owner === championId);
 }
 
+const cardById = new Map(cardsV2.map((c) => [c.id, c]));
+
+export function getCardDefV2(id: string): CardDefV2 {
+  const c = cardById.get(id);
+  if (!c) throw new Error(`Carta v2 inexistente: ${id}`);
+  return c;
+}
+
+/** Rank escolhido de uma carta. Lança erro se o rank não existir pra essa carta. */
+export function getCardRankV2(card: CardDefV2, rank: number): CardRank {
+  const r = card.ranks.find((x) => x.rank === rank);
+  if (!r) throw new Error(`Carta ${card.id} não tem rank ${rank}`);
+  return r;
+}
+
 /** Cópias de cada carta no baralho de 30, conforme regras-e-decisoes.md §19. */
 export function copiesForRankType(rankType: RankType): number {
   if (rankType === "regular") return 3;

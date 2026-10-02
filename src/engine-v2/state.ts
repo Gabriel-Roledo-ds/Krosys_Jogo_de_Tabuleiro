@@ -109,8 +109,43 @@ export interface TeamStateV2 {
   champions: ChampionStateV2[];
   hand: CardInstanceV2[];
   decks: Record<string, DeckStateV2>;
-  /** Bônus da próxima carta jogada pela equipe (Passo das Sombras da Vextra) — consumido pela camada de "jogar carta", que ainda não existe. */
+  /** Bônus da próxima carta jogada pela equipe (Passo das Sombras da Vextra), consumido em cardPlay.ts. */
   nextCardBuff: { bonusDamage: number } | null;
+  turnsTaken: number;
+}
+
+export type PhaseV2 = "draw" | "act" | "discard";
+
+/** Item na pilha de respostas rápidas (ver turn.ts) — carta ou habilidade básica já validada e paga, aguardando resolução (ou resposta do adversário). */
+export interface StackItemV2 {
+  kind: "card" | "basic";
+  team: TeamId;
+  owner: string;
+  cardId: string;
+  rank: number;
+  target: import("./targeting").TargetV2;
+  buff?: { bonusDamage: number };
+}
+
+export interface PendingV2 {
+  stack: StackItemV2[];
+  /** Equipe que pode responder agora com uma carta rápida (ou passar). */
+  priority: TeamId;
+  /** Respostas encadeadas até agora (limite em balance.fast_cards.max_chained_responses). */
+  chain: number;
+}
+
+export interface TurnStateV2 {
+  team: TeamId;
+  phase: PhaseV2;
+  die: number;
+  /** Campeão que está usando o movimento do turno agora. */
+  main: string | null;
+  /** Campeões que já gastaram o movimento deste turno (inclui `main`). */
+  activated: string[];
+  movementLeft: number;
+  /** Campeões que já usaram a habilidade básica neste turno (uma vez cada). */
+  basicUsed: string[];
 }
 
 export interface GameStateV2 {
@@ -123,6 +158,12 @@ export interface GameStateV2 {
   log: string[];
   ground: GroundEffectV2[];
   walls: WallV2[];
+  turn: TurnStateV2;
+  pending: PendingV2 | null;
+}
+
+export function newTurnV2(team: TeamId, phase: PhaseV2): TurnStateV2 {
+  return { team, phase, die: 0, main: null, activated: [], movementLeft: 0, basicUsed: [] };
 }
 
 const DEFAULT_TEAM_COMPOSITION: Record<TeamId, string[]> = {
@@ -192,6 +233,7 @@ export function createGameV2(seed: number, options: CreateGameV2Options = {}): G
       hand: [],
       decks,
       nextCardBuff: null,
+      turnsTaken: 0,
     };
   }
 
@@ -205,6 +247,8 @@ export function createGameV2(seed: number, options: CreateGameV2Options = {}): G
     log: [],
     ground: [],
     walls: [],
+    turn: newTurnV2("A", "draw"),
+    pending: null,
   };
 }
 

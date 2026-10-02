@@ -82,6 +82,8 @@ export interface EffectContextV2 {
   lastTarget?: ChampionStateV2 | null;
   /** uids já atingidos pela cadeia de ricochete desta carta (inclui o 1º alvo) — pra `damage_third_target` não voltar a acertar quem o `damage_second_target` já pulou. */
   hitChain?: Set<string>;
+  /** Bônus de dano da carta (Passo das Sombras da Vextra, `buff_next_card`) — consumido pela camada de "jogar carta" (src/engine-v2/cardPlay.ts), somado a todo dano desta carta. */
+  bonusDamage?: number;
 }
 
 /** O mais próximo de `origin` (fora `exclude`) a até `maxDistance` casas, com desempate estável por uid. */
@@ -131,6 +133,7 @@ export function applyDamage(ctx: EffectContextV2, effect: Effect, targets: Champ
   const opts: DamageOptsV2 = {
     ignoreDefense: effect.ignore_defense,
     ignoreShield: effect.ignore_shield,
+    bonus: ctx.bonusDamage,
   };
   const actualTargets = effect.around_self ? resolveAroundSelf(ctx, effect) : targets;
   const out: Record<string, number> = {};
@@ -490,7 +493,7 @@ function firstChampionInPath(ctx: EffectContextV2): ChampionStateV2 | null {
 export function applyDamageFirstInPath(ctx: EffectContextV2, effect: Effect): Record<string, number> {
   const target = firstChampionInPath(ctx);
   if (!target || !ctx.attacker) return {};
-  const out: Record<string, number> = { [target.uid]: dealDamageV2(ctx.attacker, target, effect.amount ?? 0).final };
+  const out: Record<string, number> = { [target.uid]: dealDamageV2(ctx.attacker, target, effect.amount ?? 0, { bonus: ctx.bonusDamage }).final };
   if (effect.push_distance) pushChampion(ctx.game, target, ctx.attacker.pos, effect.push_distance);
   ctx.lastTarget = target;
   return out;
@@ -509,7 +512,7 @@ export function applyDamagePierceLine(ctx: EffectContextV2, effect: Effect, targ
     pos = addHex(pos, dir);
     if (!inHexBoard(pos, ctx.game.board) || wallAtV2(ctx.game, pos)) break;
     const hit = allChampionsV2(ctx.game).find((c) => c.alive && c.uid !== ctx.attacker!.uid && sameHex(c.pos, pos));
-    if (hit) out[hit.uid] = dealDamageV2(ctx.attacker, hit, effect.amount ?? 0).final;
+    if (hit) out[hit.uid] = dealDamageV2(ctx.attacker, hit, effect.amount ?? 0, { bonus: ctx.bonusDamage }).final;
   }
   return out;
 }
@@ -523,7 +526,7 @@ export function applyDamageBehindTarget(ctx: EffectContextV2, effect: Effect, ta
   const behindPos = addHex(primary.pos, dir);
   const behind = allChampionsV2(ctx.game).find((c) => c.alive && c.uid !== ctx.attacker!.uid && sameHex(c.pos, behindPos));
   if (!behind) return {};
-  return { [behind.uid]: dealDamageV2(ctx.attacker, behind, effect.amount ?? 0).final };
+  return { [behind.uid]: dealDamageV2(ctx.attacker, behind, effect.amount ?? 0, { bonus: ctx.bonusDamage }).final };
 }
 
 /**
@@ -540,7 +543,7 @@ function applyDamageChainedTarget(ctx: EffectContextV2, effect: Effect, maxDista
   if (ctx.attacker) exclude.add(ctx.attacker.uid);
   const next = nearestOtherChampion(ctx.game, ctx.lastTarget.pos, effect[maxDistanceKey] ?? 0, exclude);
   if (!next) return {};
-  const out = { [next.uid]: dealDamageV2(ctx.attacker, next, effect.amount ?? 0).final };
+  const out = { [next.uid]: dealDamageV2(ctx.attacker, next, effect.amount ?? 0, { bonus: ctx.bonusDamage }).final };
   ctx.lastTarget = next;
   ctx.hitChain = new Set([...exclude, next.uid]);
   return out;
