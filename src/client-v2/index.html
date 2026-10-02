@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Krósys v2</title>
+<style>
+  :root { --bg:#14101f; --panel:#221a36; --edge:#6b5aa8; --gold:#f2c14e; --ink:#eee8ff; --a:#4aa3ff; --b:#ff6b5a; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family: "Courier New", monospace; font-size:14px; }
+  h1 { margin:0 0 12px; color:var(--gold); letter-spacing:2px; }
+  button { font:inherit; background:#3a2d5c; color:var(--ink); border:2px solid var(--edge); padding:6px 10px; cursor:pointer; }
+  button:hover:not(:disabled) { background:#54428a; }
+  button:disabled { opacity:.4; cursor:default; }
+  input { font:inherit; padding:6px; background:#0e0a18; color:var(--ink); border:2px solid var(--edge); }
+  #lobby { max-width:640px; margin:30px auto; padding:20px; background:var(--panel); border:3px solid var(--edge); }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:8px 0; }
+  .champ { border:2px solid var(--edge); padding:6px 8px; cursor:pointer; min-width:120px; }
+  .champ.sel { border-color:var(--gold); background:#3d3160; }
+  #game { display:none; grid-template-columns: 300px minmax(300px,1fr) 340px; gap:8px; padding:8px; height:100vh; }
+  #left, #side { display:flex; flex-direction:column; gap:8px; overflow:auto; min-height:0; }
+  #boardwrap { position:relative; min-width:0; overflow:auto; }
+  #board { width:100%; height:100%; }
+  .panel { background:var(--panel); border:2px solid var(--edge); padding:8px; }
+  .teamA { color:var(--a); } .teamB { color:var(--b); }
+  .bar { height:8px; background:#000; margin:2px 0 4px; } .bar > i { display:block; height:100%; background:#57d16f; }
+  .card { border:2px solid var(--edge); padding:5px 7px; margin:4px 0; cursor:pointer; background:#2c2247; }
+  .card.no { opacity:.45; cursor:default; } .card.sel { border-color:var(--gold); }
+  .card .cost { color:var(--gold); float:right; } .card small { display:block; color:#b9afe0; }
+  .card.fast { border-left:6px solid #7be0ff; }
+  #log { font-size:12px; overflow:auto; flex:1; min-height:120px; }
+  #log div { padding:1px 0; border-bottom:1px solid #2f2549; }
+  #log .turn { color:var(--gold); border-bottom:1px solid var(--edge); margin-top:6px; font-weight:bold; }
+  #log .dmg { color:#ff9a8a; } #log .heal { color:#7be09a; } #log .zone { color:#ffd23f; } #log .atk { color:#ffb060; } #log .sys { color:#b9afe0; }
+  #logpanel { flex:1; display:flex; flex-direction:column; min-height:200px; }
+  #effects { font-size:12px; max-height:260px; overflow:auto; }
+  #effects .e { padding:2px 0; border-bottom:1px solid #2f2549; }
+  #effects .bad { color:#ff9a8a; } #effects .good { color:#7be09a; } #effects .neutral { color:#c9c0f0; }
+  #modal { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; z-index:10; }
+  #modal .box { background:var(--panel); border:3px solid var(--gold); padding:14px 16px; max-width:420px; width:92%; max-height:90vh; overflow:auto; }
+  #modal h2 { margin:0 0 6px; color:var(--gold); } #modal .row2 { margin:4px 0; } #modal .sub { color:#b9afe0; font-size:12px; }
+  #msg { color:var(--gold); min-height:1.3em; }
+  #err { color:#ff8a8a; min-height:1.3em; }
+  .tag { display:inline-block; font-size:11px; background:#000; padding:0 4px; margin-right:2px; }
+  @media (max-width:1000px){ #game{grid-template-columns:1fr; height:auto;} #boardwrap{height:90vw;} #left{order:3} #log{max-height:200px} }
+</style>
+</head>
+<body>
+<div id="lobby"></div>
+<div id="game">
+  <div id="left">
+    <div class="panel"><b>Efeitos ativos</b><div id="effects"></div></div>
+    <div class="panel" id="logpanel"><b>Eventos</b><div id="log"></div></div>
+  </div>
+  <div id="boardwrap"><div id="board"></div></div>
+  <div id="side">
+    <div class="panel" id="status"></div>
+    <div class="panel" id="teams"></div>
+    <div class="panel" id="actions"></div>
+    <div class="panel" id="hand"></div>
+    <div class="panel"><div id="err"></div></div>
+  </div>
+</div>
+<div id="modal"><div class="box" id="modalbox"></div></div>
+<script type="module" src="./main.ts"></script>
+</body>
+</html>

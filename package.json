@@ -9,9 +9,13 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "sim": "tsx src/sim/run.ts",
+    "sim:v2": "tsx src/sim/run-v2.ts",
     "start": "tsx src/server/index.ts",
+    "start:v2": "tsx src/server/index-v2.ts",
     "build:client": "vite build",
+    "build:client-v2": "vite build --config vite.config.v2.ts",
     "dev:client": "vite",
+    "dev:client-v2": "vite --config vite.config.v2.ts",
     "build": "vite build"
   },
   "devDependencies": {
