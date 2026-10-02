@@ -26,16 +26,22 @@
 // do pipeline genérico de effects.ts, que só conhece ChampionStateV2) — outros
 // tipos de efeito (apply_status, heal, etc.) contra o boss são ignorados por
 // enquanto [PADRÃO, gap documentado em boss.ts].
+//
+// Monstros do mapa (item 7 do KANBAN, ver monsters.ts): mesmo esquema do
+// boss — alvo "enemy" com uid "monster-N" acerta via `attackMonsterV2`
+// (que também dispara a reação da criatura antes do dano), só pro bloco
+// `damage`; outros tipos de efeito contra um monstro são ignorados.
 
 import { rngOf } from "../engine/rng";
 import type { Effect } from "../engine/data";
 import { hexDirectionTo } from "../design/hexGrid";
 import { applyEffectV2, type EffectContextV2 } from "./effects";
 import { attackBossV2, BOSS_UID_V2 } from "./boss";
+import { attackMonsterV2, findMonsterV2, isMonsterUidV2 } from "./monsters";
 import { discardCardV2 } from "./deck";
 import { canPayV2, spendManaV2 } from "./mana";
 import { basicTargetV2, getCardDefV2, getCardRankV2, getChampionDefV2, type BasicDefV2, type CardDefV2, type CardRank } from "./data";
-import { getChampionV2, logV2, nextIdV2, type ChampionStateV2, type GameStateV2, type TeamId } from "./state";
+import { getChampionV2, logV2, nextIdV2, type ChampionStateV2, type GameStateV2, type MonsterStateV2, type TeamId } from "./state";
 import { enemiesInRange, validateTargetV2, type TargetV2 } from "./targeting";
 
 export class IllegalActionV2 extends Error {}
@@ -61,6 +67,8 @@ export interface TargetResolutionV2 {
   ctxExtra: Partial<EffectContextV2>;
   /** true se o alvo escolhido foi o boss (uid BOSS_UID_V2) — ver resolveCardEffectsV2/resolveBasicEffectsV2. */
   bossTarget?: boolean;
+  /** uid do monstro, se o alvo escolhido foi um monstro do mapa (ver monsters.ts). */
+  monsterTarget?: string;
 }
 
 /**
@@ -89,6 +97,7 @@ export function resolveCardTargetsV2(owner: ChampionStateV2, cardTarget: string,
       break;
     case "enemy":
       if (t.uid === BOSS_UID_V2) return { targets: [], ctxExtra, bossTarget: true };
+      if (t.uid && isMonsterUidV2(t.uid)) return { targets: [], ctxExtra, monsterTarget: t.uid };
       if (t.uid) targets = [getChampionV2(game, t.uid)];
       break;
     case "ally":
@@ -151,10 +160,15 @@ export interface PlayCardResultV2 {
  * no ato de jogar; em turn.ts, no ato de EMPILHAR, não no de resolver).
  */
 export function resolveCardEffectsV2(game: GameStateV2, owner: ChampionStateV2, def: CardDefV2, rank: CardRank, t: TargetV2, bonusDamage?: number): void {
-  const { targets, ctxExtra, bossTarget } = resolveCardTargetsV2(owner, def.target, t, game);
+  const { targets, ctxExtra, bossTarget, monsterTarget } = resolveCardTargetsV2(owner, def.target, t, game);
   if (bossTarget) {
     applyCardEffectsToBossV2(game, owner, rank.effects, bonusDamage);
     logV2(game, `${owner.defId} (${owner.team}) usa ${def.name} (rank ${rank.rank}) no Boss`);
+    return;
+  }
+  if (monsterTarget) {
+    applyCardEffectsToMonsterV2(game, owner, findMonsterV2(game, monsterTarget), rank.effects, bonusDamage);
+    logV2(game, `${owner.defId} (${owner.team}) usa ${def.name} (rank ${rank.rank}) num monstro`);
     return;
   }
   const ctx: EffectContextV2 = {
@@ -181,6 +195,14 @@ function applyCardEffectsToBossV2(game: GameStateV2, owner: ChampionStateV2, eff
   for (const effect of effects) {
     if (effect.type !== "damage") continue;
     attackBossV2(game, owner, (effect.amount ?? 0) + (bonusDamage ?? 0), { ignoreDefense: effect.ignore_defense });
+  }
+}
+
+/** Mesma ideia de applyCardEffectsToBossV2, mas contra um monstro do mapa (ver monsters.ts). */
+function applyCardEffectsToMonsterV2(game: GameStateV2, owner: ChampionStateV2, monster: MonsterStateV2, effects: Effect[], bonusDamage?: number): void {
+  for (const effect of effects) {
+    if (effect.type !== "damage") continue;
+    attackMonsterV2(game, owner, monster, (effect.amount ?? 0) + (bonusDamage ?? 0), { ignoreDefense: effect.ignore_defense });
   }
 }
 
@@ -227,10 +249,15 @@ export interface PlayBasicResultV2 {
 /** Mesma ideia de resolveCardEffectsV2, mas pra habilidade básica (sem rank/mana/descarte). */
 export function resolveBasicEffectsV2(game: GameStateV2, owner: ChampionStateV2, basic: BasicDefV2, t: TargetV2): void {
   const target = basicTargetV2(basic);
-  const { targets, ctxExtra, bossTarget } = resolveCardTargetsV2(owner, target, t, game);
+  const { targets, ctxExtra, bossTarget, monsterTarget } = resolveCardTargetsV2(owner, target, t, game);
   if (bossTarget) {
     applyCardEffectsToBossV2(game, owner, basic.effects);
     logV2(game, `${owner.defId} (${owner.team}) usa a básica (${basic.name}) no Boss`);
+    return;
+  }
+  if (monsterTarget) {
+    applyCardEffectsToMonsterV2(game, owner, findMonsterV2(game, monsterTarget), basic.effects);
+    logV2(game, `${owner.defId} (${owner.team}) usa a básica (${basic.name}) num monstro`);
     return;
   }
   const ctx: EffectContextV2 = {

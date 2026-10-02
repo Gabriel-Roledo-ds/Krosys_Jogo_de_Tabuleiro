@@ -16,8 +16,9 @@ export function refillIfEmptyV2(s: GameStateV2, championUid: string): void {
   }
 }
 
-/** Manda a carta pro descarte do baralho do campeão dono. */
+/** Manda a carta pro descarte do baralho do campeão dono. Carta de monstro é consumível: some, não volta pro baralho (ver monsters.ts). */
 export function discardCardV2(s: GameStateV2, card: CardInstanceV2): void {
+  if (card.monster) return;
   const c = getChampionV2(s, card.owner);
   s.teams[c.team].decks[card.owner].discard.push(card);
   refillIfEmptyV2(s, card.owner);

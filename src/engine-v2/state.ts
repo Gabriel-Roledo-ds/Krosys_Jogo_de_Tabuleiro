@@ -4,6 +4,8 @@
 
 import type { Hex } from "../design/hexGrid";
 import { hexBoard, startAreaCells, type HexBoardConfig } from "../design/hexBoard";
+import { placeMonstersWithSeed } from "../design/monsterPlacement";
+import { getMonsterType, type Posture } from "../design/monsterReaction";
 import { rngOf, type RngHolder } from "../engine/rng";
 import { balance, bossDef } from "../engine/data";
 import { deckCardIdsV2, getChampionDefV2 } from "./data";
@@ -17,6 +19,8 @@ export interface CardInstanceV2 {
   cardId: string;
   /** uid do campeão dono (alcance e linha de visão contam a partir dele). */
   owner: string;
+  /** Carta de recompensa de monstro (ver monsters.ts): consumível, não volta pro baralho ao ser descartada. */
+  monster?: boolean;
 }
 
 export interface StatusV2 {
@@ -64,6 +68,33 @@ export interface ChampionStateV2 {
   untargetable: boolean;
   /** Morreu depois da morte do boss: não volta mais (ver boss.ts/death.ts). */
   permaDead: boolean;
+  /** Vida máxima "de base" (sem bônus permanente de monstro) — ver monsters.ts, recomputeChampionBonusesV2. */
+  baseMaxHp: number;
+  /** Defesa "de base" (sem bônus permanente de monstro) — ver monsters.ts. */
+  baseDefense: number;
+  /** % de dano permanente (recompensa de monstro, soma de todos os grupos zona+nível+stat já mortos) — lido em damage.ts. */
+  permanentDamageBonusPercent: number;
+  /** Contagem de abates por grupo "zona:nível:stat:curva" (ver monsters.ts) — base pra recalcular o bônus permanente sem acumular versões antigas. */
+  monsterStatGroups: Record<string, number>;
+}
+
+/** Monstro do mapa (roster v2, item 7 do KANBAN) — ver src/engine-v2/monsters.ts e src/design/{monsterPlacement,monsterReaction}.ts. */
+export interface MonsterStateV2 {
+  uid: string;
+  typeId: string;
+  zone: string;
+  level: 1 | 2 | 3;
+  pos: Hex;
+  hp: number;
+  maxHp: number;
+  defense: number;
+  posture: Posture;
+  alive: boolean;
+  /** Já foi atacada antes nesta sessão de combate (simplificação: nunca reseta — ver monsters.ts). */
+  attackedBeforeThisCombat: boolean;
+  /** Já "fugiu" (escolheu a opção de reação utilitária) uma vez, postura evasiva. */
+  fledOnceThisCombat: boolean;
+  lastAttacker: { team: TeamId; champion: string } | null;
 }
 
 /**
@@ -198,6 +229,7 @@ export interface GameStateV2 {
   boss: BossStateV2;
   /** Equipe que causa dano x2 no boss (último golpe), até ele cair. */
   bountyTeam: TeamId | null;
+  monsters: MonsterStateV2[];
 }
 
 export function newTurnV2(team: TeamId, phase: PhaseV2): TurnStateV2 {
@@ -263,6 +295,10 @@ export function createGameV2(seed: number, options: CreateGameV2Options = {}): G
         limbo: [],
         untargetable: false,
         permaDead: false,
+        baseMaxHp: def.hp,
+        baseDefense: def.defense,
+        permanentDamageBonusPercent: 0,
+        monsterStatGroups: {},
       };
     });
     teams[teamId] = {
@@ -293,6 +329,30 @@ export function createGameV2(seed: number, options: CreateGameV2Options = {}): G
     lastAttacker: null,
   };
 
+  // Monstros do mapa (item 7): posicionamento sorteado a partir da MESMA seed
+  // da partida (src/design/monsterPlacement.ts), mas com seu próprio gerador
+  // interno — não compartilha o `holder`/`rng` acima [PADRÃO: mesma seed ainda
+  // reproduz a mesma partida, só não encadeia no mesmo fluxo de números].
+  const monsterPlacements = placeMonstersWithSeed(seed);
+  const monsters: MonsterStateV2[] = monsterPlacements.map((p, i) => {
+    const type = getMonsterType(p.typeId);
+    return {
+      uid: `monster-${i}`,
+      typeId: p.typeId,
+      zone: type.zone,
+      level: type.level,
+      pos: { ...p.position },
+      hp: type.hp,
+      maxHp: type.hp,
+      defense: type.defense,
+      posture: type.posture,
+      alive: true,
+      attackedBeforeThisCombat: false,
+      fledOnceThisCombat: false,
+      lastAttacker: null,
+    };
+  });
+
   return {
     board,
     teams,
@@ -307,6 +367,7 @@ export function createGameV2(seed: number, options: CreateGameV2Options = {}): G
     pending: null,
     boss,
     bountyTeam: null,
+    monsters,
   };
 }
 

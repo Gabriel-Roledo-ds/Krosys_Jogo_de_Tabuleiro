@@ -5,6 +5,7 @@
 
 import championsJson from "../../data/champions_v2.json";
 import cardsJson from "../../data/cards_v2.json";
+import monstersMapJson from "../../data/monsters_map.json";
 import type { Effect } from "../engine/data";
 
 export interface CardRank {
@@ -78,6 +79,39 @@ export const potionsPerChampion = championsData.potions_per_champion;
 
 export const cardsV2: CardDefV2[] = cardsJson as CardDefV2[];
 
+/**
+ * Cartas de recompensa de monstro (claude/monstros-mapa.md, item 7 do KANBAN)
+ * vêm em data/monsters_map.json#reward_cards no formato "chato" do MVP original
+ * (cost/range/effects direto, sem ranks) — não em cards_v2.json. Adaptadas aqui
+ * pra um único rank (★, rank 1) do formato v2, só pra poderem ser jogadas pelo
+ * mesmo playCardV2/resolveCardEffectsV2 sem duplicar lógica. `getCardDefV2`
+ * procura nas duas listas.
+ */
+interface RawRewardCardV2 {
+  id: string;
+  owner: string;
+  name: string;
+  cost: number;
+  fast: boolean;
+  range: number | "self";
+  target: string;
+  effects: Effect[];
+  text: string;
+}
+
+const rawRewardCards = (monstersMapJson as unknown as { reward_cards: Record<string, RawRewardCardV2> }).reward_cards;
+
+export const monsterRewardCardsV2: CardDefV2[] = Object.values(rawRewardCards).map((raw) => ({
+  id: raw.id,
+  owner: raw.owner,
+  name: raw.name,
+  notes: null,
+  fast: raw.fast,
+  rank_type: "exclusive",
+  target: raw.target,
+  ranks: [{ rank: 1, cost: raw.cost, range: raw.range, text: raw.text, effects: raw.effects }],
+}));
+
 const championById = new Map(championsV2.map((c) => [c.id, c]));
 
 export function getChampionDefV2(id: string): ChampionDefV2 {
@@ -90,7 +124,7 @@ export function cardsOf(championId: string): CardDefV2[] {
   return cardsV2.filter((c) => c.owner === championId);
 }
 
-const cardById = new Map(cardsV2.map((c) => [c.id, c]));
+const cardById = new Map([...cardsV2, ...monsterRewardCardsV2].map((c) => [c.id, c]));
 
 export function getCardDefV2(id: string): CardDefV2 {
   const c = cardById.get(id);

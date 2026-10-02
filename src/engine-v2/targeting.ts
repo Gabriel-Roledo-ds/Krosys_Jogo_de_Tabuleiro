@@ -7,12 +7,16 @@
 // (uid BOSS_UID_V2 de boss.ts) — random_enemies/área continuam só entre
 // campeões por enquanto [PADRÃO, ver boss.ts/cardPlay.ts pro porquê do escopo
 // menor aqui].
+//
+// Monstros do mapa (item 7 do KANBAN, monsters.ts): mesmo escopo do boss — só
+// o alvo único "enemy" pode escolher um monstro vivo (uid "monster-N").
 
 import { hexAdjacent, hexDistance, hexesInRadius, HEX_DIRECTIONS, isHexInLine, sameHex, type Hex } from "../design/hexGrid";
 import { inHexBoard } from "../design/hexBoard";
 import { allChampionsV2, getChampionV2, type ChampionStateV2, type GameStateV2, type TeamId } from "./state";
 import { hasLineOfSightV2, wallAtV2 } from "./world";
 import { BOSS_UID_V2 } from "./boss";
+import { isMonsterUidV2 } from "./monsters";
 
 export interface TargetableV2 {
   range: number | "self";
@@ -50,6 +54,12 @@ export function validateTargetV2(s: GameStateV2, owner: ChampionStateV2, def: Ta
     if (uid === BOSS_UID_V2) {
       if (!s.boss.alive) return "boss não está em campo";
       if (!inRange(s, owner.pos, s.boss.pos, range)) return "fora de alcance";
+      return null;
+    }
+    if (isMonsterUidV2(uid)) {
+      const m = s.monsters.find((x) => x.uid === uid);
+      if (!m || !m.alive) return "monstro não está em campo";
+      if (!inRange(s, owner.pos, m.pos, range)) return "fora de alcance";
       return null;
     }
     const u = findChampion(s, uid);
@@ -185,6 +195,9 @@ export function enumerateTargetsV2(s: GameStateV2, owner: ChampionStateV2, def: 
     case "enemy":
       for (const c of enemiesInRange(s, owner, def, rangeBonus)) push({ uid: c.uid });
       if (s.boss.alive && inRange(s, owner.pos, s.boss.pos, range)) push({ uid: BOSS_UID_V2 });
+      for (const m of s.monsters) {
+        if (m.alive && inRange(s, owner.pos, m.pos, range)) push({ uid: m.uid });
+      }
       break;
     case "ally":
     case "champion":

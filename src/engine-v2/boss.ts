@@ -164,6 +164,7 @@ export function attackBossV2(s: GameStateV2, attacker: ChampionStateV2, base: nu
   if (!s.boss.alive || base <= 0) return 0;
 
   let mult = balance.damage.champion_damage_multiplier ?? 1;
+  if (attacker.permanentDamageBonusPercent) mult *= 1 + attacker.permanentDamageBonusPercent / 100;
   if (s.bountyTeam === attacker.team) mult *= balance.boss.bounty_multiplier ?? 1;
   let total = mult !== 1 ? roundMultiplied(base * mult) : base;
 

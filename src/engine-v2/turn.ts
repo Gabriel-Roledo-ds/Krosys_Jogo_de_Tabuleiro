@@ -17,6 +17,10 @@
 //   fixas do pós-MVP ainda não têm esse gancho no motor v2.
 // - Sem "Passo Ágil"/bônus de mana por distância andada (nenhuma carta v2
 //   usa isso hoje; se alguma vier a usar, entra junto).
+//
+// Monstros do mapa (item 7, ver monsters.ts): cartas de recompensa de monstro
+// (CardInstanceV2.monster === true) não contam no limite de mão (balance.hand.max_size)
+// — ver nonMonsterHandSizeV2, usado em vez de tm.hand.length nas 4 checagens de limite.
 
 import { balance } from "../engine/data";
 import { basicTargetV2, getCardDefV2, getCardRankV2, getChampionDefV2 } from "./data";
@@ -57,6 +61,11 @@ export type ActionV2 =
 
 function fail(msg: string): never {
   throw new IllegalActionV2(msg);
+}
+
+/** Tamanho da mão pro limite (balance.hand.max_size): cartas de recompensa de monstro não contam (claude/monstros-mapa.md). */
+function nonMonsterHandSizeV2(hand: CardInstanceV2[]): number {
+  return hand.filter((c) => !c.monster).length;
 }
 
 /** Começa a partida: primeiro turno da equipe A. */
@@ -229,7 +238,7 @@ export function applyActionV2(game: GameStateV2, team: TeamId, a: ActionV2): voi
     }
     case "skipDraw": {
       if (t.phase !== "draw") fail("Não é a fase de compra");
-      if (tm.hand.length < balance.hand.max_size) fail("Só dá para não comprar com a mão cheia");
+      if (nonMonsterHandSizeV2(tm.hand) < balance.hand.max_size) fail("Só dá para não comprar com a mão cheia");
       logV2(game, `Equipe ${team} não compra carta (mão cheia)`);
       gainTurnManaV2(game, team);
       startAct(game);
@@ -281,12 +290,12 @@ export function applyActionV2(game: GameStateV2, team: TeamId, a: ActionV2): voi
       if (!card) fail("Carta inválida para descarte");
       tm.hand = tm.hand.filter((c) => c.uid !== a.card);
       discardCardV2(game, card);
-      if (tm.hand.length <= balance.hand.max_size) finishTurn(game);
+      if (nonMonsterHandSizeV2(tm.hand) <= balance.hand.max_size) finishTurn(game);
       return;
     }
     case "end": {
       if (t.phase !== "act") fail("Não é a fase de ação");
-      if (tm.hand.length > balance.hand.max_size) {
+      if (nonMonsterHandSizeV2(tm.hand) > balance.hand.max_size) {
         t.phase = "discard";
         return;
       }
@@ -331,7 +340,7 @@ export function legalActionsV2(game: GameStateV2, team: TeamId): ActionV2[] {
   switch (t.phase) {
     case "draw":
       for (const c of tm.champions) if (c.alive && deckSizeV2(game, c.uid) > 0) out.push({ type: "draw", champion: c.uid });
-      if (tm.hand.length >= balance.hand.max_size) out.push({ type: "skipDraw" });
+      if (nonMonsterHandSizeV2(tm.hand) >= balance.hand.max_size) out.push({ type: "skipDraw" });
       break;
     case "act": {
       for (const c of tm.champions) {

@@ -33,6 +33,12 @@ export function computeDamageV2(attacker: ChampionStateV2 | null, target: Champi
   }
   let total = base + bonus;
 
+  // % de dano permanente (recompensa de monstro do mapa — ver monsters.ts). Aplicado
+  // antes do multiplicador x1,5 dos campeões, separado por ser uma fonte diferente de bônus.
+  if (attacker?.permanentDamageBonusPercent) {
+    total = roundMultiplied(total * (1 + attacker.permanentDamageBonusPercent / 100));
+  }
+
   const champDamageMult = balance.damage.champion_damage_multiplier ?? 1;
   if (champDamageMult !== 1) total = roundMultiplied(total * champDamageMult);
 
