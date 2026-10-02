@@ -15,6 +15,7 @@ import { allChampionsV2, type ChampionStateV2, type GameStateV2 } from "./state"
 import { dealDamageV2, type DamageOptsV2 } from "./damage";
 import { addStatus, heal, removeNegativeStatuses, removePositiveStatuses, removeStatus, statusAmount } from "./status";
 import { forcedMove, pullChampion, pushChampion, teleportChampion } from "./movement";
+import { championsInRadius } from "./targeting";
 
 /** Status sem duração natural — persiste até ser consumido/removido (pilhas de veneno). */
 const PERSISTENT_REMAINING = 999;
@@ -55,19 +56,64 @@ export interface EffectContextV2 {
    * applyEffectV2 até a camada de "jogar carta" existir de verdade.
    */
   targetCell?: Hex;
+  /**
+   * Alcance resolvido da carta no rank escolhido (com bônus já somados) —
+   * só usado por efeitos com `all_enemies_in_range`/`all_poisoned_enemies`
+   * (Praga em Massa, Colapso Tóxico etc. do Thorne), que afetam todo mundo
+   * dentro do alcance da carta em vez de um alvo escolhido. Preenchida por
+   * quem chama applyEffectV2 até a camada de "jogar carta" existir de verdade.
+   */
+  rangeForAll?: number;
 }
 
-/** `damage`: causa dano a cada alvo. Devolve o resultado por alvo (uid -> dano final). */
+/**
+ * Quem está a até `radius` casas de quem usou a carta (área ao redor de si
+ * mesmo — Nova de Fogo, Grito de Guerra). [PADRÃO]: não inclui o próprio
+ * atacante (o "around_self" é lido como "nos outros ao redor", não em si
+ * mesmo) — revisar se o dono do projeto quiser que também se afete.
+ */
+function resolveAroundSelf(ctx: EffectContextV2, effect: Effect): ChampionStateV2[] {
+  if (!ctx.attacker) return [];
+  const radius = effect.radius ?? effect.area_radius ?? 0;
+  return championsInRadius(ctx.game, ctx.attacker.pos, radius, { excludeUid: ctx.attacker.uid });
+}
+
+/** Todo inimigo vivo a até `ctx.rangeForAll` casas de quem usou a carta. */
+function resolveAllEnemiesInRange(ctx: EffectContextV2): ChampionStateV2[] {
+  if (!ctx.attacker || ctx.rangeForAll === undefined) return [];
+  return championsInRadius(ctx.game, ctx.attacker.pos, ctx.rangeForAll, { excludeUid: ctx.attacker.uid }).filter(
+    (c) => c.team !== ctx.attacker!.team,
+  );
+}
+
+/** Todo inimigo vivo e COM pilhas de veneno a até `ctx.rangeForAll` casas de quem usou a carta. */
+function resolveAllPoisonedEnemiesInRange(ctx: EffectContextV2): ChampionStateV2[] {
+  return resolveAllEnemiesInRange(ctx).filter((c) => statusAmount(c, "venom_stacks") > 0);
+}
+
+/**
+ * `damage`: causa dano a cada alvo. Devolve o resultado por alvo (uid -> dano
+ * final). Com `around_self` (Nova de Fogo, Golpe do Titã), ignora `targets` e
+ * acerta todo mundo (aliado incluso — fogo amigo existe) ao redor de quem usou
+ * a carta, raio `effect.radius`.
+ */
 export function applyDamage(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): Record<string, number> {
   const opts: DamageOptsV2 = {
     ignoreDefense: effect.ignore_defense,
     ignoreShield: effect.ignore_shield,
   };
+  const actualTargets = effect.around_self ? resolveAroundSelf(ctx, effect) : targets;
   const out: Record<string, number> = {};
-  for (const target of targets) {
+  for (const target of actualTargets) {
     out[target.uid] = dealDamageV2(ctx.attacker, target, effect.amount ?? 0, opts).final;
   }
   return out;
+}
+
+/** `self_damage`: o próprio dono da carta perde vida (custo do efeito, ignora defesa/escudo). */
+export function applySelfDamage(ctx: EffectContextV2, effect: Effect): number {
+  if (!ctx.attacker) return 0;
+  return dealDamageV2(null, ctx.attacker, effect.amount ?? 0, { ignoreDefense: true, ignoreShield: true }).final;
 }
 
 function durationFromEffect(effect: Effect): { unit: "rounds" | "champion_turns"; value: number } {
@@ -85,6 +131,11 @@ export function applyStatus(ctx: EffectContextV2, effect: Effect, targets: Champ
       negative,
     });
   }
+}
+
+/** `apply_status_around_self`: aplica o status em todo mundo ao redor de quem usou a carta (Grito de Guerra). */
+export function applyStatusAroundSelf(ctx: EffectContextV2, effect: Effect): void {
+  applyStatus(ctx, effect, resolveAroundSelf(ctx, effect));
 }
 
 /**
@@ -159,7 +210,8 @@ export function applyPersonalMana(effect: Effect, targets: ChampionStateV2[], si
 /** `push`: afasta cada alvo do atacante (ou de quem usou a carta) por `distance` casas. */
 export function applyPush(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
   if (!ctx.attacker) return;
-  for (const target of targets) pushChampion(ctx.game, target, ctx.attacker.pos, effect.distance ?? 0);
+  const actualTargets = effect.area_radius !== undefined ? resolveAroundSelf(ctx, effect) : targets;
+  for (const target of actualTargets) pushChampion(ctx.game, target, ctx.attacker.pos, effect.distance ?? 0);
 }
 
 /** `pull`: aproxima cada alvo de quem usou a carta por `distance` casas. */
@@ -192,7 +244,10 @@ export function applyTeleportSelf(ctx: EffectContextV2, _effect: Effect, targets
 export function applyVenomStacks(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
   const gain = effect.amount ?? 1;
   const max = effect.max_stacks ?? Infinity;
-  for (const target of targets) {
+  let actualTargets = targets;
+  if (effect.all_enemies_in_range) actualTargets = resolveAllEnemiesInRange(ctx);
+  else if (effect.radius !== undefined && ctx.targetCell) actualTargets = championsInRadius(ctx.game, ctx.targetCell, effect.radius);
+  for (const target of actualTargets) {
     const current = statusAmount(target, "venom_stacks");
     if (current > 0) removeStatus(target, "venom_stacks");
     const next = Math.min(max, current + gain);
@@ -202,8 +257,9 @@ export function applyVenomStacks(ctx: EffectContextV2, effect: Effect, targets: 
 
 /** `detonate_venom_stacks`: consome as pilhas do alvo, causando dano proporcional. */
 export function applyDetonateVenomStacks(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): Record<string, number> {
+  const actualTargets = effect.all_poisoned_enemies ? resolveAllPoisonedEnemiesInRange(ctx) : targets;
   const out: Record<string, number> = {};
-  for (const target of targets) {
+  for (const target of actualTargets) {
     const stacks = statusAmount(target, "venom_stacks");
     removeStatus(target, "venom_stacks");
     out[target.uid] = stacks > 0 ? dealDamageV2(ctx.attacker, target, stacks * (effect.damage_per_stack ?? 0)).final : 0;
@@ -303,6 +359,8 @@ const DISPATCH: Record<string, (ctx: EffectContextV2, effect: Effect, targets: C
   heal_over_time: (ctx, effect, targets) => applyHealOverTime(ctx, effect, targets),
   ground_fire: (ctx, effect) => applyGroundFire(ctx, effect),
   venom_zone: (ctx, effect) => applyVenomZone(ctx, effect),
+  apply_status_around_self: (ctx, effect) => applyStatusAroundSelf(ctx, effect),
+  self_damage: (ctx, effect) => applySelfDamage(ctx, effect) as unknown as void,
 };
 
 /** Tipos de efeito que já têm execução real no motor v2 (os outros ainda só existem como dado). */

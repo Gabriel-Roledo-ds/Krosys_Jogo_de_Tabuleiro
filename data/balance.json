@@ -134,6 +134,14 @@
     "shared_by_team": true,
     "unlimited_card_plays": true
   },
+  "mana_v2": {
+    "start": 0,
+    "gain_per_turn": 3,
+    "cap": 15,
+    "shared_by_team": true,
+    "unlimited_card_plays": true,
+    "_notes": "Roster v2 (regras-e-decisoes.md secao 19): mesmo ganho por turno do MVP, teto maior (15 em vez de 10) por causa do custo das cartas-climax (13/14/15) e dos ranks mais caros."
+  },
   "casting": {
     "any_champion_can_cast_cards": true,
     "requires_team_mana": true,
