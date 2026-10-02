@@ -16,6 +16,7 @@ import { getChampionV2, type GameStateV2, type TeamId } from "../engine-v2/state
 import { canPayV2 } from "../engine-v2/mana";
 import { movementBudgetV2, reachableMap } from "../engine-v2/movement";
 import { rankRangeV2, resurrectBlockedV2 } from "../engine-v2/cardPlay";
+import { cannotBasicV2, cannotCastV2 } from "../engine-v2/turn";
 import { enumerateTargetsV2 } from "../engine-v2/targeting";
 import { balance } from "../engine/data";
 
@@ -72,7 +73,7 @@ export function viewForV2(s: GameStateV2, me: TeamId | null): unknown {
       }
       const okRanks: number[] = [];
       const canPlayNow = (inWindow && def.fast) || myAct;
-      if (owner && owner.alive && canPlayNow) {
+      if (owner && owner.alive && canPlayNow && !cannotCastV2(owner)) {
         for (const rank of def.ranks) {
           if (!canPayV2(s, me, rank.cost)) continue;
           if (resurrectBlockedV2(s, me, rank.effects)) continue;
@@ -103,7 +104,7 @@ export function viewForV2(s: GameStateV2, me: TeamId | null): unknown {
           const budget = active ? t.movementLeft : movementBudgetV2(c, t.die);
           reach[c.uid] = budget <= 0 ? [] : [...reachableMap(s, c, budget).values()].map((r) => ({ pos: r.pos, cost: r.cost }));
         }
-        if (!t.basicUsed.includes(c.uid)) {
+        if (!t.basicUsed.includes(c.uid) && !cannotBasicV2(c)) {
           const bdef = getChampionDefV2(c.defId).basic;
           const target = basicTargetV2(bdef);
           basics[c.uid] = { name: bdef.name, target, range: bdef.range, targets: enumerateTargetsV2(s, c, { range: bdef.range, target }, 0, 300) };

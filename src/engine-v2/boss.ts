@@ -13,9 +13,11 @@
 //   ver MinionStateV2 em state.ts: só hp/dano/posição, sólido, alvo "enemy"
 //   único como o boss/monstro do mapa; adicionado numa sessão seguinte, ao
 //   ligar os bots v2, porque sem ele qualquer partida travava ao sacar
-//   "Prole". Lacaio ainda NÃO ataca sozinho quem chega adjacente — gap
-//   documentado em state.ts, igual qualquer coisa que dependa de um gancho de
-//   "pisar na casa" que o motor v2 não tem.
+//   "Prole". Lacaio ataca sozinho quem terminar um movimento voluntário
+//   adjacente a ele (attackChampionFromMinionV2 abaixo, chamado direto do case
+//   "move" de turn.ts) e pode expirar por rodada se o summon_minion que o
+//   criou tiver `duration` (roundsLeft, ver state.ts/tick.ts) — a Prole do
+//   boss não define duration, então continua só morrendo por dano.
 // - Ativação resolve IMEDIATAMENTE (sem passar pela pilha de respostas rápidas
 //   de turn.ts) — diferente do MVP, que empilha e deixa o jogador responder
 //   com carta rápida antes do boss agir. Ampliar isso é trabalho de integração
@@ -36,6 +38,7 @@ import { addStatus } from "./status";
 import { pushChampion } from "./movement";
 import { discardCardV2 } from "./deck";
 import { isFreeCellV2 } from "./world";
+import { dealDamageV2 } from "./damage";
 
 /** uid reservado pro boss nos targets de carta/básica (ver cardPlay.ts/targeting.ts). */
 export const BOSS_UID_V2 = "boss";
@@ -144,7 +147,8 @@ function applyBossEffectsV2(s: GameStateV2, card: BossCardDef, target: ChampionS
       case "summon_minion": {
         const cell = hexNeighbors(target.pos).find((h) => isFreeCellV2(s, h));
         if (cell) {
-          s.minions.push({ uid: `minion-${s.nextId++}`, hp: e.hp ?? 1, maxHp: e.hp ?? 1, damage: e.damage ?? 0, pos: cell, alive: true });
+          const roundsLeft = e.duration?.unit === "rounds" ? e.duration.value : undefined;
+          s.minions.push({ uid: `minion-${s.nextId++}`, hp: e.hp ?? 1, maxHp: e.hp ?? 1, damage: e.damage ?? 0, pos: cell, alive: true, roundsLeft });
           logV2(s, "Um lacaio do Boss surge");
         } else {
           logV2(s, "Prole: sem casa livre adjacente, lacaio não surge");
@@ -231,6 +235,29 @@ export function attackMinionV2(s: GameStateV2, attacker: ChampionStateV2, minion
     logV2(s, "Lacaio do Boss é destruído");
   }
   return final;
+}
+
+/**
+ * Todo lacaio vivo adjacente a `champion` ataca de volta — chamado só depois
+ * de um movimento VOLUNTÁRIO (case "move" de turn.ts), nunca por empurrão
+ * (pushChampion), mesma regra do MVP (hazards.ts: `if (opts.voluntary) ...`).
+ * Usa dealDamageV2 com skipChampionMultiplier porque é dano de monstro, não
+ * de campeão nem "do mundo" — mesma convenção de dealBossDamageV2 acima
+ * (balance.damage.champion_damage_multiplier só vale pra "champion"/"world"
+ * no MVP, nunca pra "monster", ver src/engine/damage.ts damageMultipliers).
+ * Defesa do campeão e escudo ainda valem (passa pelo pipeline de
+ * dealDamageV2); a morte é resolvida depois, em resolveDeathsV2, igual a
+ * qualquer outro dano no motor v2.
+ */
+export function minionsAttackAdjacentV2(s: GameStateV2, champion: ChampionStateV2): void {
+  if (!champion.alive) return;
+  for (const m of s.minions) {
+    if (!m.alive || !hexAdjacent(m.pos, champion.pos)) continue;
+    const { final } = dealDamageV2(null, champion, m.damage, { skipChampionMultiplier: true });
+    if (final > 0) {
+      logV2(s, `Lacaio do Boss ataca ${champion.defId} (${champion.team}): ${final} de dano (${Math.max(0, champion.hp)}/${champion.maxHp} PV)`);
+    }
+  }
 }
 
 /** Dano do boss num campeão (bônus da Fúria somado antes da defesa dele). */

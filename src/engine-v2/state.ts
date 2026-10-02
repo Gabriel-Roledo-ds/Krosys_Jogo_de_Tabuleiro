@@ -170,10 +170,14 @@ export interface BossStateV2 {
 /**
  * Lacaio do boss ("Prole", summon_minion) — versão mínima do MinionState do
  * MVP (src/engine/state.ts): só HP/dano/posição, sólido, alvo "enemy" único
- * (uid "minion-N", ver boss.ts/targeting.ts/cardPlay.ts). Diferente do MVP,
- * ainda NÃO ataca sozinho quem chega adjacente (`onLand`/hazards.ts no MVP) —
- * o motor v2 não tem gancho de "pisar na casa" pra nada ainda (ver KANBAN.md),
- * então essa parte fica pra quando esse gancho existir [PADRÃO, gap documentado].
+ * (uid "minion-N", ver boss.ts/targeting.ts/cardPlay.ts). Ataca sozinho quem
+ * terminar um movimento voluntário adjacente a ele (mesma regra do MVP,
+ * hazards.ts, mas sem o gancho genérico de "pisar na casa" — ligado direto no
+ * case "move" de turn.ts, já que é o único efeito de adjacência que o motor
+ * v2 precisa por enquanto). `roundsLeft` é opcional: só é definido quando o
+ * efeito summon_minion que o criou tiver `duration` (unit "rounds") — a Prole
+ * do boss (data/boss.json) não define duration, então o lacaio dela continua
+ * sem expirar por tempo, só morrendo por dano (boss.ts/attackMinionV2).
  */
 export interface MinionStateV2 {
   uid: string;
@@ -182,6 +186,7 @@ export interface MinionStateV2 {
   damage: number;
   pos: Hex;
   alive: boolean;
+  roundsLeft?: number;
 }
 
 export interface TeamStateV2 {

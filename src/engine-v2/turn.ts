@@ -10,9 +10,6 @@
 //   resolve na hora — não passa pela pilha de respostas rápidas (um jogador
 //   não pode responder à ativação do boss com uma carta rápida ainda, ver
 //   boss.ts).
-// - Silêncio/atordoamento não bloqueiam cartas/básicas aqui: esses status já
-//   existem no catálogo de effects.ts mas ainda não há a checagem
-//   cannotCast/cannotBasic do MVP ligada ao turno v2.
 // - Sem efeitos de "pisar na casa" (onLand/hazards) — paredes/estruturas
 //   fixas do pós-MVP ainda não têm esse gancho no motor v2.
 // - Sem "Passo Ágil"/bônus de mana por distância andada (nenhuma carta v2
@@ -28,7 +25,7 @@ import type { Hex } from "../design/hexGrid";
 import { hexKey } from "../design/hexGrid";
 import { discardCardV2, deckSizeV2, drawFromV2 } from "./deck";
 import { resolveDeathsV2, returnDeadChampionsV2 } from "./death";
-import { activateBossV2 } from "./boss";
+import { activateBossV2, minionsAttackAdjacentV2 } from "./boss";
 import { IllegalActionV2, rankRangeV2, resolveBasicEffectsV2, resolveCardEffectsV2, resurrectBlockedV2 } from "./cardPlay";
 
 export { IllegalActionV2 };
@@ -62,6 +59,12 @@ export type ActionV2 =
 function fail(msg: string): never {
   throw new IllegalActionV2(msg);
 }
+
+/** Campeão silenciado ou atordoado (efeito que já vale, não o aplicado neste turno) não usa cartas — mesma convenção do MVP (src/engine/turn.ts). */
+export function cannotCastV2(c: ChampionStateV2): boolean {
+  return c.statuses.some((x) => (x.status === "silenced" || x.status === "stunned") && !x.fresh);
+}
+export const cannotBasicV2 = (c: ChampionStateV2): boolean => c.statuses.some((x) => x.status === "stunned" && !x.fresh);
 
 /** Tamanho da mão pro limite (balance.hand.max_size): cartas de recompensa de monstro não contam (claude/monstros-mapa.md). */
 function nonMonsterHandSizeV2(hand: CardInstanceV2[]): number {
@@ -119,7 +122,7 @@ export function fastPlaysV2(game: GameStateV2, team: TeamId, cap = 20): { card: 
     const def = getCardDefV2(card.cardId);
     if (!def.fast) continue;
     const owner = getChampionV2(game, card.owner);
-    if (!owner.alive) continue;
+    if (!owner.alive || cannotCastV2(owner)) continue;
     for (const rank of def.ranks) {
       if (out.length >= cap) break;
       if (!canPayV2(game, team, rank.cost)) continue;
@@ -186,6 +189,7 @@ function commitCardV2(game: GameStateV2, team: TeamId, cardUid: string, rankNumb
   if (isResponse && !def.fast) fail("Só cartas rápidas respondem");
   const owner = getChampionV2(game, cardInstance.owner);
   if (!owner.alive) fail("O dono da carta não está em campo");
+  if (cannotCastV2(owner)) fail("O campeão não pode usar cartas agora");
   const rank = getCardRankV2(def, rankNumber);
 
   const err = validateTargetV2(game, owner, { range: rankRangeV2(rank), target: def.target }, t);
@@ -266,6 +270,8 @@ export function applyActionV2(game: GameStateV2, team: TeamId, a: ActionV2): voi
       t.movementLeft -= hit.cost;
       c.pos = { ...a.to };
       logV2(game, `${c.defId} (${c.team}) anda até (${a.to.q},${a.to.r})`);
+      minionsAttackAdjacentV2(game, c);
+      resolveDeathsV2(game, team);
       return;
     }
     case "play":
@@ -276,6 +282,7 @@ export function applyActionV2(game: GameStateV2, team: TeamId, a: ActionV2): voi
       const c = a.champion ? getChampionV2(game, a.champion) : t.main ? getChampionV2(game, t.main) : fail("Escolha um campeão para a básica");
       if (c.team !== team || !c.alive) fail("Campeão inválido");
       if (t.basicUsed.includes(c.uid)) fail("Esse campeão já usou a habilidade básica neste turno");
+      if (cannotBasicV2(c)) fail("O campeão está atordoado");
       const basic = getChampionDefV2(c.defId).basic;
       const err = validateTargetV2(game, c, { range: basic.range, target: basicTargetV2(basic) }, a.target);
       if (err) fail(err);
@@ -354,7 +361,7 @@ export function legalActionsV2(game: GameStateV2, team: TeamId): ActionV2[] {
         if (!active) out.push({ type: "stay", champion: c.uid });
       }
       for (const c of tm.champions) {
-        if (!c.alive || t.basicUsed.includes(c.uid)) continue;
+        if (!c.alive || t.basicUsed.includes(c.uid) || cannotBasicV2(c)) continue;
         const basic = getChampionDefV2(c.defId).basic;
         const target = basicTargetV2(basic);
         for (const tgt of enumerateTargetsV2(game, c, { range: basic.range, target })) out.push({ type: "basic", target: tgt, champion: c.uid });
@@ -362,7 +369,7 @@ export function legalActionsV2(game: GameStateV2, team: TeamId): ActionV2[] {
       for (const card of tm.hand) {
         const def = getCardDefV2(card.cardId);
         const owner = getChampionV2(game, card.owner);
-        if (!owner.alive) continue;
+        if (!owner.alive || cannotCastV2(owner)) continue;
         for (const rank of def.ranks) {
           if (!canPayV2(game, team, rank.cost)) continue;
           if (resurrectBlockedV2(game, team, rank.effects)) continue;

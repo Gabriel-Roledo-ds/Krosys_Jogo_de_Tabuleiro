@@ -6,7 +6,8 @@
 
 import { describe, it, expect } from "vitest";
 import { createGameV2, type CardInstanceV2, type GameStateV2, type TeamId } from "../src/engine-v2/state";
-import { applyActionV2, startGameV2, IllegalActionV2 } from "../src/engine-v2/turn";
+import { applyActionV2, cannotBasicV2, cannotCastV2, legalActionsV2, startGameV2, IllegalActionV2 } from "../src/engine-v2/turn";
+import { addStatus } from "../src/engine-v2/status";
 
 function putCardInHand(game: GameStateV2, team: TeamId, ownerUid: string, cardId: string): CardInstanceV2 {
   const card: CardInstanceV2 = { uid: `test#${cardId}#${ownerUid}#${Math.random()}`, cardId, owner: ownerUid };
@@ -169,5 +170,65 @@ describe("fim de turno: alternância A/B e rodada", () => {
     const extra = game.teams.A.hand[0];
     applyActionV2(game, "A", { type: "discard", card: extra.uid });
     expect(game.turn.team).toBe("B"); // mão voltou a 7, turno passou
+  });
+});
+
+describe("silêncio e atordoamento bloqueiam cartas/básica (achado de escopo item 4, resolvido)", () => {
+  it("cannotCastV2 detecta silenced e stunned ainda ativos; cannotBasicV2 só stunned; status 'fresh' não bloqueia", () => {
+    const game = createGameV2(1);
+    const c = game.teams.A.champions[0];
+    expect(cannotCastV2(c)).toBe(false);
+    expect(cannotBasicV2(c)).toBe(false);
+
+    addStatus(c, 1, "silenced", "rounds", 2, { negative: true });
+    expect(cannotCastV2(c)).toBe(true);
+    expect(cannotBasicV2(c)).toBe(false); // silêncio só bloqueia cartas, não a básica
+
+    c.statuses = [];
+    addStatus(c, 2, "stunned", "rounds", 2, { negative: true });
+    expect(cannotCastV2(c)).toBe(true);
+    expect(cannotBasicV2(c)).toBe(true);
+
+    c.statuses[0].fresh = true; // aplicado neste turno: só vale a partir do próximo
+    expect(cannotCastV2(c)).toBe(false);
+    expect(cannotBasicV2(c)).toBe(false);
+  });
+
+  it("legalActionsV2 não lista básica de campeão atordoado, nem carta de campeão silenciado", () => {
+    const game = createGameV2(1);
+    game.turn.phase = "act";
+    const niara = game.teams.A.champions[0];
+    const card = putCardInHand(game, "A", niara.uid, "niara_marca_predador");
+    addStatus(niara, 1, "stunned", "rounds", 2, { negative: true });
+    let actions = legalActionsV2(game, "A");
+    expect(actions.some((a) => a.type === "basic" && a.champion === niara.uid)).toBe(false);
+    // atordoado também bloqueia cartas (stunned conta pra cannotCastV2)
+    expect(actions.some((a) => a.type === "play" && a.card === card.uid)).toBe(false);
+
+    niara.statuses = [];
+    addStatus(niara, 2, "silenced", "rounds", 2, { negative: true });
+    actions = legalActionsV2(game, "A");
+    expect(actions.some((a) => a.type === "play" && a.card === card.uid)).toBe(false);
+    // silêncio não bloqueia a básica
+    expect(actions.some((a) => a.type === "basic" && a.champion === niara.uid)).toBe(true);
+  });
+
+  it("jogar carta de campeão silenciado lança IllegalActionV2", () => {
+    const game = createGameV2(1);
+    game.turn.phase = "act";
+    const niara = game.teams.A.champions[0];
+    const foe = game.teams.B.champions[0];
+    const card = putCardInHand(game, "A", niara.uid, "niara_marca_predador");
+    addStatus(niara, 1, "silenced", "rounds", 2, { negative: true });
+    expect(() => applyActionV2(game, "A", { type: "play", card: card.uid, rank: 1, target: { uid: foe.uid } })).toThrow(/não pode usar cartas/);
+  });
+
+  it("usar a básica de campeão atordoado lança IllegalActionV2", () => {
+    const game = createGameV2(1);
+    game.turn.phase = "act";
+    const niara = game.teams.A.champions[0];
+    const foe = game.teams.B.champions[0];
+    addStatus(niara, 1, "stunned", "rounds", 2, { negative: true });
+    expect(() => applyActionV2(game, "A", { type: "basic", champion: niara.uid, target: { uid: foe.uid } })).toThrow(/atordoado/);
   });
 });

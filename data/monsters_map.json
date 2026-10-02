@@ -342,8 +342,8 @@
       "reaction": {
         "kind": "choice",
         "options": [
-          { "name": "Olhar Petrificante", "range": 2, "effects": [{ "type": "apply_status", "status": "root", "duration": { "unit": "champion_turns", "value": 1 }, "control": true, "target": "attacker" }] },
-          { "name": "Mordida Pétrea", "range": 1, "effects": [{ "type": "damage", "amount": 5 }] }
+          { "name": "Mordida Pétrea", "range": 1, "effects": [{ "type": "damage", "amount": 5 }] },
+          { "name": "Olhar Petrificante", "range": 2, "effects": [{ "type": "apply_status", "status": "root", "duration": { "unit": "champion_turns", "value": 1 }, "control": true, "target": "attacker" }] }
         ]
       },
       "reward_primary": { "type": "stat_permanent", "stat": "defense", "curve": "full" },

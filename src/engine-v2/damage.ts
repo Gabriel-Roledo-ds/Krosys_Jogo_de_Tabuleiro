@@ -19,6 +19,16 @@ export interface DamageOptsV2 {
   dot?: boolean;
   /** bônus fixo extra, já calculado por quem chamou (ex. marca, carta). */
   bonus?: number;
+  /**
+   * Pula o multiplicador balance.damage.champion_damage_multiplier mesmo com
+   * `attacker` null. Convenção herdada do MVP (src/engine/damage.ts,
+   * damageMultipliers): o x1,5 só vale pra fontes "champion" ou "world"
+   * (DamageSource.kind), nunca pra "monster" — lacaio do boss (monsters.ts)
+   * é dano de monstro, não de campeão nem "do mundo", então não leva o bônus.
+   * Dano de área do chão (ground_fire/venom, tick.ts) continua sem essa opção
+   * porque é "world" e deve manter o x1,5, igual ao MVP.
+   */
+  skipChampionMultiplier?: boolean;
 }
 
 const roundMultiplied = (x: number): number => Math.floor(x + 0.5 + 1e-9);
@@ -39,7 +49,7 @@ export function computeDamageV2(attacker: ChampionStateV2 | null, target: Champi
     total = roundMultiplied(total * (1 + attacker.permanentDamageBonusPercent / 100));
   }
 
-  const champDamageMult = balance.damage.champion_damage_multiplier ?? 1;
+  const champDamageMult = opts.skipChampionMultiplier ? 1 : balance.damage.champion_damage_multiplier ?? 1;
   if (champDamageMult !== 1) total = roundMultiplied(total * champDamageMult);
 
   const ignoresDefense = opts.dot || opts.ignoreDefense;

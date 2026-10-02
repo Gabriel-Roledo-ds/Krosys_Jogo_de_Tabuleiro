@@ -128,14 +128,14 @@ describe("reação ao ataque — postura decide a opção, dispara ANTES do dano
     expect(attacker.statuses.some((s) => s.status === "poison")).toBe(true);
   });
 
-  it("ACHADO: basilisco_pedra (agressiva) está com as opções na ordem errada nos dados — reage com controle, não dano (ver monsters.ts, cabeçalho)", () => {
+  it("basilisco_pedra (agressiva) reage com dano (Mordida Pétrea) — achado de dado corrigido (02/10/2026, ordem das opções invertida em data/monsters_map.json)", () => {
     const game = createGameV2(1);
     const attacker = game.teams.A.champions[0];
     const m = findByType(game, "basilisco_pedra");
     const startHp = attacker.hp;
     reactMonsterV2(game, m, attacker);
-    expect(attacker.hp).toBe(startHp); // Olhar Petrificante não causa dano
-    expect(attacker.statuses.some((s) => s.status === "root")).toBe(true);
+    expect(attacker.hp).toBeLessThan(startHp); // Mordida Pétrea causa dano
+    expect(attacker.statuses.some((s) => s.status === "root")).toBe(false);
   });
 
   it("efeito de reação não implementado (move_self_away_from_target/create_wall/summon_minion) não lança erro, só loga", () => {

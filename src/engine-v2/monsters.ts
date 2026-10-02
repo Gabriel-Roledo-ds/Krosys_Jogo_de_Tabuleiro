@@ -26,13 +26,13 @@
 //   "encurralada contra parede/borda") — gap documentado, calibrar quando o
 //   posicionamento de monstros estiver testado em jogo real.
 //
-// ACHADO (não corrigido aqui, só registrado — ver regras-e-decisoes.md): em
-// data/monsters_map.json, basilisco_pedra (postura "agressiva") tem as opções
-// na ordem ['Olhar Petrificante' (controle, sem dano), 'Mordida Pétrea' (dano)],
-// ao contrário da convenção documentada em monsterReaction.ts ("a 1ª opção
-// listada é a de dano/agressiva"). Resultado: hoje um basilisco agressivo reage
-// com controle, não dano — comportamento no motor espelha fielmente os dados,
-// o problema é no dado em si.
+// ACHADO DE DADO CORRIGIDO (02/10/2026): em data/monsters_map.json,
+// basilisco_pedra (postura "agressiva") tinha as opções na ordem ['Olhar
+// Petrificante' (controle, sem dano), 'Mordida Pétrea' (dano)], ao contrário
+// da convenção documentada em monsterReaction.ts ("a 1ª opção listada é a de
+// dano/agressiva") — um basilisco agressivo reagia com controle, não dano.
+// Ordem invertida nos dados (Mordida Pétrea primeiro); ver
+// tests/engine-v2-monsters.test.ts.
 
 import { balance } from "../engine/data";
 import {
