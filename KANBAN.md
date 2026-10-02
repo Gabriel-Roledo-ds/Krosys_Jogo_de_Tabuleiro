@@ -25,8 +25,10 @@ Sem prazos. Uma etapa só começa quando a anterior está pronta. Definição de
   - [feito] fichas-campeoes.md (10 campeões v2) convertido pra data/champions_v2.json + data/cards_v2.json
   - [feito] testes automáticos da regra de reação com posições fictícias (src/design/monsterReaction.ts, tests/monster-reaction.test.ts, tests/data-v2.test.ts — 28 testes)
   - [feito] cartas rápidas faltando em 7 dos 10 campeões v2 — cada um ganhou 1-2 cartas rápidas (fichas-campeoes.md, data/cards_v2.json, regras-e-decisoes.md §6/§19)
-  - tabuleiro hexagonal
-  - ligar monsters_map.json/champions v2 ao motor
+  - [feito] matemática do tabuleiro hexagonal (coordenadas axiais, distância, linha de visão) e visão limitada por campeão bloqueada por obstáculo, design-only e testados (src/design/hexGrid.ts, src/design/fieldOfVision.ts, tests/hex-grid.test.ts, tests/field-of-vision.test.ts — 20 testes; regras-e-decisoes.md §20)
+  - [pendente] formato/tamanho definitivo do hexágono (dono do projeto levantando referências) e raio de visão por campeão
+  - [pendente] direção estética registrada em claude/estetica-visual.md — escolher pacotes de assets gratuitos quando chegar a etapa de arte
+  - ligar monsters_map.json/champions v2/hexGrid/fieldOfVision ao motor
 
 ## Pronto
 
