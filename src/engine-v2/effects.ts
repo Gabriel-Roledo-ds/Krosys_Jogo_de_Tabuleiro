@@ -10,7 +10,7 @@
 // carta). Então as funções aqui recebem os campeões-alvo já escolhidos.
 
 import type { Effect } from "../engine/data";
-import type { Hex } from "../design/hexGrid";
+import { sameHex, type Hex } from "../design/hexGrid";
 import { allChampionsV2, type ChampionStateV2, type GameStateV2 } from "./state";
 import { dealDamageV2, type DamageOptsV2 } from "./damage";
 import { addStatus, heal, removeNegativeStatuses, removePositiveStatuses, removeStatus, statusAmount } from "./status";
@@ -48,6 +48,13 @@ export interface EffectContextV2 {
   moveDest?: Hex;
   /** Direção escolhida pelo jogador pra `move_self` quando o target é "direction". */
   moveDir?: Hex;
+  /**
+   * Casa-centro escolhida pelo jogador pra efeitos de alvo "cell" que criam
+   * algo no chão (ground_fire, venom_zone) — mesma ideia de moveDest, mas
+   * pros efeitos que não movem ninguém. Preenchida por quem chama
+   * applyEffectV2 até a camada de "jogar carta" existir de verdade.
+   */
+  targetCell?: Hex;
 }
 
 /** `damage`: causa dano a cada alvo. Devolve o resultado por alvo (uid -> dano final). */
@@ -233,6 +240,45 @@ export function linkedPartnerOf(c: ChampionStateV2): string | null {
   return c.statuses.find((s) => s.status === "link_heal" || s.status === "link_control")?.partner ?? null;
 }
 
+/**
+ * `ground_fire`: cria (ou renova, se já houver uma no mesmo centro e dono)
+ * uma área de fogo em `ctx.targetCell`, que causa `damage_per_round` por
+ * rodada a quem estiver dentro (resolvido no tick, ver tick.ts).
+ */
+export function applyGroundFire(ctx: EffectContextV2, effect: Effect): void {
+  if (!ctx.attacker || !ctx.targetCell) return;
+  const duration = durationFromEffect(effect);
+  ctx.game.ground = ctx.game.ground.filter((g) => !(g.kind === "fire" && sameHex(g.pos, ctx.targetCell!)));
+  ctx.game.ground.push({
+    id: ctx.nextId(),
+    kind: "fire",
+    pos: { ...ctx.targetCell },
+    radius: effect.radius ?? 0,
+    team: ctx.attacker.team,
+    remaining: duration.value,
+    damagePerRound: effect.damage_per_round,
+  });
+}
+
+/**
+ * `venom_zone`: cria uma área que aplica `stacks_per_round` pilhas de veneno
+ * por rodada a quem estiver dentro (resolvido no tick, ver tick.ts).
+ */
+export function applyVenomZone(ctx: EffectContextV2, effect: Effect): void {
+  if (!ctx.attacker || !ctx.targetCell) return;
+  const duration = durationFromEffect(effect);
+  ctx.game.ground = ctx.game.ground.filter((g) => !(g.kind === "venom" && sameHex(g.pos, ctx.targetCell!)));
+  ctx.game.ground.push({
+    id: ctx.nextId(),
+    kind: "venom",
+    pos: { ...ctx.targetCell },
+    radius: effect.radius ?? 0,
+    team: ctx.attacker.team,
+    remaining: duration.value,
+    stacksPerRound: effect.stacks_per_round,
+  });
+}
+
 const DISPATCH: Record<string, (ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]) => void> = {
   damage: (ctx, effect, targets) => applyDamage(ctx, effect, targets),
   apply_status: (ctx, effect, targets) => applyStatus(ctx, effect, targets),
@@ -255,6 +301,8 @@ const DISPATCH: Record<string, (ctx: EffectContextV2, effect: Effect, targets: C
   detonate_venom_stacks: (ctx, effect, targets) => applyDetonateVenomStacks(ctx, effect, targets) as unknown as void,
   link: (ctx, effect, targets) => applyLink(ctx, effect, targets),
   heal_over_time: (ctx, effect, targets) => applyHealOverTime(ctx, effect, targets),
+  ground_fire: (ctx, effect) => applyGroundFire(ctx, effect),
+  venom_zone: (ctx, effect) => applyVenomZone(ctx, effect),
 };
 
 /** Tipos de efeito que já têm execução real no motor v2 (os outros ainda só existem como dado). */

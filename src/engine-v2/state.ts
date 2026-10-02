@@ -52,6 +52,24 @@ export interface ChampionStateV2 {
   lastHitBy: { team: TeamId; champion: string } | null;
 }
 
+/**
+ * Efeito persistente no chão (fogo, veneno) — não pertence a nenhum campeão,
+ * fica na casa até expirar. Ver tick.ts (dano/veneno por rodada) e
+ * effects.ts (ground_fire/venom_zone criam essas entradas).
+ */
+export interface GroundEffectV2 {
+  id: number;
+  kind: "fire" | "venom";
+  pos: Hex;
+  radius: number;
+  team: TeamId;
+  remaining: number;
+  /** "fire": dano por rodada a quem estiver na área. */
+  damagePerRound?: number;
+  /** "venom": pilhas de veneno por rodada a quem estiver na área. */
+  stacksPerRound?: number;
+}
+
 export interface DeckStateV2 {
   draw: CardInstanceV2[];
   discard: CardInstanceV2[];
@@ -73,6 +91,7 @@ export interface GameStateV2 {
   nextId: number;
   rngState: number;
   log: string[];
+  ground: GroundEffectV2[];
 }
 
 const DEFAULT_TEAM_COMPOSITION: Record<TeamId, string[]> = {
@@ -148,6 +167,7 @@ export function createGameV2(seed: number, options: CreateGameV2Options = {}): G
     nextId: 1,
     rngState: holder.rngState,
     log: [],
+    ground: [],
   };
 }
 

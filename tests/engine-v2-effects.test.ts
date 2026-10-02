@@ -164,6 +164,6 @@ describe("grant_personal_mana / drain_personal_mana", () => {
 describe("applyEffectV2 — tipo desconhecido", () => {
   it("lança erro claro pra um tipo ainda não implementado", () => {
     const { target, ctx } = setup();
-    expect(() => applyEffectV2(ctx, { type: "venom_zone", radius: 2 }, [target])).toThrow(/não implementado/);
+    expect(() => applyEffectV2(ctx, { type: "venom_terrain", radius: 2 }, [target])).toThrow(/não implementado/);
   });
 });
