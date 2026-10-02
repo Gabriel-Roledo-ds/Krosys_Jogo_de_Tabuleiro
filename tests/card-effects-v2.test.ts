@@ -97,13 +97,16 @@ const KNOWN_EFFECT_TYPES = new Set([
   "heal_all_allies",
   "remove_negative_effects_all_allies",
   "shield_all_allies",
+  "reflect_absorbed_damage",
+  "taunt_area",
+  "block_ranged_attacks",
 ]);
 
 const convertedCards = cardsV2.filter((c): c is typeof c & { target: string } => "target" in c);
 
 describe("effects estruturado das cartas v2 (parcial — campeão por campeão)", () => {
-  it("Niara, Borak, Ignira, Vextra, Thorne e Selene já estão convertidos (progresso mínimo)", () => {
-    for (const owner of ["niara", "borak", "ignira", "vextra", "thorne", "selene"]) {
+  it("Niara, Borak, Ignira, Vextra, Thorne, Selene e Varek já estão convertidos (progresso mínimo)", () => {
+    for (const owner of ["niara", "borak", "ignira", "vextra", "thorne", "selene", "varek"]) {
       expect(convertedCards.filter((c) => c.owner === owner), owner).toHaveLength(12);
     }
   });

@@ -3754,21 +3754,41 @@
     "rank": 1,
     "cost": 1,
     "range": "self",
-    "text": "Escudo 5, 1m"
+    "text": "Escudo 5, 1m",
+    "effects": [
+     {
+      "type": "shield",
+      "amount": 5
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 2,
     "range": "self",
-    "text": "Escudo 7, 2m"
+    "text": "Escudo 7, 2m",
+    "effects": [
+     {
+      "type": "shield",
+      "amount": 7
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 3,
     "range": "self",
-    "text": "Escudo 10, 3m — reflete 2"
+    "text": "Escudo 10, 3m — reflete 2",
+    "effects": [
+     {
+      "type": "shield",
+      "amount": 10,
+      "reflect_amount": 2
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "varek_provocar",
@@ -3782,21 +3802,53 @@
     "rank": 1,
     "cost": 2,
     "range": 3,
-    "text": "2m, alc.3, 1 turno"
+    "text": "2m, alc.3, 1 turno",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "taunted",
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 3,
     "range": 4,
-    "text": "3m, alc.4"
+    "text": "3m, alc.4",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "taunted",
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      },
+      "assumed_duration": true
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": 5,
-    "text": "4m, alc.5, 2 turnos"
+    "text": "4m, alc.5, 2 turnos",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "taunted",
+      "duration": {
+       "unit": "champion_turns",
+       "value": 2
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "varek_muralha_viva",
@@ -3810,21 +3862,41 @@
     "rank": 1,
     "cost": 2,
     "range": 3,
-    "text": "Escudo 4, 2m, alc.3"
+    "text": "Escudo 4, 2m, alc.3",
+    "effects": [
+     {
+      "type": "shield",
+      "amount": 4
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 3,
     "range": 3,
-    "text": "Escudo 6, 3m"
+    "text": "Escudo 6, 3m",
+    "effects": [
+     {
+      "type": "shield",
+      "amount": 6
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": 3,
-    "text": "Escudo 9, 4m — reflete 1"
+    "text": "Escudo 9, 4m — reflete 1",
+    "effects": [
+     {
+      "type": "shield",
+      "amount": 9,
+      "reflect_amount": 1
+     }
+    ]
    }
-  ]
+  ],
+  "target": "ally"
  },
  {
   "id": "varek_golpe_escudo_pesado",
@@ -3838,21 +3910,44 @@
     "rank": 1,
     "cost": 2,
     "range": 1,
-    "text": "Dano 4, empurra 1, 2m"
+    "text": "Dano 4, empurra 1, 2m",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 4,
+      "push_distance": 1
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 3,
     "range": 1,
-    "text": "Dano 6, empurra 2, 3m"
+    "text": "Dano 6, empurra 2, 3m",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 6,
+      "push_distance": 2
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": 1,
-    "text": "Dano 8, empurra 3, 4m — atordoa se bater em parede"
+    "text": "Dano 8, empurra 3, 4m — atordoa se bater em parede",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 8,
+      "push_distance": 3,
+      "stun_on_wall_collision": true
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "varek_postura_defensiva",
@@ -3866,21 +3961,56 @@
     "rank": 1,
     "cost": 1,
     "range": "self",
-    "text": "+2 defesa, 1m, 1 turno"
+    "text": "+2 defesa, 1m, 1 turno",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "defense_buff",
+      "amount": 2,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 2,
     "range": "self",
-    "text": "+3 defesa, 2m"
+    "text": "+3 defesa, 2m",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "defense_buff",
+      "amount": 3,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      },
+      "assumed_duration": true
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 3,
     "range": "self",
-    "text": "+4 defesa, 3m, 2 turnos"
+    "text": "+4 defesa, 3m, 2 turnos",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "defense_buff",
+      "amount": 4,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 2
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "varek_barreira_area",
@@ -3894,15 +4024,30 @@
     "rank": 2,
     "cost": 4,
     "range": "area2",
-    "text": "Escudo 3 a todos, área 2, 4m"
+    "text": "Escudo 3 a todos, área 2, 4m",
+    "effects": [
+     {
+      "type": "shield",
+      "amount": 3,
+      "radius": 2
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": "area3",
-    "text": "Escudo 5, área 3, 5m"
+    "text": "Escudo 5, área 3, 5m",
+    "effects": [
+     {
+      "type": "shield",
+      "amount": 5,
+      "radius": 3
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "varek_vinganca_escudo",
@@ -3916,15 +4061,28 @@
     "rank": 2,
     "cost": 4,
     "range": 2,
-    "text": "50%, alc.2, 4m"
+    "text": "50%, alc.2, 4m",
+    "effects": [
+     {
+      "type": "reflect_absorbed_damage",
+      "percent": 50
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": null,
-    "text": "80%, 5m"
+    "text": "80%, 5m",
+    "effects": [
+     {
+      "type": "reflect_absorbed_damage",
+      "percent": 80
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "varek_grito_guardiao",
@@ -3938,15 +4096,36 @@
     "rank": 2,
     "cost": 4,
     "range": "area2",
-    "text": "Área 2, 1 turno, 4m"
+    "text": "Área 2, 1 turno, 4m",
+    "effects": [
+     {
+      "type": "taunt_area",
+      "radius": 2,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": "area3",
-    "text": "Área 3, 2 turnos, 5m"
+    "text": "Área 3, 2 turnos, 5m",
+    "effects": [
+     {
+      "type": "taunt_area",
+      "radius": 3,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 2
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "varek_parede_humana",
@@ -3960,15 +4139,35 @@
     "rank": 2,
     "cost": 3,
     "range": "self",
-    "text": "3m, 1 turno"
+    "text": "3m, 1 turno",
+    "effects": [
+     {
+      "type": "block_ranged_attacks",
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": "self",
-    "text": "4m, 2 turnos, bloqueia área"
+    "text": "4m, 2 turnos, bloqueia área",
+    "effects": [
+     {
+      "type": "block_ranged_attacks",
+      "duration": {
+       "unit": "champion_turns",
+       "value": 2
+      },
+      "blocks_area": true
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "varek_furia_contida",
@@ -3982,15 +4181,28 @@
     "rank": 2,
     "cost": 4,
     "range": 1,
-    "text": "50%, alc.1, 4m"
+    "text": "50%, alc.1, 4m",
+    "effects": [
+     {
+      "type": "damage",
+      "bonus_percent_of_shield_lost": 50
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": null,
-    "text": "80%, 5m"
+    "text": "80%, 5m",
+    "effects": [
+     {
+      "type": "damage",
+      "bonus_percent_of_shield_lost": 80
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "varek_fortaleza_inabalavel",
@@ -4004,21 +4216,53 @@
     "rank": 1,
     "cost": 13,
     "range": null,
-    "text": "Escudo 8 pra equipe toda, 2 rodadas, 13m"
+    "text": "Escudo 8 pra equipe toda, 2 rodadas, 13m",
+    "effects": [
+     {
+      "type": "shield_all_allies",
+      "amount": 8,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 14,
     "range": null,
-    "text": "Escudo 10, 14m"
+    "text": "Escudo 10, 14m",
+    "effects": [
+     {
+      "type": "shield_all_allies",
+      "amount": 10,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      },
+      "assumed_duration": true
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 15,
     "range": null,
-    "text": "Escudo 12, 3 rodadas, 15m"
+    "text": "Escudo 12, 3 rodadas, 15m",
+    "effects": [
+     {
+      "type": "shield_all_allies",
+      "amount": 12,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "varek_golpe_titan",
@@ -4032,21 +4276,44 @@
     "rank": 1,
     "cost": 13,
     "range": "area2",
-    "text": "Dano 14 + empurra 3, área 2, 13m, ignora escudo"
+    "text": "Dano 14 + empurra 3, área 2, 13m, ignora escudo",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 14,
+      "push_distance": 3,
+      "ignore_shield": true
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 14,
     "range": "area2",
-    "text": "Dano 17 + empurra 4, 14m"
+    "text": "Dano 17 + empurra 4, 14m",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 17,
+      "push_distance": 4
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 15,
     "range": "area2",
-    "text": "Dano 20 + empurra 5, 15m"
+    "text": "Dano 20 + empurra 5, 15m",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 20,
+      "push_distance": 5
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "sylvane_laco",
