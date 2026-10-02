@@ -6,6 +6,14 @@
 
 import type { ChampionStateV2, StatusV2 } from "./state";
 
+/** Cura simples, sem passar do hp máximo. Devolve a cura efetiva. Usado pelo tick (heal_over_time). */
+export function heal(c: ChampionStateV2, amount: number): number {
+  if (!c.alive) return 0;
+  const before = c.hp;
+  c.hp = Math.min(c.maxHp, c.hp + amount);
+  return c.hp - before;
+}
+
 export function hasStatus(c: ChampionStateV2, status: string): boolean {
   return c.statuses.some((s) => s.status === status);
 }
@@ -18,6 +26,7 @@ export function statusAmount(c: ChampionStateV2, status: string): number {
 export interface AddStatusOptions {
   amount?: number;
   negative?: boolean;
+  partner?: string;
 }
 
 /** Adiciona um status com duração; não funde com um já existente (pode haver vários). */
@@ -36,6 +45,7 @@ export function addStatus(
     remaining: duration,
     amount: opts.amount,
     negative: opts.negative ?? false,
+    partner: opts.partner,
   };
   c.statuses.push(entry);
   return entry;

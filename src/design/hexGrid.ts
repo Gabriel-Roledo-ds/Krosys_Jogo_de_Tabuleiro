@@ -113,3 +113,15 @@ export function hexLine(a: Hex, b: Hex): Hex[] {
   }
   return cells;
 }
+
+/**
+ * Direção (offset de 1 casa) que vai de `a` para `b`, arredondada pra uma das 6
+ * vizinhas quando `a` e `b` não estão perfeitamente alinhados — usada por
+ * empurrar/puxar (push/pull), que precisam de uma única direção pra continuar
+ * movendo o alvo além dele. `{q:0,r:0}` se `a` e `b` forem a mesma casa.
+ */
+export function hexDirectionTo(a: Hex, b: Hex): Hex {
+  if (sameHex(a, b)) return { q: 0, r: 0 };
+  const first = hexLine(a, b)[0];
+  return { q: first.q - a.q, r: first.r - a.r };
+}

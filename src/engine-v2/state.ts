@@ -26,6 +26,10 @@ export interface StatusV2 {
   remaining: number;
   amount?: number;
   negative: boolean;
+  /** uid do parceiro — só usado pelo status "link" (Elo). */
+  partner?: string;
+  /** Aplicado durante o turno do próprio campeão: só vale a partir do próximo (ver tick.ts). */
+  fresh?: boolean;
 }
 
 export interface ChampionStateV2 {

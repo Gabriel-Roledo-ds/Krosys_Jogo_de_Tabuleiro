@@ -10,7 +10,7 @@
 
 import { balance } from "../engine/data";
 import { rngOf } from "../engine/rng";
-import { hexKey, hexNeighbors, type Hex } from "../design/hexGrid";
+import { addHex, hexDirectionTo, hexDistance, hexKey, hexNeighbors, sameHex, type Hex } from "../design/hexGrid";
 import { inHexBoard } from "../design/hexBoard";
 import { allChampionsV2, type ChampionStateV2, type GameStateV2 } from "./state";
 
@@ -103,4 +103,51 @@ export function moveChampion(s: GameStateV2, mover: ChampionStateV2, dest: Hex, 
   if (!hit) throw new Error(`Movimento inválido para (${dest.q},${dest.r}) com ${steps} casas`);
   mover.pos = { ...dest };
   return hit.cost;
+}
+
+/**
+ * `move_self` / `teleport_self`: reposicionamento instantâneo do próprio
+ * campeão, sem gastar o orçamento de movimento do turno e sem checar o
+ * caminho (é um salto, não uma caminhada) — só o destino precisa ser válido:
+ * dentro do tabuleiro, livre e a no máximo `maxDistance` casas de distância.
+ */
+export function teleportChampion(s: GameStateV2, mover: ChampionStateV2, dest: Hex, maxDistance: number): void {
+  if (sameHex(mover.pos, dest)) return;
+  if (!inHexBoard(dest, s.board)) throw new Error(`Destino fora do tabuleiro: (${dest.q},${dest.r})`);
+  if (hexDistance(mover.pos, dest) > maxDistance) throw new Error(`Destino além do alcance de teleporte (${maxDistance})`);
+  if (isOccupiedByAliveChampion(s, dest, mover.uid)) throw new Error("Destino ocupado");
+  mover.pos = { ...dest };
+}
+
+/**
+ * Move `target` por até `steps` casas numa única direção, parando antes de
+ * saltar do tabuleiro ou entrar numa casa ocupada por outro campeão vivo. Sem
+ * dano de colisão (regras-e-decisoes.md §7). Devolve quantas casas de fato andou.
+ */
+export function forcedMove(s: GameStateV2, target: ChampionStateV2, dir: Hex, steps: number): number {
+  let moved = 0;
+  let pos = target.pos;
+  for (let i = 0; i < steps; i++) {
+    const next = addHex(pos, dir);
+    if (!inHexBoard(next, s.board) || isOccupiedByAliveChampion(s, next, target.uid)) break;
+    pos = next;
+    moved += 1;
+  }
+  if (moved > 0) target.pos = pos;
+  return moved;
+}
+
+/** `push`: afasta `target` de `origin` por até `distance` casas, em linha reta. */
+export function pushChampion(s: GameStateV2, target: ChampionStateV2, origin: Hex, distance: number): number {
+  const dir = hexDirectionTo(origin, target.pos);
+  if (dir.q === 0 && dir.r === 0) return 0;
+  return forcedMove(s, target, dir, distance);
+}
+
+/** `pull`: aproxima `target` de `origin` por até `distance` casas, sem sobrepor `origin`. */
+export function pullChampion(s: GameStateV2, target: ChampionStateV2, origin: Hex, distance: number): number {
+  const dir = hexDirectionTo(target.pos, origin);
+  if (dir.q === 0 && dir.r === 0) return 0;
+  const maxSteps = Math.max(0, hexDistance(target.pos, origin) - 1);
+  return forcedMove(s, target, dir, Math.min(distance, maxSteps));
 }

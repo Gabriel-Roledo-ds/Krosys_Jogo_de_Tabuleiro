@@ -20,7 +20,7 @@ function setup() {
   const game = createGameV2(1);
   const attacker = game.teams.A.champions[0];
   const target = game.teams.B.champions[0];
-  const ctx: EffectContextV2 = { attacker, nextId: () => nextIdV2(game) };
+  const ctx: EffectContextV2 = { game, attacker, nextId: () => nextIdV2(game) };
   return { game, attacker, target, ctx };
 }
 

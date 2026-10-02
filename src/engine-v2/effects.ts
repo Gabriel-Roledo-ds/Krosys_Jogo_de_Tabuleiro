@@ -10,9 +10,14 @@
 // carta). Então as funções aqui recebem os campeões-alvo já escolhidos.
 
 import type { Effect } from "../engine/data";
-import type { ChampionStateV2 } from "./state";
+import type { Hex } from "../design/hexGrid";
+import type { ChampionStateV2, GameStateV2 } from "./state";
 import { dealDamageV2, type DamageOptsV2 } from "./damage";
-import { addStatus, removeNegativeStatuses, removePositiveStatuses } from "./status";
+import { addStatus, removeNegativeStatuses, removePositiveStatuses, removeStatus, statusAmount } from "./status";
+import { forcedMove, pullChampion, pushChampion, teleportChampion } from "./movement";
+
+/** Status sem duração natural — persiste até ser consumido/removido (pilhas de veneno). */
+const PERSISTENT_REMAINING = 999;
 
 /** Status cujo nome já é negativo por convenção (ver claude/formato-dados.md). */
 const NEGATIVE_STATUS_NAMES = new Set([
@@ -30,9 +35,19 @@ function isNegativeStatus(name: string): boolean {
 }
 
 export interface EffectContextV2 {
+  game: GameStateV2;
   attacker: ChampionStateV2 | null;
   /** Gera o próximo id único de status, igual a nextId(s) do estado. */
   nextId: () => number;
+  /**
+   * Destino escolhido pelo jogador pra `move_self`/`teleport_self` quando a
+   * carta não restringe a uma direção (target "self" ou "cell") — a escolha
+   * em si é feita pela camada de "jogar uma carta", que ainda não existe (ver
+   * KANBAN.md); por enquanto quem chama applyEffectV2 passa o destino direto.
+   */
+  moveDest?: Hex;
+  /** Direção escolhida pelo jogador pra `move_self` quando o target é "direction". */
+  moveDir?: Hex;
 }
 
 /** `damage`: causa dano a cada alvo. Devolve o resultado por alvo (uid -> dano final). */
@@ -80,6 +95,14 @@ export function applyHeal(effect: Effect, targets: ChampionStateV2[]): Record<st
   return out;
 }
 
+/** `heal_over_time`: cura por rodada, resolvida de verdade pelo tick (tick.ts). */
+export function applyHealOverTime(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
+  const duration = durationFromEffect(effect);
+  for (const target of targets) {
+    addStatus(target, ctx.nextId(), "heal_over_time", duration.unit, duration.value, { amount: effect.amount });
+  }
+}
+
 /** `shield`: soma escudo (não substitui) e define o reflexo, se houver. */
 export function applyShield(effect: Effect, targets: ChampionStateV2[]): void {
   for (const target of targets) {
@@ -109,6 +132,77 @@ export function applyPersonalMana(effect: Effect, targets: ChampionStateV2[], si
   }
 }
 
+/** `push`: afasta cada alvo do atacante (ou de quem usou a carta) por `distance` casas. */
+export function applyPush(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
+  if (!ctx.attacker) return;
+  for (const target of targets) pushChampion(ctx.game, target, ctx.attacker.pos, effect.distance ?? 0);
+}
+
+/** `pull`: aproxima cada alvo de quem usou a carta por `distance` casas. */
+export function applyPull(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
+  if (!ctx.attacker) return;
+  for (const target of targets) pullChampion(ctx.game, target, ctx.attacker.pos, effect.distance ?? 0);
+}
+
+/**
+ * `move_self`: reposicionamento instantâneo do próprio dono. Com `ctx.moveDir`
+ * (cartas de target "direction", ex. Dança das Lâminas da Vextra), avança em
+ * linha naquela direção, parando antes de obstáculo. Com `ctx.moveDest`
+ * (target "self", ex. Recuo Calculado da Niara), salta pra qualquer casa
+ * livre a até `effect.distance` de distância.
+ */
+export function applyMoveSelf(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
+  for (const target of targets) {
+    if (ctx.moveDir) forcedMove(ctx.game, target, ctx.moveDir, effect.distance ?? 0);
+    else if (ctx.moveDest) teleportChampion(ctx.game, target, ctx.moveDest, effect.distance ?? 0);
+  }
+}
+
+/** `teleport_self`: salta pra uma casa escolhida (target "cell"), já validada em alcance por quem chamou. */
+export function applyTeleportSelf(ctx: EffectContextV2, _effect: Effect, targets: ChampionStateV2[]): void {
+  if (!ctx.moveDest) return;
+  for (const target of targets) teleportChampion(ctx.game, target, ctx.moveDest, Infinity);
+}
+
+/** `apply_venom_stacks`: acumula pilhas de veneno no alvo, até `max_stacks`. */
+export function applyVenomStacks(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
+  const gain = effect.amount ?? 1;
+  const max = effect.max_stacks ?? Infinity;
+  for (const target of targets) {
+    const current = statusAmount(target, "venom_stacks");
+    if (current > 0) removeStatus(target, "venom_stacks");
+    const next = Math.min(max, current + gain);
+    addStatus(target, ctx.nextId(), "venom_stacks", "rounds", PERSISTENT_REMAINING, { amount: next, negative: true });
+  }
+}
+
+/** `detonate_venom_stacks`: consome as pilhas do alvo, causando dano proporcional. */
+export function applyDetonateVenomStacks(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const target of targets) {
+    const stacks = statusAmount(target, "venom_stacks");
+    removeStatus(target, "venom_stacks");
+    out[target.uid] = stacks > 0 ? dealDamageV2(ctx.attacker, target, stacks * (effect.damage_per_stack ?? 0)).final : 0;
+  }
+  return out;
+}
+
+/** `link`: cria o vínculo (Elo) entre quem usou a carta e o(s) aliado(s) ligado(s). */
+export function applyLink(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
+  if (!ctx.attacker) return;
+  const duration = durationFromEffect(effect);
+  const amount = effect.share_heal_percent ?? effect.share_control_percent ?? effect.amount;
+  for (const target of targets) {
+    addStatus(ctx.attacker, ctx.nextId(), "link", duration.unit, duration.value, { amount, partner: target.uid });
+    addStatus(target, ctx.nextId(), "link", duration.unit, duration.value, { amount, partner: ctx.attacker.uid });
+  }
+}
+
+/** uid do parceiro de Elo ativo de um campeão, se houver. */
+export function linkedPartnerOf(c: ChampionStateV2): string | null {
+  return c.statuses.find((s) => s.status === "link")?.partner ?? null;
+}
+
 const DISPATCH: Record<string, (ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]) => void> = {
   damage: (ctx, effect, targets) => applyDamage(ctx, effect, targets),
   apply_status: (ctx, effect, targets) => applyStatus(ctx, effect, targets),
@@ -123,6 +217,14 @@ const DISPATCH: Record<string, (ctx: EffectContextV2, effect: Effect, targets: C
   remove_positive_effects: (_ctx, effect, targets) => applyRemovePositiveEffects(effect, targets),
   grant_personal_mana: (_ctx, effect, targets) => applyPersonalMana(effect, targets, 1),
   drain_personal_mana: (_ctx, effect, targets) => applyPersonalMana(effect, targets, -1),
+  push: (ctx, effect, targets) => applyPush(ctx, effect, targets),
+  pull: (ctx, effect, targets) => applyPull(ctx, effect, targets),
+  move_self: (ctx, effect, targets) => applyMoveSelf(ctx, effect, targets),
+  teleport_self: (ctx, effect, targets) => applyTeleportSelf(ctx, effect, targets),
+  apply_venom_stacks: (ctx, effect, targets) => applyVenomStacks(ctx, effect, targets),
+  detonate_venom_stacks: (ctx, effect, targets) => applyDetonateVenomStacks(ctx, effect, targets) as unknown as void,
+  link: (ctx, effect, targets) => applyLink(ctx, effect, targets),
+  heal_over_time: (ctx, effect, targets) => applyHealOverTime(ctx, effect, targets),
 };
 
 /** Tipos de efeito que já têm execução real no motor v2 (os outros ainda só existem como dado). */
