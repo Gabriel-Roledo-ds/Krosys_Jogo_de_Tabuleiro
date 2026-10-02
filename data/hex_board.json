@@ -1,0 +1,16 @@
+{
+  "_status": "design-only — não ligado ao motor ainda (que roda o losango quadrado de data/balance.json#board). Ver regras-e-decisoes.md §20.",
+  "_notes": "Rombo hexagonal alongado: a seleção axial 0<=q<q_size, 0<=r<r_size forma naturalmente um losango (parte da geometria de coordenadas axiais), com duas pontas agudas (60°, nos cantos (0,0) e (q_size-1,r_size-1) — onde ficam as largadas) e duas pontas obtusas (120°, nos outros dois cantos — reservadas pros templos de bênção, sistema futuro ainda não especificado, fora do caminho principal). q_size > r_size alonga o mapa no eixo das largadas. Todos os números abaixo são placeholder [PADRÃO], ajustáveis sem mexer em código.",
+  "shape": "rombo_alongado",
+  "q_size": 19,
+  "r_size": 9,
+  "boss": { "q": 9, "r": 4 },
+  "start_areas": {
+    "equipe_a": { "tip": { "q": 0, "r": 0 }, "radius": 2 },
+    "equipe_b": { "tip": { "q": 18, "r": 8 }, "radius": 2 }
+  },
+  "corner_pockets": [
+    { "name": "canto_norte", "center": { "q": 18, "r": 0 }, "radius": 2 },
+    { "name": "canto_sul", "center": { "q": 0, "r": 8 }, "radius": 2 }
+  ]
+}
