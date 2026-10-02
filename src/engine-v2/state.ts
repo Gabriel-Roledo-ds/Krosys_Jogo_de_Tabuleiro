@@ -52,6 +52,14 @@ export interface ChampionStateV2 {
   /** Sacrifício da passiva usado neste turno (a maioria é 1x por turno). */
   sacrificeUsedThisTurn: boolean;
   lastHitBy: { team: TeamId; champion: string } | null;
+  /** Mortes acumuladas na partida — aumenta outTurns a cada vez (ver death.ts). */
+  deaths: number;
+  /** Turnos da própria equipe que faltam até poder voltar (0 = volta no início do próximo). */
+  outTurns: number;
+  /** Mão guardada enquanto está fora de campo — devolvida ao baralho ao voltar. */
+  limbo: CardInstanceV2[];
+  /** Não pode ser alvo nem atingido por áreas: campeão recém-voltado da morte, até o fim do próprio turno. */
+  untargetable: boolean;
 }
 
 /**
@@ -150,6 +158,10 @@ export function createGameV2(seed: number, options: CreateGameV2Options = {}): G
         personalMana: 0,
         sacrificeUsedThisTurn: false,
         lastHitBy: null,
+        deaths: 0,
+        outTurns: 0,
+        limbo: [],
+        untargetable: false,
       };
     });
     teams[teamId] = {
