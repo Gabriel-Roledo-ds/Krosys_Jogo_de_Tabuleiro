@@ -1,0 +1,122 @@
+// Carrega os dados do roster v2 (data/champions_v2.json, data/cards_v2.json).
+// Motor hexagonal — ver regras-e-decisoes.md §19/§20 e claude/formato-dados.md.
+// Ainda não é o jogo jogável: o MVP (src/engine/) continua sendo o motor em
+// produção até essa etapa terminar (ver KANBAN.md).
+
+import championsJson from "../../data/champions_v2.json";
+import cardsJson from "../../data/cards_v2.json";
+import type { Effect } from "../engine/data";
+
+export interface CardRank {
+  rank: number;
+  cost: number;
+  range: number | string | null;
+  text: string;
+  effects: Effect[];
+  assumed_range?: boolean;
+}
+
+export type RankType = "regular" | "exclusive" | "climax";
+
+export interface CardDefV2 {
+  id: string;
+  owner: string;
+  name: string;
+  notes: string | null;
+  fast: boolean;
+  rank_type: RankType;
+  ranks: CardRank[];
+  target: string;
+}
+
+export interface BasicDefV2 {
+  name: string;
+  range: number | "self";
+  effects: Effect[];
+  text: string;
+}
+
+export interface PassiveDefV2 {
+  name: string;
+  text: string;
+}
+
+export interface SacrificeDefV2 {
+  name: string;
+  text: string;
+}
+
+export interface ChampionDefV2 {
+  id: string;
+  name: string;
+  archetype: string;
+  role: "dano" | "suporte";
+  hp: number;
+  defense: number;
+  basic: BasicDefV2;
+  passive: PassiveDefV2;
+  sacrifice: SacrificeDefV2 | null;
+}
+
+export interface PotionTemplate {
+  name: string;
+  cost: number;
+  fast: boolean;
+  effects: Effect[];
+  text: string;
+}
+
+const championsData = championsJson as {
+  potion_templates: Record<string, PotionTemplate>;
+  potions_per_champion: { count: number; templates: string[]; proportion_choice: string };
+  champions: ChampionDefV2[];
+};
+
+export const championsV2: ChampionDefV2[] = championsData.champions;
+export const potionTemplates = championsData.potion_templates;
+export const potionsPerChampion = championsData.potions_per_champion;
+
+export const cardsV2: CardDefV2[] = cardsJson as CardDefV2[];
+
+const championById = new Map(championsV2.map((c) => [c.id, c]));
+
+export function getChampionDefV2(id: string): ChampionDefV2 {
+  const c = championById.get(id);
+  if (!c) throw new Error(`Campeão v2 inexistente: ${id}`);
+  return c;
+}
+
+export function cardsOf(championId: string): CardDefV2[] {
+  return cardsV2.filter((c) => c.owner === championId);
+}
+
+/** Cópias de cada carta no baralho de 30, conforme regras-e-decisoes.md §19. */
+export function copiesForRankType(rankType: RankType): number {
+  if (rankType === "regular") return 3;
+  if (rankType === "exclusive") return 2;
+  return 1; // climax
+}
+
+/**
+ * Monta a lista de ids de carta que entram no baralho de 30 de um campeão:
+ * uma entrada por cópia de cada carta (regular/exclusive/climax), mais as 3
+ * poções (vida/mana, na proporção escolhida pelo jogador). O baralho não
+ * resolve "qual rank" aqui — isso é escolha do jogador na hora de comprar/jogar,
+ * ver regras-e-decisoes.md §19 (pendência de implementação).
+ */
+export function deckCardIdsV2(championId: string, potionChoice: ("life" | "mana")[]): string[] {
+  if (potionChoice.length !== potionsPerChampion.count) {
+    throw new Error(`Escolha de poções precisa ter ${potionsPerChampion.count} itens`);
+  }
+  const ids: string[] = [];
+  for (const card of cardsOf(championId)) {
+    const copies = copiesForRankType(card.rank_type);
+    for (let i = 0; i < copies; i++) ids.push(card.id);
+  }
+  for (const potion of potionChoice) ids.push(`potion_${potion}`);
+  return ids;
+}
+
+export const ALL_CHAMPION_IDS: string[] = championsV2.map((c) => c.id);
+export const DANO_CHAMPION_IDS: string[] = championsV2.filter((c) => c.role === "dano").map((c) => c.id);
+export const SUPORTE_CHAMPION_IDS: string[] = championsV2.filter((c) => c.role === "suporte").map((c) => c.id);
