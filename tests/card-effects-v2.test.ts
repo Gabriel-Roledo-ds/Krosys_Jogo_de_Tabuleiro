@@ -83,13 +83,16 @@ const KNOWN_EFFECT_TYPES = new Set([
   "move_self",
   "jump_to_nearest_enemy_on_target_death",
   "mark_ground_area",
+  "damage_behind_target",
+  "apply_status_around_self",
 ]);
 
 const convertedCards = cardsV2.filter((c): c is typeof c & { target: string } => "target" in c);
 
 describe("effects estruturado das cartas v2 (parcial — campeão por campeão)", () => {
-  it("pelo menos a Niara já está convertida (progresso mínimo)", () => {
+  it("Niara e Borak já estão convertidos (progresso mínimo)", () => {
     expect(convertedCards.filter((c) => c.owner === "niara")).toHaveLength(12);
+    expect(convertedCards.filter((c) => c.owner === "borak")).toHaveLength(12);
   });
 
   it("toda carta convertida tem um target do vocabulário conhecido", () => {

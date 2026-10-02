@@ -610,21 +610,44 @@
     "rank": 1,
     "cost": 1,
     "range": 1,
-    "text": "Dano 6, 1m"
+    "text": "Dano 6, 1m",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 6
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 2,
     "range": 1,
-    "text": "Dano 8, 2m"
+    "text": "Dano 8, 2m",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 8
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 3,
     "range": 1,
-    "text": "Dano 10, 3m — atinge quem está atrás do alvo"
+    "text": "Dano 10, 3m — atinge quem está atrás do alvo",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 10
+     },
+     {
+      "type": "damage_behind_target",
+      "amount": 10
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "borak_investida_selvagem",
@@ -638,21 +661,53 @@
     "rank": 1,
     "cost": 2,
     "range": null,
-    "text": "Dano 5, 2m, move 3"
+    "text": "Dano 5, 2m, move 3",
+    "effects": [
+     {
+      "type": "move_in_line",
+      "distance": 3
+     },
+     {
+      "type": "damage_first_in_path",
+      "amount": 5
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 3,
     "range": null,
-    "text": "Dano 7, 3m, move 4"
+    "text": "Dano 7, 3m, move 4",
+    "effects": [
+     {
+      "type": "move_in_line",
+      "distance": 4
+     },
+     {
+      "type": "damage_first_in_path",
+      "amount": 7
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": null,
-    "text": "Dano 9, 4m, move 5 — empurra 1"
+    "text": "Dano 9, 4m, move 5 — empurra 1",
+    "effects": [
+     {
+      "type": "move_in_line",
+      "distance": 5
+     },
+     {
+      "type": "damage_first_in_path",
+      "amount": 9,
+      "push_distance": 1
+     }
+    ]
    }
-  ]
+  ],
+  "target": "direction"
  },
  {
   "id": "borak_sede_sangue",
@@ -666,21 +721,44 @@
     "rank": 1,
     "cost": 2,
     "range": 1,
-    "text": "Dano 4 / cura 2, 2m"
+    "text": "Dano 4 / cura 2, 2m",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 4,
+      "lifesteal": 2
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 3,
     "range": 1,
-    "text": "Dano 6 / cura 3, 3m"
+    "text": "Dano 6 / cura 3, 3m",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 6,
+      "lifesteal": 3
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": 1,
-    "text": "Dano 8 / cura 5, 4m — cura dobra se matar"
+    "text": "Dano 8 / cura 5, 4m — cura dobra se matar",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 8,
+      "lifesteal": 5,
+      "lifesteal_doubles_on_kill": true
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "borak_quebra_guarda",
@@ -694,21 +772,67 @@
     "rank": 1,
     "cost": 2,
     "range": 1,
-    "text": "Dano 3, -1 defesa 2 rodadas, 2m, alc.1"
+    "text": "Dano 3, -1 defesa 2 rodadas, 2m, alc.1",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 3
+     },
+     {
+      "type": "apply_status",
+      "status": "defense_down",
+      "amount": 1,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 3,
     "range": 2,
-    "text": "Dano 4, -2 defesa 2 rodadas, 3m, alc.2"
+    "text": "Dano 4, -2 defesa 2 rodadas, 3m, alc.2",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 4
+     },
+     {
+      "type": "apply_status",
+      "status": "defense_down",
+      "amount": 2,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": 2,
-    "text": "Dano 5, -3 defesa 3 rodadas, 4m"
+    "text": "Dano 5, -3 defesa 3 rodadas, 4m",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 5
+     },
+     {
+      "type": "apply_status",
+      "status": "defense_down",
+      "amount": 3,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "borak_grito_guerra",
@@ -722,21 +846,79 @@
     "rank": 1,
     "cost": 2,
     "range": null,
-    "text": "2m, empurra 1, -1 movimento"
+    "text": "2m, empurra 1, -1 movimento",
+    "effects": [
+     {
+      "type": "push",
+      "area_radius": 1,
+      "distance": 1
+     },
+     {
+      "type": "apply_status_around_self",
+      "radius": 1,
+      "status": "movement_reduced",
+      "amount": 1,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 3,
     "range": null,
-    "text": "3m, empurra 2, -2 movimento"
+    "text": "3m, empurra 2, -2 movimento",
+    "effects": [
+     {
+      "type": "push",
+      "area_radius": 1,
+      "distance": 2
+     },
+     {
+      "type": "apply_status_around_self",
+      "radius": 1,
+      "status": "movement_reduced",
+      "amount": 2,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": null,
-    "text": "4m, empurra 3, -2 movimento, dano 2 em área"
+    "text": "4m, empurra 3, -2 movimento, dano 2 em área",
+    "effects": [
+     {
+      "type": "push",
+      "area_radius": 1,
+      "distance": 3
+     },
+     {
+      "type": "apply_status_around_self",
+      "radius": 1,
+      "status": "movement_reduced",
+      "amount": 2,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     },
+     {
+      "type": "damage",
+      "around_self": true,
+      "radius": 1,
+      "amount": 2
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "borak_esmagar",
@@ -750,15 +932,29 @@
     "rank": 2,
     "cost": 4,
     "range": 1,
-    "text": "Dano 10, 4m, alc.1"
+    "text": "Dano 10, 4m, alc.1",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 10
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": 1,
-    "text": "Dano 13, 5m — ignora armadura"
+    "text": "Dano 13, 5m — ignora armadura",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 13,
+      "ignore_defense": true
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "borak_perseguicao_implacavel",
@@ -772,15 +968,39 @@
     "rank": 2,
     "cost": 4,
     "range": null,
-    "text": "Dano 6, 4m, move 5"
+    "text": "Dano 6, 4m, move 5",
+    "effects": [
+     {
+      "type": "move_in_line",
+      "distance": 5,
+      "ignores_difficult_terrain": true
+     },
+     {
+      "type": "damage_first_in_path",
+      "amount": 6
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": null,
-    "text": "Dano 9, 5m, move 6 — atordoa se alvo marcado/fraco"
+    "text": "Dano 9, 5m, move 6 — atordoa se alvo marcado/fraco",
+    "effects": [
+     {
+      "type": "move_in_line",
+      "distance": 6,
+      "ignores_difficult_terrain": true
+     },
+     {
+      "type": "damage_first_in_path",
+      "amount": 9,
+      "stun_if_target_marked_or_weak": true
+     }
+    ]
    }
-  ]
+  ],
+  "target": "direction"
  },
  {
   "id": "borak_ultimo_folego",
@@ -794,15 +1014,44 @@
     "rank": 2,
     "cost": 3,
     "range": "area1",
-    "text": "Dano 8 + escudo 4, 3m, área 1"
+    "text": "Dano 8 + escudo 4, 3m, área 1",
+    "effects": [
+     {
+      "type": "damage",
+      "around_self": true,
+      "radius": 1,
+      "amount": 8,
+      "only_if": "owner_hp_at_most_percent_30"
+     },
+     {
+      "type": "shield",
+      "amount": 4,
+      "only_if": "owner_hp_at_most_percent_30"
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": "area2",
-    "text": "Dano 12 + escudo 7, 4m, área 2"
+    "text": "Dano 12 + escudo 7, 4m, área 2",
+    "effects": [
+     {
+      "type": "damage",
+      "around_self": true,
+      "radius": 2,
+      "amount": 12,
+      "only_if": "owner_hp_at_most_percent_30"
+     },
+     {
+      "type": "shield",
+      "amount": 7,
+      "only_if": "owner_hp_at_most_percent_30"
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "borak_queda_brutal",
@@ -815,16 +1064,39 @@
    {
     "rank": 2,
     "cost": 4,
-    "range": null,
-    "text": "Dano 6, 4m, salto 4, área 2"
+    "range": 4,
+    "text": "Dano 6, 4m, salto 4, área 2",
+    "effects": [
+     {
+      "type": "teleport_self"
+     },
+     {
+      "type": "damage",
+      "around_self": true,
+      "radius": 2,
+      "amount": 6
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
-    "range": null,
-    "text": "Dano 9, 5m, salto 5, área 3"
+    "range": 5,
+    "text": "Dano 9, 5m, salto 5, área 3",
+    "effects": [
+     {
+      "type": "teleport_self"
+     },
+     {
+      "type": "damage",
+      "around_self": true,
+      "radius": 3,
+      "amount": 9
+     }
+    ]
    }
-  ]
+  ],
+  "target": "cell"
  },
  {
   "id": "borak_grito_ensurdecedor",
@@ -838,15 +1110,40 @@
     "rank": 2,
     "cost": 4,
     "range": 2,
-    "text": "4m, alc.2, 1 turno"
+    "text": "4m, alc.2, 1 turno",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "stun",
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": 3,
-    "text": "5m, alc.3, 1 turno + dano 4"
+    "text": "5m, alc.3, 1 turno + dano 4",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "stun",
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     },
+     {
+      "type": "damage",
+      "amount": 4
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "borak_avatar_ruina",
@@ -860,21 +1157,70 @@
     "rank": 1,
     "cost": 13,
     "range": "self",
-    "text": "+6 dano em tudo no turno + cura 8, 13m"
+    "text": "+6 dano em tudo no turno + cura 8, 13m",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "damage_buff",
+      "amount": 6,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     },
+     {
+      "type": "heal",
+      "amount": 8
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 14,
     "range": "self",
-    "text": "+8 dano em tudo no turno + cura 10, 14m"
+    "text": "+8 dano em tudo no turno + cura 10, 14m",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "damage_buff",
+      "amount": 8,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     },
+     {
+      "type": "heal",
+      "amount": 10
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 15,
     "range": "self",
-    "text": "+10 dano em tudo no turno + cura 12, 15m — remove controle negativo"
+    "text": "+10 dano em tudo no turno + cura 12, 15m — remove controle negativo",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "damage_buff",
+      "amount": 10,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     },
+     {
+      "type": "heal",
+      "amount": 12
+     },
+     {
+      "type": "remove_negative_effects"
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "borak_golpe_fim_mundo",
@@ -888,21 +1234,45 @@
     "rank": 1,
     "cost": 13,
     "range": "area2",
-    "text": "Dano 14, área 2, 13m"
+    "text": "Dano 14, área 2, 13m",
+    "effects": [
+     {
+      "type": "damage",
+      "radius": 2,
+      "amount": 14
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 14,
     "range": "area2",
-    "text": "Dano 17, área 2, 14m"
+    "text": "Dano 17, área 2, 14m",
+    "effects": [
+     {
+      "type": "damage",
+      "radius": 2,
+      "amount": 17
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 15,
     "range": "area3",
-    "text": "Dano 20, área 3, 15m — ignora armadura e escudo"
+    "text": "Dano 20, área 3, 15m — ignora armadura e escudo",
+    "effects": [
+     {
+      "type": "damage",
+      "radius": 3,
+      "amount": 20,
+      "ignore_defense": true,
+      "ignore_shield": true
+     }
+    ]
    }
-  ]
+  ],
+  "target": "cell"
  },
  {
   "id": "ignira_bola_fogo",
