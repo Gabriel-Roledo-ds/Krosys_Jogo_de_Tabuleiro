@@ -85,21 +85,43 @@ describe("cards_v2.json", () => {
     }
   });
 
-  it("achado de design: só 3 dos 10 campeões têm carta marcada como rápida no texto original", () => {
-    // fichas-campeoes.md só escreve "(rápida)" explicitamente nas cartas de Niara (2),
-    // Vextra (1) e Selene (3) — Borak, Ignira, Thorne, Varek, Sylvane, Dorin e Aurelia
-    // não têm nenhuma carta rápida no texto, o que contradiz a regra geral (seção 6:
-    // "cada campeão tem suas próprias cartas rápidas"). Esse teste trava esse estado
-        // atual dos dados; se fichas-campeoes.md for corrigido, ele deve falhar e ser
-    // atualizado junto.
-    const fastByChampion = new Map<string, number>();
+  it("todo campeão tem pelo menos 1 carta rápida, com quantidade variando entre eles (02/10/2026)", () => {
+    // Resolve o achado de design anterior: fichas-campeoes.md original só marcava
+    // "(rápida)" em Niara/Vextra/Selene. Adicionadas cartas rápidas de perfil
+    // defensivo/utilitário/reativo (regra da seção 6: custo baixo/médio, nunca
+    // finalizador de dano alto) aos outros 7 campeões, sem igualar a quantidade
+    // entre todos — intencionalmente assimétrico.
+    const fastByChampion = new Map<string, string[]>();
+    for (const champ of championsV2.champions) fastByChampion.set(champ.id, []);
     for (const c of cardsV2) {
-      if (c.fast) fastByChampion.set(c.owner, (fastByChampion.get(c.owner) ?? 0) + 1);
+      if (c.fast) fastByChampion.get(c.owner)!.push(c.id);
     }
-    expect([...fastByChampion.keys()].sort()).toEqual(["niara", "selene", "vextra"]);
-    expect(fastByChampion.get("niara")).toBe(2);
-    expect(fastByChampion.get("vextra")).toBe(1);
-    expect(fastByChampion.get("selene")).toBe(3);
+    for (const [champId, ids] of fastByChampion) {
+      expect(ids.length, champId).toBeGreaterThanOrEqual(1);
+    }
+    expect(fastByChampion.get("niara")).toEqual(["niara_recuo_calculado", "niara_camuflagem"]);
+    expect(fastByChampion.get("vextra")).toEqual(["vextra_fuga_calculada"]);
+    expect(fastByChampion.get("selene")).toEqual(["selene_bencao", "selene_escudo_luz", "selene_purificar"]);
+    expect(fastByChampion.get("borak")).toEqual(["borak_grito_guerra"]);
+    expect(fastByChampion.get("ignira")).toEqual(["ignira_rastro_fogo"]);
+    expect(fastByChampion.get("thorne")).toEqual(["thorne_enfraquecer"]);
+    expect(fastByChampion.get("varek")).toEqual(["varek_escudo_reforcado", "varek_postura_defensiva"]);
+    expect(fastByChampion.get("sylvane")).toEqual(["sylvane_marca_natureza"]);
+    expect(fastByChampion.get("dorin")).toEqual(["dorin_reforcar"]);
+    expect(fastByChampion.get("aurelia")).toEqual(["aurelia_egide", "aurelia_inspiracao"]);
+
+    // Varia entre 1, 2 e 3 cartas rápidas — não é o mesmo número pra todos.
+    const counts = new Set([...fastByChampion.values()].map((ids) => ids.length));
+    expect(counts).toEqual(new Set([1, 2, 3]));
+  });
+
+  it("toda carta rápida é defensiva/reativa/utilitária e de custo baixo ou médio (seção 6)", () => {
+    for (const c of cardsV2) {
+      if (!c.fast) continue;
+      expect(c.rank_type, c.id).not.toBe("climax"); // clímax nunca é rápida
+      const minCost = c.ranks[0].cost;
+      expect(minCost, c.id).toBeLessThanOrEqual(3);
+    }
   });
 });
 

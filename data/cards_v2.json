@@ -75,7 +75,7 @@
     { "rank": 2, "cost": 3, "range": 2, "text": "Dano 4, -2 defesa 2 rodadas, 3m, alc.2" },
     { "rank": 3, "cost": 4, "range": 2, "text": "Dano 5, -3 defesa 3 rodadas, 4m" }
   ]},
-  { "id": "borak_grito_guerra", "owner": "borak", "name": "Grito de Guerra", "notes": "área ao redor", "fast": false, "rank_type": "regular", "ranks": [
+  { "id": "borak_grito_guerra", "owner": "borak", "name": "Grito de Guerra", "notes": "área ao redor, rápida", "fast": true, "rank_type": "regular", "ranks": [
     { "rank": 1, "cost": 2, "range": null, "text": "2m, empurra 1, -1 movimento" },
     { "rank": 2, "cost": 3, "range": null, "text": "3m, empurra 2, -2 movimento" },
     { "rank": 3, "cost": 4, "range": null, "text": "4m, empurra 3, -2 movimento, dano 2 em área" }
@@ -121,7 +121,7 @@
     { "rank": 2, "cost": 3, "range": 3, "text": "3m, área 2, 2/rodada, 3 rodadas" },
     { "rank": 3, "cost": 4, "range": 4, "text": "4m, área 2, 3/rodada, 3 rodadas, alc.4" }
   ]},
-  { "id": "ignira_rastro_fogo", "owner": "ignira", "name": "Rastro de Fogo", "notes": "ao se mover", "fast": false, "rank_type": "regular", "ranks": [
+  { "id": "ignira_rastro_fogo", "owner": "ignira", "name": "Rastro de Fogo", "notes": "ao se mover, rápida", "fast": true, "rank_type": "regular", "ranks": [
     { "rank": 1, "cost": 1, "range": "self", "text": "1m, 1/rodada, 2 rodadas" },
     { "rank": 2, "cost": 2, "range": "self", "text": "2m, 2/rodada, 2 rodadas" },
     { "rank": 3, "cost": 3, "range": "self", "text": "3m, 2/rodada, 3 rodadas — +2 instantâneo a quem passa" }
@@ -243,7 +243,7 @@
     { "rank": 2, "cost": 3, "range": 4, "text": "3m, raio 3" },
     { "rank": 3, "cost": 4, "range": 4, "text": "4m, raio 4 — 2º alvo recebe o mesmo número" }
   ]},
-  { "id": "thorne_enfraquecer", "owner": "thorne", "name": "Enfraquecer", "notes": null, "fast": false, "rank_type": "regular", "ranks": [
+  { "id": "thorne_enfraquecer", "owner": "thorne", "name": "Enfraquecer", "notes": "rápida", "fast": true, "rank_type": "regular", "ranks": [
     { "rank": 1, "cost": 2, "range": 4, "text": "2m, alc.4, -1 defesa/-1 dano, 2 rodadas" },
     { "rank": 2, "cost": 3, "range": 4, "text": "3m, -2/-1, 2 rodadas" },
     { "rank": 3, "cost": 4, "range": 4, "text": "4m, -2/-2, 3 rodadas" }
@@ -335,7 +335,7 @@
     { "rank": 3, "cost": 15, "range": null, "text": "Cura 16 a todos, 15m — também escudo 5 a todos" }
   ]},
 
-  { "id": "varek_escudo_reforcado", "owner": "varek", "name": "Escudo Reforçado", "notes": "em si", "fast": false, "rank_type": "regular", "ranks": [
+  { "id": "varek_escudo_reforcado", "owner": "varek", "name": "Escudo Reforçado", "notes": "em si, rápida", "fast": true, "rank_type": "regular", "ranks": [
     { "rank": 1, "cost": 1, "range": "self", "text": "Escudo 5, 1m" },
     { "rank": 2, "cost": 2, "range": "self", "text": "Escudo 7, 2m" },
     { "rank": 3, "cost": 3, "range": "self", "text": "Escudo 10, 3m — reflete 2" }
@@ -355,7 +355,7 @@
     { "rank": 2, "cost": 3, "range": 1, "text": "Dano 6, empurra 2, 3m" },
     { "rank": 3, "cost": 4, "range": 1, "text": "Dano 8, empurra 3, 4m — atordoa se bater em parede" }
   ]},
-  { "id": "varek_postura_defensiva", "owner": "varek", "name": "Postura Defensiva", "notes": "em si", "fast": false, "rank_type": "regular", "ranks": [
+  { "id": "varek_postura_defensiva", "owner": "varek", "name": "Postura Defensiva", "notes": "em si, rápida", "fast": true, "rank_type": "regular", "ranks": [
     { "rank": 1, "cost": 1, "range": "self", "text": "+2 defesa, 1m, 1 turno" },
     { "rank": 2, "cost": 2, "range": "self", "text": "+3 defesa, 2m" },
     { "rank": 3, "cost": 3, "range": "self", "text": "+4 defesa, 3m, 2 turnos" }
@@ -411,7 +411,7 @@
     { "rank": 2, "cost": 3, "range": "area2", "text": "Área 2, 3m" },
     { "rank": 3, "cost": 4, "range": "area2", "text": "Área 2, 2 turnos, 4m" }
   ]},
-  { "id": "sylvane_marca_natureza", "owner": "sylvane", "name": "Marca da Natureza", "notes": "prolonga controle", "fast": false, "rank_type": "regular", "ranks": [
+  { "id": "sylvane_marca_natureza", "owner": "sylvane", "name": "Marca da Natureza", "notes": "prolonga controle, rápida", "fast": true, "rank_type": "regular", "ranks": [
     { "rank": 1, "cost": 1, "range": 3, "text": "1m, alc.3, 2 rodadas" },
     { "rank": 2, "cost": 2, "range": 3, "text": "2m, 3 rodadas" },
     { "rank": 3, "cost": 3, "range": 3, "text": "3m, 3 rodadas + dano 2" }
@@ -462,7 +462,7 @@
     { "rank": 2, "cost": 3, "range": 3, "text": "Lança 4, 3m" },
     { "rank": 3, "cost": 4, "range": 3, "text": "Lança 5 + dano 2, 4m" }
   ]},
-  { "id": "dorin_reforcar", "owner": "dorin", "name": "Reforçar", "notes": null, "fast": false, "rank_type": "regular", "ranks": [
+  { "id": "dorin_reforcar", "owner": "dorin", "name": "Reforçar", "notes": "rápida", "fast": true, "rank_type": "regular", "ranks": [
     { "rank": 1, "cost": 1, "range": 3, "text": "+3hp, 1m, alc.3" },
     { "rank": 2, "cost": 2, "range": 3, "text": "+5hp, 2m" },
     { "rank": 3, "cost": 3, "range": 3, "text": "+8hp permanente, 3m" }
@@ -518,12 +518,12 @@
     { "rank": 2, "cost": 3, "range": 3, "text": "-2/-1, 3m" },
     { "rank": 3, "cost": 4, "range": 3, "text": "-2/-2, 4m, 3 rodadas" }
   ]},
-  { "id": "aurelia_egide", "owner": "aurelia", "name": "Égide", "notes": "+defesa", "fast": false, "rank_type": "regular", "ranks": [
+  { "id": "aurelia_egide", "owner": "aurelia", "name": "Égide", "notes": "+defesa, rápida", "fast": true, "rank_type": "regular", "ranks": [
     { "rank": 1, "cost": 2, "range": 3, "text": "+1, 2m, alc.3, 2 rodadas" },
     { "rank": 2, "cost": 3, "range": 3, "text": "+2, 3m" },
     { "rank": 3, "cost": 4, "range": 3, "text": "+3, 4m, 3 rodadas" }
   ]},
-  { "id": "aurelia_inspiracao", "owner": "aurelia", "name": "Inspiração", "notes": "+mana pessoal", "fast": false, "rank_type": "regular", "ranks": [
+  { "id": "aurelia_inspiracao", "owner": "aurelia", "name": "Inspiração", "notes": "+mana pessoal, rápida", "fast": true, "rank_type": "regular", "ranks": [
     { "rank": 1, "cost": 1, "range": 3, "text": "+3, 1m, alc.3" },
     { "rank": 2, "cost": 2, "range": 3, "text": "+5, 2m" },
     { "rank": 3, "cost": 3, "range": 3, "text": "+8, 3m" }
