@@ -167,6 +167,23 @@ export interface BossStateV2 {
   lastAttacker: string | null;
 }
 
+/**
+ * Lacaio do boss ("Prole", summon_minion) — versão mínima do MinionState do
+ * MVP (src/engine/state.ts): só HP/dano/posição, sólido, alvo "enemy" único
+ * (uid "minion-N", ver boss.ts/targeting.ts/cardPlay.ts). Diferente do MVP,
+ * ainda NÃO ataca sozinho quem chega adjacente (`onLand`/hazards.ts no MVP) —
+ * o motor v2 não tem gancho de "pisar na casa" pra nada ainda (ver KANBAN.md),
+ * então essa parte fica pra quando esse gancho existir [PADRÃO, gap documentado].
+ */
+export interface MinionStateV2 {
+  uid: string;
+  hp: number;
+  maxHp: number;
+  damage: number;
+  pos: Hex;
+  alive: boolean;
+}
+
 export interface TeamStateV2 {
   id: TeamId;
   mana: number;
@@ -230,6 +247,8 @@ export interface GameStateV2 {
   /** Equipe que causa dano x2 no boss (último golpe), até ele cair. */
   bountyTeam: TeamId | null;
   monsters: MonsterStateV2[];
+  /** Lacaios invocados pelo boss ("Prole") — ver MinionStateV2. */
+  minions: MinionStateV2[];
 }
 
 export function newTurnV2(team: TeamId, phase: PhaseV2): TurnStateV2 {
@@ -368,6 +387,7 @@ export function createGameV2(seed: number, options: CreateGameV2Options = {}): G
     boss,
     bountyTeam: null,
     monsters,
+    minions: [],
   };
 }
 

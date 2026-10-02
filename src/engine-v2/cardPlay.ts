@@ -36,7 +36,7 @@ import { rngOf } from "../engine/rng";
 import type { Effect } from "../engine/data";
 import { hexDirectionTo } from "../design/hexGrid";
 import { applyEffectV2, type EffectContextV2 } from "./effects";
-import { attackBossV2, BOSS_UID_V2 } from "./boss";
+import { attackBossV2, attackMinionV2, BOSS_UID_V2, isMinionUidV2 } from "./boss";
 import { attackMonsterV2, findMonsterV2, isMonsterUidV2 } from "./monsters";
 import { discardCardV2 } from "./deck";
 import { canPayV2, spendManaV2 } from "./mana";
@@ -69,6 +69,8 @@ export interface TargetResolutionV2 {
   bossTarget?: boolean;
   /** uid do monstro, se o alvo escolhido foi um monstro do mapa (ver monsters.ts). */
   monsterTarget?: string;
+  /** uid do lacaio, se o alvo escolhido foi um lacaio do boss (ver boss.ts, summon_minion). */
+  minionTarget?: string;
 }
 
 /**
@@ -98,6 +100,7 @@ export function resolveCardTargetsV2(owner: ChampionStateV2, cardTarget: string,
     case "enemy":
       if (t.uid === BOSS_UID_V2) return { targets: [], ctxExtra, bossTarget: true };
       if (t.uid && isMonsterUidV2(t.uid)) return { targets: [], ctxExtra, monsterTarget: t.uid };
+      if (t.uid && isMinionUidV2(t.uid)) return { targets: [], ctxExtra, minionTarget: t.uid };
       if (t.uid) targets = [getChampionV2(game, t.uid)];
       break;
     case "ally":
@@ -160,7 +163,7 @@ export interface PlayCardResultV2 {
  * no ato de jogar; em turn.ts, no ato de EMPILHAR, não no de resolver).
  */
 export function resolveCardEffectsV2(game: GameStateV2, owner: ChampionStateV2, def: CardDefV2, rank: CardRank, t: TargetV2, bonusDamage?: number): void {
-  const { targets, ctxExtra, bossTarget, monsterTarget } = resolveCardTargetsV2(owner, def.target, t, game);
+  const { targets, ctxExtra, bossTarget, monsterTarget, minionTarget } = resolveCardTargetsV2(owner, def.target, t, game);
   if (bossTarget) {
     applyCardEffectsToBossV2(game, owner, rank.effects, bonusDamage);
     logV2(game, `${owner.defId} (${owner.team}) usa ${def.name} (rank ${rank.rank}) no Boss`);
@@ -169,6 +172,11 @@ export function resolveCardEffectsV2(game: GameStateV2, owner: ChampionStateV2, 
   if (monsterTarget) {
     applyCardEffectsToMonsterV2(game, owner, findMonsterV2(game, monsterTarget), rank.effects, bonusDamage);
     logV2(game, `${owner.defId} (${owner.team}) usa ${def.name} (rank ${rank.rank}) num monstro`);
+    return;
+  }
+  if (minionTarget) {
+    applyCardEffectsToMinionV2(game, owner, minionTarget, rank.effects, bonusDamage);
+    logV2(game, `${owner.defId} (${owner.team}) usa ${def.name} (rank ${rank.rank}) num lacaio`);
     return;
   }
   const ctx: EffectContextV2 = {
@@ -203,6 +211,14 @@ function applyCardEffectsToMonsterV2(game: GameStateV2, owner: ChampionStateV2, 
   for (const effect of effects) {
     if (effect.type !== "damage") continue;
     attackMonsterV2(game, owner, monster, (effect.amount ?? 0) + (bonusDamage ?? 0), { ignoreDefense: effect.ignore_defense });
+  }
+}
+
+/** Mesma ideia, mas contra um lacaio do boss (ver boss.ts, summon_minion). */
+function applyCardEffectsToMinionV2(game: GameStateV2, owner: ChampionStateV2, minionUid: string, effects: Effect[], bonusDamage?: number): void {
+  for (const effect of effects) {
+    if (effect.type !== "damage") continue;
+    attackMinionV2(game, owner, minionUid, (effect.amount ?? 0) + (bonusDamage ?? 0));
   }
 }
 
@@ -249,7 +265,7 @@ export interface PlayBasicResultV2 {
 /** Mesma ideia de resolveCardEffectsV2, mas pra habilidade básica (sem rank/mana/descarte). */
 export function resolveBasicEffectsV2(game: GameStateV2, owner: ChampionStateV2, basic: BasicDefV2, t: TargetV2): void {
   const target = basicTargetV2(basic);
-  const { targets, ctxExtra, bossTarget, monsterTarget } = resolveCardTargetsV2(owner, target, t, game);
+  const { targets, ctxExtra, bossTarget, monsterTarget, minionTarget } = resolveCardTargetsV2(owner, target, t, game);
   if (bossTarget) {
     applyCardEffectsToBossV2(game, owner, basic.effects);
     logV2(game, `${owner.defId} (${owner.team}) usa a básica (${basic.name}) no Boss`);
@@ -258,6 +274,11 @@ export function resolveBasicEffectsV2(game: GameStateV2, owner: ChampionStateV2,
   if (monsterTarget) {
     applyCardEffectsToMonsterV2(game, owner, findMonsterV2(game, monsterTarget), basic.effects);
     logV2(game, `${owner.defId} (${owner.team}) usa a básica (${basic.name}) num monstro`);
+    return;
+  }
+  if (minionTarget) {
+    applyCardEffectsToMinionV2(game, owner, minionTarget, basic.effects);
+    logV2(game, `${owner.defId} (${owner.team}) usa a básica (${basic.name}) num lacaio`);
     return;
   }
   const ctx: EffectContextV2 = {

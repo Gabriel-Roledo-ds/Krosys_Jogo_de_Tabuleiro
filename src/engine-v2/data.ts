@@ -77,6 +77,27 @@ export const championsV2: ChampionDefV2[] = championsData.champions;
 export const potionTemplates = championsData.potion_templates;
 export const potionsPerChampion = championsData.potions_per_champion;
 
+/**
+ * Cartas de poção (`potion_life`/`potion_mana`, deckCardIdsV2 abaixo) vêm de
+ * `champions_v2.json#potion_templates`, que só guarda cost/fast/effects/text
+ * (sem `target`, sem rank) — não em cards_v2.json. Adaptadas aqui pro mesmo
+ * formato de carta v2 (1 único rank, alvo "self": tanto `heal` quanto
+ * `grant_personal_mana` agem sobre quem usou a própria carta) pra poderem
+ * passar pelo mesmo playCardV2 sem lógica duplicada. `getCardDefV2` procura
+ * também nesta lista (gap achado em 02/10/2026 ao ligar os bots: toda mão de
+ * verdade tem poção, e getCardDefV2 não sabia resolver o id até aqui).
+ */
+export const potionCardDefsV2: CardDefV2[] = Object.entries(potionTemplates).map(([key, tpl]) => ({
+  id: `potion_${key}`,
+  owner: "potion",
+  name: tpl.name,
+  notes: null,
+  fast: tpl.fast,
+  rank_type: "regular",
+  target: "self",
+  ranks: [{ rank: 1, cost: tpl.cost, range: "self", text: tpl.text, effects: tpl.effects }],
+}));
+
 export const cardsV2: CardDefV2[] = cardsJson as CardDefV2[];
 
 /**
@@ -124,7 +145,7 @@ export function cardsOf(championId: string): CardDefV2[] {
   return cardsV2.filter((c) => c.owner === championId);
 }
 
-const cardById = new Map([...cardsV2, ...monsterRewardCardsV2].map((c) => [c.id, c]));
+const cardById = new Map([...cardsV2, ...monsterRewardCardsV2, ...potionCardDefsV2].map((c) => [c.id, c]));
 
 export function getCardDefV2(id: string): CardDefV2 {
   const c = cardById.get(id);

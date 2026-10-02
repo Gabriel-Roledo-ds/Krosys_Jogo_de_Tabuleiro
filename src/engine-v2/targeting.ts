@@ -15,7 +15,7 @@ import { hexAdjacent, hexDistance, hexesInRadius, HEX_DIRECTIONS, isHexInLine, s
 import { inHexBoard } from "../design/hexBoard";
 import { allChampionsV2, getChampionV2, type ChampionStateV2, type GameStateV2, type TeamId } from "./state";
 import { hasLineOfSightV2, wallAtV2 } from "./world";
-import { BOSS_UID_V2 } from "./boss";
+import { BOSS_UID_V2, isMinionUidV2 } from "./boss";
 import { isMonsterUidV2 } from "./monsters";
 
 export interface TargetableV2 {
@@ -59,6 +59,12 @@ export function validateTargetV2(s: GameStateV2, owner: ChampionStateV2, def: Ta
     if (isMonsterUidV2(uid)) {
       const m = s.monsters.find((x) => x.uid === uid);
       if (!m || !m.alive) return "monstro não está em campo";
+      if (!inRange(s, owner.pos, m.pos, range)) return "fora de alcance";
+      return null;
+    }
+    if (isMinionUidV2(uid)) {
+      const m = s.minions.find((x) => x.uid === uid);
+      if (!m || !m.alive) return "lacaio não está em campo";
       if (!inRange(s, owner.pos, m.pos, range)) return "fora de alcance";
       return null;
     }
@@ -196,6 +202,9 @@ export function enumerateTargetsV2(s: GameStateV2, owner: ChampionStateV2, def: 
       for (const c of enemiesInRange(s, owner, def, rangeBonus)) push({ uid: c.uid });
       if (s.boss.alive && inRange(s, owner.pos, s.boss.pos, range)) push({ uid: BOSS_UID_V2 });
       for (const m of s.monsters) {
+        if (m.alive && inRange(s, owner.pos, m.pos, range)) push({ uid: m.uid });
+      }
+      for (const m of s.minions) {
         if (m.alive && inRange(s, owner.pos, m.pos, range)) push({ uid: m.uid });
       }
       break;

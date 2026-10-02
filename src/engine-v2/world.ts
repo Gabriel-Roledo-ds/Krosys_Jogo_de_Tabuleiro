@@ -15,14 +15,19 @@ export const isBossCellV2 = (s: GameStateV2, p: Hex): boolean => s.boss.alive &&
 export const monsterAtV2 = (s: GameStateV2, p: Hex) => s.monsters.find((m) => m.alive && sameHex(m.pos, p)) ?? null;
 export const isMonsterCellV2 = (s: GameStateV2, p: Hex): boolean => monsterAtV2(s, p) !== null;
 
-/** Casa livre: dentro do tabuleiro, sem campeão vivo, parede, boss nem monstro. */
+/** A casa de um lacaio vivo (invocado pelo boss, "Prole") também é sólida — ver boss.ts. */
+export const minionAtV2 = (s: GameStateV2, p: Hex) => s.minions.find((m) => m.alive && sameHex(m.pos, p)) ?? null;
+export const isMinionCellV2 = (s: GameStateV2, p: Hex): boolean => minionAtV2(s, p) !== null;
+
+/** Casa livre: dentro do tabuleiro, sem campeão vivo, parede, boss, monstro nem lacaio. */
 export function isFreeCellV2(s: GameStateV2, p: Hex): boolean {
   return (
     inHexBoard(p, s.board) &&
     !allChampionsV2(s).some((c) => c.alive && sameHex(c.pos, p)) &&
     !wallAtV2(s, p) &&
     !isBossCellV2(s, p) &&
-    !isMonsterCellV2(s, p)
+    !isMonsterCellV2(s, p) &&
+    !isMinionCellV2(s, p)
   );
 }
 

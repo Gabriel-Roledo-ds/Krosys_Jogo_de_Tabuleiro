@@ -12,7 +12,7 @@
 import { balance, type Effect } from "../engine/data";
 import { addHex, hexDirectionTo, hexDistance, hexNeighbors, sameHex, type Hex } from "../design/hexGrid";
 import { inHexBoard } from "../design/hexBoard";
-import { allChampionsV2, type ChampionStateV2, type GameStateV2 } from "./state";
+import { allChampionsV2, logV2, type ChampionStateV2, type GameStateV2 } from "./state";
 import { dealDamageV2, type DamageOptsV2 } from "./damage";
 import { addStatus, heal, removeNegativeStatuses, removePositiveStatuses, removeStatus, statusAmount } from "./status";
 import { forcedMove, pullChampion, pushChampion, teleportChampion } from "./movement";
@@ -274,14 +274,35 @@ export function applyPull(ctx: EffectContextV2, effect: Effect, targets: Champio
 export function applyMoveSelf(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
   for (const target of targets) {
     if (ctx.moveDir) forcedMove(ctx.game, target, ctx.moveDir, effect.distance ?? 0);
-    else if (ctx.moveDest) teleportChampion(ctx.game, target, ctx.moveDest, effect.distance ?? 0);
+    else if (ctx.moveDest) safeTeleport(ctx.game, target, ctx.moveDest, effect.distance ?? 0);
   }
 }
 
 /** `teleport_self`: salta pra uma casa escolhida (target "cell"), já validada em alcance por quem chamou. */
 export function applyTeleportSelf(ctx: EffectContextV2, _effect: Effect, targets: ChampionStateV2[]): void {
   if (!ctx.moveDest) return;
-  for (const target of targets) teleportChampion(ctx.game, target, ctx.moveDest, Infinity);
+  for (const target of targets) safeTeleport(ctx.game, target, ctx.moveDest, Infinity);
+}
+
+/**
+ * teleportChampion lança erro se a casa não estiver livre — correto como regra geral
+ * (movimento forçado por terceiros não deveria silenciosamente ir pro lugar errado),
+ * mas aqui o próprio jogador ESCOLHEU a casa ao jogar a carta (target "cell"), e
+ * validateTargetV2 só confere alcance, não se a casa está livre (ela pode valer pra
+ * outros efeitos de "cell" que não se importam, como parede/chão) — então a casa pode
+ * ter deixado de estar livre entre a escolha e a resolução (outro campeão se moveu lá,
+ * ou simplesmente a validação nunca checou). Nesse caso o salto apenas falha (carta
+ * consumida sem efeito) em vez de travar a partida inteira. [PADRÃO, achado ao ligar
+ * os bots v2 — mover a checagem de "livre" pra validateTargetV2 seria mais correto,
+ * mas exigiria saber, só pelo tipo de target "cell", se o efeito por trás exige
+ * destino livre ou não; fica pra quando isso for revisto.]
+ */
+function safeTeleport(s: GameStateV2, target: ChampionStateV2, dest: Hex, maxDistance: number): void {
+  try {
+    teleportChampion(s, target, dest, maxDistance);
+  } catch {
+    logV2(s, `${target.defId} (${target.team}) não consegue saltar pra (${dest.q},${dest.r}) — destino inválido`);
+  }
 }
 
 /** `apply_venom_stacks`: acumula pilhas de veneno no alvo, até `max_stacks`. */

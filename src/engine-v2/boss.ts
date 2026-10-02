@@ -9,9 +9,13 @@
 // - Ativação por alcance (em casas hexagonais), compra de carta, alvo por tipo
 //   (closest/last_attacker/aura/area), e os efeitos usados pelas 11 cartas de
 //   boss.json: damage (+also_adjacent_to_target), push, apply_status,
-//   heal_boss, discard_random_card_from_hand. `summon_minion` ainda não existe
-//   no motor v2 (não há lacaios) — lança erro claro, como qualquer efeito não
-//   implementado no resto do motor v2.
+//   heal_boss, discard_random_card_from_hand, summon_minion (lacaio mínimo —
+//   ver MinionStateV2 em state.ts: só hp/dano/posição, sólido, alvo "enemy"
+//   único como o boss/monstro do mapa; adicionado numa sessão seguinte, ao
+//   ligar os bots v2, porque sem ele qualquer partida travava ao sacar
+//   "Prole". Lacaio ainda NÃO ataca sozinho quem chega adjacente — gap
+//   documentado em state.ts, igual qualquer coisa que dependa de um gancho de
+//   "pisar na casa" que o motor v2 não tem.
 // - Ativação resolve IMEDIATAMENTE (sem passar pela pilha de respostas rápidas
 //   de turn.ts) — diferente do MVP, que empilha e deixa o jogador responder
 //   com carta rápida antes do boss agir. Ampliar isso é trabalho de integração
@@ -25,12 +29,13 @@
 //   essa função — ver cardPlay.ts/targeting.ts.
 
 import { balance, getBossCard, type BossCardDef } from "../engine/data";
-import { hexAdjacent, hexDistance } from "../design/hexGrid";
+import { hexAdjacent, hexDistance, hexNeighbors } from "../design/hexGrid";
 import { rngOf } from "../engine/rng";
 import { allChampionsV2, logV2, type ChampionStateV2, type GameStateV2, type TeamId } from "./state";
 import { addStatus } from "./status";
 import { pushChampion } from "./movement";
 import { discardCardV2 } from "./deck";
+import { isFreeCellV2 } from "./world";
 
 /** uid reservado pro boss nos targets de carta/básica (ver cardPlay.ts/targeting.ts). */
 export const BOSS_UID_V2 = "boss";
@@ -136,6 +141,16 @@ function applyBossEffectsV2(s: GameStateV2, card: BossCardDef, target: ChampionS
       case "heal_boss":
         s.boss.hp = Math.min(s.boss.maxHp, s.boss.hp + (e.amount ?? 0));
         break;
+      case "summon_minion": {
+        const cell = hexNeighbors(target.pos).find((h) => isFreeCellV2(s, h));
+        if (cell) {
+          s.minions.push({ uid: `minion-${s.nextId++}`, hp: e.hp ?? 1, maxHp: e.hp ?? 1, damage: e.damage ?? 0, pos: cell, alive: true });
+          logV2(s, "Um lacaio do Boss surge");
+        } else {
+          logV2(s, "Prole: sem casa livre adjacente, lacaio não surge");
+        }
+        break;
+      }
       case "discard_random_card_from_hand": {
         const teamState = s.teams[target.team];
         for (let i = 0; i < (e.count ?? 1) && teamState.hand.length > 0; i++) {
@@ -180,6 +195,41 @@ export function attackBossV2(s: GameStateV2, attacker: ChampionStateV2, base: nu
     logV2(s, `Equipe ${attacker.team} deu o último golpe no Boss: dano x${balance.boss.bounty_multiplier ?? 1} até ele cair`);
   }
   logV2(s, `Boss sofre ${final} de dano de ${attacker.defId} (${Math.max(0, s.boss.hp)}/${s.boss.maxHp} PV)`);
+  return final;
+}
+
+/** uid de um lacaio sempre começa com "minion-" (ver summon_minion acima). */
+export const isMinionUidV2 = (uid?: string): boolean => !!uid && uid.startsWith("minion-");
+
+export function findMinionV2(s: GameStateV2, uid: string) {
+  const m = s.minions.find((x) => x.uid === uid);
+  if (!m) throw new Error(`Lacaio inexistente: ${uid}`);
+  return m;
+}
+
+/**
+ * Dano de um campeão num lacaio (mesmo esquema de attackBossV2/attackMonsterV2:
+ * só cartas/básicas de alvo único "enemy" apontadas pro uid do lacaio usam
+ * essa função). Sem defesa (lacaio não tem), sem reação (lacaio não reage,
+ * diferente dos monstros do mapa — ele só existe enquanto o boss estiver
+ * vivo/a carta durar; sem sistema de expiração ainda, outro gap documentado).
+ */
+export function attackMinionV2(s: GameStateV2, attacker: ChampionStateV2, minionUid: string, base: number): number {
+  const minion = findMinionV2(s, minionUid);
+  if (!minion.alive || base <= 0) return 0;
+
+  let mult = balance.damage.champion_damage_multiplier ?? 1;
+  if (attacker.permanentDamageBonusPercent) mult *= 1 + attacker.permanentDamageBonusPercent / 100;
+  const total = mult !== 1 ? roundMultiplied(base * mult) : base;
+  const final = Math.max(balance.damage.minimum_damage_if_base_at_least_1, total);
+  if (final <= 0) return 0;
+
+  minion.hp -= final;
+  logV2(s, `Lacaio sofre ${final} de dano de ${attacker.defId} (${Math.max(0, minion.hp)}/${minion.maxHp} PV)`);
+  if (minion.hp <= 0) {
+    minion.alive = false;
+    logV2(s, "Lacaio do Boss é destruído");
+  }
   return final;
 }
 
