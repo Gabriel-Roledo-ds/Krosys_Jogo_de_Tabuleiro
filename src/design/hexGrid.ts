@@ -41,6 +41,19 @@ export function hexDistance(a: Hex, b: Hex): number {
 
 export const hexAdjacent = (a: Hex, b: Hex): boolean => hexDistance(a, b) === 1;
 
+/**
+ * `a` e `b` estão alinhados por um dos 6 eixos principais do hex (equivalente
+ * hexagonal de "mesma linha/coluna/diagonal" no tabuleiro quadrado). Cada uma
+ * das 6 direções mantém uma das três coordenadas cúbicas constante, então basta
+ * checar se a diferença em q, r ou s é 0. `a` e `b` iguais contam como alinhados.
+ */
+export function isHexInLine(a: Hex, b: Hex): boolean {
+  const dq = b.q - a.q;
+  const dr = b.r - a.r;
+  const ds = -dq - dr;
+  return dq === 0 || dr === 0 || ds === 0;
+}
+
 /** Todas as casas a distância `radius` ou menos do centro (sem checar limites do tabuleiro). */
 export function hexesInRadius(center: Hex, radius: number): Hex[] {
   const cells: Hex[] = [];
