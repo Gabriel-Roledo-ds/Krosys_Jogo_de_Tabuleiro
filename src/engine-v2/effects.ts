@@ -105,7 +105,13 @@ export function applyDamage(ctx: EffectContextV2, effect: Effect, targets: Champ
   const actualTargets = effect.around_self ? resolveAroundSelf(ctx, effect) : targets;
   const out: Record<string, number> = {};
   for (const target of actualTargets) {
-    out[target.uid] = dealDamageV2(ctx.attacker, target, effect.amount ?? 0, opts).final;
+    const result = dealDamageV2(ctx.attacker, target, effect.amount ?? 0, opts);
+    out[target.uid] = result.final;
+    // Devolve o reflexo (escudo com reflect_amount/reflect_absorbed_damage) a
+    // quem causou o dano — um nível só, sem repropagar um novo reflexo.
+    if (result.reflectToAttacker > 0 && ctx.attacker) {
+      dealDamageV2(null, ctx.attacker, result.reflectToAttacker, { ignoreDefense: true, ignoreShield: true });
+    }
   }
   return out;
 }
@@ -335,6 +341,62 @@ export function applyVenomZone(ctx: EffectContextV2, effect: Effect): void {
   });
 }
 
+/** `reflect_absorbed_damage`: enquanto tiver escudo, reflete `percent`% do dano absorvido (Vingança do Escudo). */
+export function applyReflectAbsorbedDamage(ctx: EffectContextV2, effect: Effect): void {
+  if (!ctx.attacker) return;
+  ctx.attacker.reflectPercent = effect.percent ?? 0;
+}
+
+/**
+ * `extend_existing_control`: estende a duração de todo controle (status
+ * negativo) já ativo no alvo, na mesma unidade do `duration` da carta — não
+ * aplica controle novo por si (Marca da Natureza da Sylvane). Sem controle
+ * ativo, não faz nada.
+ */
+export function applyExtendExistingControl(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
+  const duration = durationFromEffect(effect);
+  for (const target of targets) {
+    for (const st of target.statuses) {
+      if (st.negative && st.unit === duration.unit) st.remaining += duration.value;
+    }
+  }
+}
+
+/**
+ * `taunt_area`: provoca todo inimigo ao redor de quem usou a carta (status
+ * "taunted", já negativo por convenção). Guarda só o status — fazer os
+ * inimigos de fato priorizarem atacar o provocador depende da IA de
+ * bots/boss, que ainda não existe no motor v2 (ver KANBAN.md).
+ */
+export function applyTauntArea(ctx: EffectContextV2, effect: Effect): void {
+  if (!ctx.attacker) return;
+  const duration = durationFromEffect(effect);
+  const enemies = resolveAroundSelf(ctx, effect).filter((c) => c.team !== ctx.attacker!.team);
+  for (const target of enemies) addStatus(target, ctx.nextId(), "taunted", duration.unit, duration.value, { negative: true });
+}
+
+/**
+ * `block_ranged_attacks`: guarda o status no próprio dono da carta (Parede
+ * Humana do Varek) — bloquear de fato ataques à distância contra ele (ou,
+ * com `blocks_area`, contra a área ao redor) ainda depende de targeting.ts
+ * saber ler esse status, o que não existe ainda (ver KANBAN.md).
+ */
+export function applyBlockRangedAttacks(ctx: EffectContextV2, effect: Effect): void {
+  if (!ctx.attacker) return;
+  const duration = durationFromEffect(effect);
+  addStatus(ctx.attacker, ctx.nextId(), "block_ranged_attacks", duration.unit, duration.value, { negative: false, amount: effect.blocks_area ? 1 : 0 });
+}
+
+/**
+ * `protective_dome`: guarda o status no(s) alvo(s) (Cúpula do Dorin,
+ * combinável com `shield` na mesma carta). Reduzir/bloquear dano de fato
+ * ainda depende de damage.ts saber ler esse status, o que não existe ainda.
+ */
+export function applyProtectiveDome(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
+  const duration = durationFromEffect(effect);
+  for (const target of targets) addStatus(target, ctx.nextId(), "protective_dome", duration.unit, duration.value, { negative: false });
+}
+
 const DISPATCH: Record<string, (ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]) => void> = {
   damage: (ctx, effect, targets) => applyDamage(ctx, effect, targets),
   apply_status: (ctx, effect, targets) => applyStatus(ctx, effect, targets),
@@ -361,6 +423,11 @@ const DISPATCH: Record<string, (ctx: EffectContextV2, effect: Effect, targets: C
   venom_zone: (ctx, effect) => applyVenomZone(ctx, effect),
   apply_status_around_self: (ctx, effect) => applyStatusAroundSelf(ctx, effect),
   self_damage: (ctx, effect) => applySelfDamage(ctx, effect) as unknown as void,
+  reflect_absorbed_damage: (ctx, effect) => applyReflectAbsorbedDamage(ctx, effect),
+  extend_existing_control: (ctx, effect, targets) => applyExtendExistingControl(ctx, effect, targets),
+  taunt_area: (ctx, effect) => applyTauntArea(ctx, effect),
+  block_ranged_attacks: (ctx, effect) => applyBlockRangedAttacks(ctx, effect),
+  protective_dome: (ctx, effect, targets) => applyProtectiveDome(ctx, effect, targets),
 };
 
 /** Tipos de efeito que já têm execução real no motor v2 (os outros ainda só existem como dado). */

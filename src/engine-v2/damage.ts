@@ -67,8 +67,14 @@ export function dealDamageV2(attacker: ChampionStateV2 | null, target: ChampionS
     absorbedByShield = Math.min(target.shield, remaining);
     target.shield -= absorbedByShield;
     remaining -= absorbedByShield;
-    if (absorbedByShield > 0) reflectToAttacker = target.reflect;
-    if (target.shield === 0) target.reflect = 0;
+    if (absorbedByShield > 0) {
+      reflectToAttacker =
+        target.reflectPercent !== undefined ? Math.round((absorbedByShield * target.reflectPercent) / 100) : target.reflect;
+    }
+    if (target.shield === 0) {
+      target.reflect = 0;
+      target.reflectPercent = undefined;
+    }
   }
   target.hp -= remaining;
   if (attacker) target.lastHitBy = { team: attacker.team, champion: attacker.uid };

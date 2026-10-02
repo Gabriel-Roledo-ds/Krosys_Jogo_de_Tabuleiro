@@ -45,6 +45,8 @@ export interface ChampionStateV2 {
   statuses: StatusV2[];
   shield: number;
   reflect: number;
+  /** Reflexo proporcional (Vingança do Escudo do Varek) — se definido, tem prioridade sobre `reflect` (fixo). */
+  reflectPercent?: number;
   /** Mana pessoal — só serve pras próprias cartas (poções, sacrifícios, buffs). */
   personalMana: number;
   /** Sacrifício da passiva usado neste turno (a maioria é 1x por turno). */
