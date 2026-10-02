@@ -94,13 +94,16 @@ const KNOWN_EFFECT_TYPES = new Set([
   "venom_zone",
   "detonate_venom_stacks",
   "venom_terrain",
+  "heal_all_allies",
+  "remove_negative_effects_all_allies",
+  "shield_all_allies",
 ]);
 
 const convertedCards = cardsV2.filter((c): c is typeof c & { target: string } => "target" in c);
 
 describe("effects estruturado das cartas v2 (parcial — campeão por campeão)", () => {
-  it("Niara, Borak, Ignira, Vextra e Thorne já estão convertidos (progresso mínimo)", () => {
-    for (const owner of ["niara", "borak", "ignira", "vextra", "thorne"]) {
+  it("Niara, Borak, Ignira, Vextra, Thorne e Selene já estão convertidos (progresso mínimo)", () => {
+    for (const owner of ["niara", "borak", "ignira", "vextra", "thorne", "selene"]) {
       expect(convertedCards.filter((c) => c.owner === owner), owner).toHaveLength(12);
     }
   });

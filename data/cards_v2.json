@@ -3168,21 +3168,44 @@
     "rank": 1,
     "cost": 1,
     "range": 3,
-    "text": "Cura 4, 1m"
+    "text": "Cura 4, 1m",
+    "effects": [
+     {
+      "type": "heal",
+      "amount": 4
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 2,
     "range": 3,
-    "text": "Cura 6, 2m"
+    "text": "Cura 6, 2m",
+    "effects": [
+     {
+      "type": "heal",
+      "amount": 6
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 3,
     "range": 3,
-    "text": "Cura 8, 3m — remove 1 negativo"
+    "text": "Cura 8, 3m — remove 1 negativo",
+    "effects": [
+     {
+      "type": "heal",
+      "amount": 8
+     },
+     {
+      "type": "remove_negative_effects",
+      "amount": 1
+     }
+    ]
    }
-  ]
+  ],
+  "target": "ally"
  },
  {
   "id": "selene_escudo_luz",
@@ -3196,21 +3219,41 @@
     "rank": 1,
     "cost": 2,
     "range": 3,
-    "text": "Escudo 4, 2m"
+    "text": "Escudo 4, 2m",
+    "effects": [
+     {
+      "type": "shield",
+      "amount": 4
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 3,
     "range": 3,
-    "text": "Escudo 6, 3m"
+    "text": "Escudo 6, 3m",
+    "effects": [
+     {
+      "type": "shield",
+      "amount": 6
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": 3,
-    "text": "Escudo 9, 4m — reflete 2"
+    "text": "Escudo 9, 4m — reflete 2",
+    "effects": [
+     {
+      "type": "shield",
+      "amount": 9,
+      "reflect_amount": 2
+     }
+    ]
    }
-  ]
+  ],
+  "target": "ally"
  },
  {
   "id": "selene_regeneracao",
@@ -3224,21 +3267,53 @@
     "rank": 1,
     "cost": 2,
     "range": 3,
-    "text": "2/rodada, 2m, 3 rodadas"
+    "text": "2/rodada, 2m, 3 rodadas",
+    "effects": [
+     {
+      "type": "heal_over_time",
+      "amount": 2,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 3,
     "range": 3,
-    "text": "3/rodada, 3m"
+    "text": "3/rodada, 3m",
+    "effects": [
+     {
+      "type": "heal_over_time",
+      "amount": 3,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      },
+      "assumed_duration": true
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": 3,
-    "text": "4/rodada, 4m, 4 rodadas"
+    "text": "4/rodada, 4m, 4 rodadas",
+    "effects": [
+     {
+      "type": "heal_over_time",
+      "amount": 4,
+      "duration": {
+       "unit": "rounds",
+       "value": 4
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "ally"
  },
  {
   "id": "selene_purificar",
@@ -3252,21 +3327,60 @@
     "rank": 1,
     "cost": 1,
     "range": 3,
-    "text": "Cura 1, 1m, remove negativos"
+    "text": "Cura 1, 1m, remove negativos",
+    "effects": [
+     {
+      "type": "heal",
+      "amount": 1
+     },
+     {
+      "type": "remove_negative_effects",
+      "all": true
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 2,
     "range": 3,
-    "text": "Cura 2, 2m"
+    "text": "Cura 2, 2m",
+    "effects": [
+     {
+      "type": "heal",
+      "amount": 2
+     },
+     {
+      "type": "remove_negative_effects",
+      "all": true
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 3,
     "range": 3,
-    "text": "Cura 3, 3m — +1 rodada imunidade a controle"
+    "text": "Cura 3, 3m — +1 rodada imunidade a controle",
+    "effects": [
+     {
+      "type": "heal",
+      "amount": 3
+     },
+     {
+      "type": "remove_negative_effects",
+      "all": true
+     },
+     {
+      "type": "apply_status",
+      "status": "immune_to_control",
+      "duration": {
+       "unit": "rounds",
+       "value": 1
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "ally"
  },
  {
   "id": "selene_sacrificio_vital",
@@ -3280,21 +3394,52 @@
     "rank": 1,
     "cost": 1,
     "range": "self",
-    "text": "Perde 2 / cura 5, 1m"
+    "text": "Perde 2 / cura 5, 1m",
+    "effects": [
+     {
+      "type": "self_damage",
+      "amount": 2
+     },
+     {
+      "type": "heal",
+      "amount": 5
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 2,
     "range": "self",
-    "text": "Perde 3 / cura 8, 2m"
+    "text": "Perde 3 / cura 8, 2m",
+    "effects": [
+     {
+      "type": "self_damage",
+      "amount": 3
+     },
+     {
+      "type": "heal",
+      "amount": 8
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 3,
     "range": "self",
-    "text": "Perde 4 / cura 12, 3m"
+    "text": "Perde 4 / cura 12, 3m",
+    "effects": [
+     {
+      "type": "self_damage",
+      "amount": 4
+     },
+     {
+      "type": "heal",
+      "amount": 12
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "selene_aura_vital",
@@ -3308,15 +3453,30 @@
     "rank": 2,
     "cost": 4,
     "range": "area2",
-    "text": "Cura 2, área 2, 4m"
+    "text": "Cura 2, área 2, 4m",
+    "effects": [
+     {
+      "type": "heal",
+      "amount": 2,
+      "radius": 2
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": "area3",
-    "text": "Cura 3, área 3, 5m"
+    "text": "Cura 3, área 3, 5m",
+    "effects": [
+     {
+      "type": "heal",
+      "amount": 3,
+      "radius": 3
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "selene_santuario",
@@ -3330,15 +3490,38 @@
     "rank": 2,
     "cost": 4,
     "range": "area1",
-    "text": "4m, área 1, alc.3, 2 rodadas"
+    "text": "4m, área 1, alc.3, 2 rodadas",
+    "effects": [
+     {
+      "type": "apply_status_area",
+      "status": "immune_to_control",
+      "radius": 1,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": "area2",
-    "text": "5m, área 2, 3 rodadas"
+    "text": "5m, área 2, 3 rodadas",
+    "effects": [
+     {
+      "type": "apply_status_area",
+      "status": "immune_to_control",
+      "radius": 2,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "cell"
  },
  {
   "id": "selene_ressurgir",
@@ -3352,15 +3535,28 @@
     "rank": 2,
     "cost": 5,
     "range": 3,
-    "text": "5m, alc.3, volta com 50% vida"
+    "text": "5m, alc.3, volta com 50% vida",
+    "effects": [
+     {
+      "type": "resurrect",
+      "hp_percent": 50
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 6,
     "range": 3,
-    "text": "6m, volta com 100%"
+    "text": "6m, volta com 100%",
+    "effects": [
+     {
+      "type": "resurrect",
+      "hp_percent": 100
+     }
+    ]
    }
-  ]
+  ],
+  "target": "dead_ally"
  },
  {
   "id": "selene_corrente_vida",
@@ -3374,15 +3570,36 @@
     "rank": 2,
     "cost": 4,
     "range": 4,
-    "text": "4m, alc.4, 50%, 2 rodadas"
+    "text": "4m, alc.4, 50%, 2 rodadas",
+    "effects": [
+     {
+      "type": "link",
+      "share_heal_percent": 50,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": 4,
-    "text": "5m, 75%, 3 rodadas"
+    "text": "5m, 75%, 3 rodadas",
+    "effects": [
+     {
+      "type": "link",
+      "share_heal_percent": 75,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "ally"
  },
  {
   "id": "selene_cura_massa",
@@ -3396,15 +3613,28 @@
     "rank": 2,
     "cost": 5,
     "range": null,
-    "text": "Cura 4 a todos, 5m"
+    "text": "Cura 4 a todos, 5m",
+    "effects": [
+     {
+      "type": "heal_all_allies",
+      "amount": 4
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 6,
     "range": null,
-    "text": "Cura 6 a todos, 6m"
+    "text": "Cura 6 a todos, 6m",
+    "effects": [
+     {
+      "type": "heal_all_allies",
+      "amount": 6
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "selene_milagre",
@@ -3418,21 +3648,44 @@
     "rank": 1,
     "cost": 13,
     "range": 4,
-    "text": "Cura 20 em 1 aliado, 13m, alc.4"
+    "text": "Cura 20 em 1 aliado, 13m, alc.4",
+    "effects": [
+     {
+      "type": "heal",
+      "amount": 20
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 14,
     "range": 4,
-    "text": "Cura 25, 14m"
+    "text": "Cura 25, 14m",
+    "effects": [
+     {
+      "type": "heal",
+      "amount": 25
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 15,
     "range": 4,
-    "text": "Cura 30, 15m — remove todos negativos"
+    "text": "Cura 30, 15m — remove todos negativos",
+    "effects": [
+     {
+      "type": "heal",
+      "amount": 30
+     },
+     {
+      "type": "remove_negative_effects",
+      "all": true
+     }
+    ]
    }
-  ]
+  ],
+  "target": "ally"
  },
  {
   "id": "selene_renascimento_coletivo",
@@ -3446,21 +3699,48 @@
     "rank": 1,
     "cost": 13,
     "range": null,
-    "text": "Cura 10 a todos + remove 1 negativo de cada, 13m"
+    "text": "Cura 10 a todos + remove 1 negativo de cada, 13m",
+    "effects": [
+     {
+      "type": "heal_all_allies",
+      "amount": 10
+     },
+     {
+      "type": "remove_negative_effects_all_allies",
+      "amount": 1
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 14,
     "range": null,
-    "text": "Cura 13 a todos, 14m"
+    "text": "Cura 13 a todos, 14m",
+    "effects": [
+     {
+      "type": "heal_all_allies",
+      "amount": 13
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 15,
     "range": null,
-    "text": "Cura 16 a todos, 15m — também escudo 5 a todos"
+    "text": "Cura 16 a todos, 15m — também escudo 5 a todos",
+    "effects": [
+     {
+      "type": "heal_all_allies",
+      "amount": 16
+     },
+     {
+      "type": "shield_all_allies",
+      "amount": 5
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "varek_escudo_reforcado",
