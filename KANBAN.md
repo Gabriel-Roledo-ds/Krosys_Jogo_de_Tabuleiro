@@ -5,7 +5,7 @@ Sem prazos. Uma etapa só começa quando a anterior está pronta. Definição de
 ## Fazendo
 
 - Etapa 7: balanceamento com simulação (bots ainda ignoram cartas de construção)
-- Motor hexagonal (roster v2): estado inicial (src/engine-v2/data.ts + state.ts, 10 testes) e movimento (src/engine-v2/movement.ts, 10 testes) prontos e testados — campeões nascem na área de largada hexagonal da própria equipe, baralho de 30 cartas (27 de combate + 3 poções) seedado/reproduzível, e já andam no hex grid (dado d6, 6 direções, bloqueado por outro campeão vivo, igual à regra do MVP mas sem diagonal especial). Falta: resolução de dano e status, targeting/alcance de cartas, pilha de respostas/efeito rápido, turno completo, implementar o catálogo de ~50 tipos/status novos de claude/formato-dados.md, depois ligar monstros/bots/servidor/cliente — bem antes de jogável
+- Motor hexagonal (roster v2): estado inicial, movimento, status e dano prontos e testados (src/engine-v2/{data,state,movement,status,damage}.ts, 34 testes) — campeões nascem na área de largada hexagonal, baralho de 30 cartas seedado, andam no hex grid (d6, 6 direções, bloqueado por campeão vivo), têm status com duração (rounds/champion_turns) e soma de amount (damage_buff/defense_buff/etc.), e dano campeão-contra-campeão já calcula bônus/defesa/escudo/reflexo igual ao MVP (com ignore_defense/ignore_shield). Falta: targeting/alcance de cartas, implementar os ~50 tipos de efeito do catálogo em claude/formato-dados.md (um por um, ligados a cards_v2.json), pilha de respostas/efeito rápido, turno completo, boss/monstros no motor novo, depois ligar bots/servidor/cliente — bem antes de jogável
 
 ## Teste
 
