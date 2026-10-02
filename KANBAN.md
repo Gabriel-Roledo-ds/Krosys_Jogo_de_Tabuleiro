@@ -27,10 +27,12 @@ Sem prazos. Uma etapa só começa quando a anterior está pronta. Definição de
   - [feito] cartas rápidas faltando em 7 dos 10 campeões v2 — cada um ganhou 1-2 cartas rápidas (fichas-campeoes.md, data/cards_v2.json, regras-e-decisoes.md §6/§19)
   - [feito] matemática do tabuleiro hexagonal (coordenadas axiais, distância, linha de visão) e visão limitada por campeão bloqueada por obstáculo, design-only e testados (src/design/hexGrid.ts, src/design/fieldOfVision.ts, tests/hex-grid.test.ts, tests/field-of-vision.test.ts — 20 testes; regras-e-decisoes.md §20)
   - [feito] formato do mapa definido: rombo alongado em duas pontas (largadas), boss no centro, dois cantos obtusos reservados pro futuro sistema de templos/bênçãos — geometria e testes em src/design/hexBoard.ts + data/hex_board.json (14 testes). Números (tamanho, raios) são placeholder até o dono do projeto fechar o tamanho final
+  - [feito] posicionamento aleatório dos 40 monstros por zona a cada partida, seedado — src/design/monsterPlacement.ts + tests/monster-placement.test.ts (10 testes)
+  - [feito] `effects` estruturado das 120 cartas dos 10 campeões v2 (Niara, Borak, Ignira, Vextra, Thorne, Selene, Varek, Sylvane, Dorin, Aurelia) — data/cards_v2.json + tests/card-effects-v2.test.ts. Reaproveita o vocabulário de src/engine/effects.ts quando dá; catálogo completo dos tipos/parâmetros/status novos em claude/formato-dados.md. Nenhum deles está implementado no motor ainda — é a próxima etapa
   - [pendente] números exatos do tabuleiro (q_size/r_size, raios) e raio de visão por campeão
   - [pendente] mecânica do sistema de bênçãos/templos (ainda não especificada, só o espaço no mapa foi reservado)
   - [pendente] direção estética registrada em claude/estetica-visual.md — escolher pacotes de assets gratuitos quando chegar a etapa de arte
-  - ligar monsters_map.json/champions v2/hexGrid/fieldOfVision/hexBoard ao motor
+  - [próximo] construir o motor hexagonal (movimento, alcance, dano, mana de equipe/pessoal, sacrifícios) implementando o catálogo de tipos novos de claude/formato-dados.md, depois ligar monsters_map.json/champions_v2/cards_v2/hexGrid/fieldOfVision/hexBoard/monsterPlacement a ele, servidor e bots, cliente Phaser hexagonal, simulação e balanceamento — só então trocar o MVP pela v2
 
 ## Pronto
 

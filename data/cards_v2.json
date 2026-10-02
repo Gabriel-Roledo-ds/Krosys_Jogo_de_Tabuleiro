@@ -5569,21 +5569,56 @@
     "rank": 1,
     "cost": 2,
     "range": 3,
-    "text": "+2, 2m, alc.3, 2 rodadas"
+    "text": "+2, 2m, alc.3, 2 rodadas",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "damage_buff",
+      "amount": 2,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 3,
     "range": 3,
-    "text": "+3, 3m"
+    "text": "+3, 3m",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "damage_buff",
+      "amount": 3,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      },
+      "assumed_duration": true
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": 3,
-    "text": "+4, 4m, 3 rodadas"
+    "text": "+4, 4m, 3 rodadas",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "damage_buff",
+      "amount": 4,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "ally"
  },
  {
   "id": "aurelia_presteza",
@@ -5597,21 +5632,56 @@
     "rank": 1,
     "cost": 1,
     "range": 3,
-    "text": "+2, 1m, alc.3, 1 turno"
+    "text": "+2, 1m, alc.3, 1 turno",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "movement_buff",
+      "amount": 2,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 2,
     "range": 3,
-    "text": "+3, 2m"
+    "text": "+3, 2m",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "movement_buff",
+      "amount": 3,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      },
+      "assumed_duration": true
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 3,
     "range": 3,
-    "text": "+4, 3m, 2 turnos"
+    "text": "+4, 3m, 2 turnos",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "movement_buff",
+      "amount": 4,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 2
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "ally"
  },
  {
   "id": "aurelia_enfraquecer",
@@ -5625,21 +5695,84 @@
     "rank": 1,
     "cost": 2,
     "range": 3,
-    "text": "-1/-1, 2m, alc.3, 2 rodadas"
+    "text": "-1/-1, 2m, alc.3, 2 rodadas",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "damage_down",
+      "amount": 1,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     },
+     {
+      "type": "apply_status",
+      "status": "defense_down",
+      "amount": 1,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 3,
     "range": 3,
-    "text": "-2/-1, 3m"
+    "text": "-2/-1, 3m",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "damage_down",
+      "amount": 2,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      },
+      "assumed_duration": true
+     },
+     {
+      "type": "apply_status",
+      "status": "defense_down",
+      "amount": 1,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      },
+      "assumed_duration": true
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": 3,
-    "text": "-2/-2, 4m, 3 rodadas"
+    "text": "-2/-2, 4m, 3 rodadas",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "damage_down",
+      "amount": 2,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     },
+     {
+      "type": "apply_status",
+      "status": "defense_down",
+      "amount": 2,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "aurelia_egide",
@@ -5653,21 +5786,56 @@
     "rank": 1,
     "cost": 2,
     "range": 3,
-    "text": "+1, 2m, alc.3, 2 rodadas"
+    "text": "+1, 2m, alc.3, 2 rodadas",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "defense_buff",
+      "amount": 1,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 3,
     "range": 3,
-    "text": "+2, 3m"
+    "text": "+2, 3m",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "defense_buff",
+      "amount": 2,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      },
+      "assumed_duration": true
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": 3,
-    "text": "+3, 4m, 3 rodadas"
+    "text": "+3, 4m, 3 rodadas",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "defense_buff",
+      "amount": 3,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "ally"
  },
  {
   "id": "aurelia_inspiracao",
@@ -5681,21 +5849,40 @@
     "rank": 1,
     "cost": 1,
     "range": 3,
-    "text": "+3, 1m, alc.3"
+    "text": "+3, 1m, alc.3",
+    "effects": [
+     {
+      "type": "grant_personal_mana",
+      "amount": 3
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 2,
     "range": 3,
-    "text": "+5, 2m"
+    "text": "+5, 2m",
+    "effects": [
+     {
+      "type": "grant_personal_mana",
+      "amount": 5
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 3,
     "range": 3,
-    "text": "+8, 3m"
+    "text": "+8, 3m",
+    "effects": [
+     {
+      "type": "grant_personal_mana",
+      "amount": 8
+     }
+    ]
    }
-  ]
+  ],
+  "target": "ally"
  },
  {
   "id": "aurelia_hino_guerra",
@@ -5709,15 +5896,38 @@
     "rank": 2,
     "cost": 4,
     "range": null,
-    "text": "+2 a todos, 2 rodadas, 4m"
+    "text": "+2 a todos, 2 rodadas, 4m",
+    "effects": [
+     {
+      "type": "apply_status_all_allies",
+      "status": "damage_buff",
+      "amount": 2,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": null,
-    "text": "+3 a todos, 3 rodadas, 5m"
+    "text": "+3 a todos, 3 rodadas, 5m",
+    "effects": [
+     {
+      "type": "apply_status_all_allies",
+      "status": "damage_buff",
+      "amount": 3,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "aurelia_maldicao",
@@ -5731,15 +5941,56 @@
     "rank": 2,
     "cost": 4,
     "range": 4,
-    "text": "-2 em tudo, 2 rodadas, alc.4, 4m"
+    "text": "-2 em tudo, 2 rodadas, alc.4, 4m",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "damage_down",
+      "amount": 2,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     },
+     {
+      "type": "apply_status",
+      "status": "defense_down",
+      "amount": 2,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": 4,
-    "text": "-3 em tudo, 3 rodadas, 5m"
+    "text": "-3 em tudo, 3 rodadas, 5m",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "damage_down",
+      "amount": 3,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     },
+     {
+      "type": "apply_status",
+      "status": "defense_down",
+      "amount": 3,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "aurelia_aceleracao_massa",
@@ -5753,15 +6004,38 @@
     "rank": 2,
     "cost": 4,
     "range": null,
-    "text": "+2 a todos, 1 turno, 4m"
+    "text": "+2 a todos, 1 turno, 4m",
+    "effects": [
+     {
+      "type": "apply_status_all_allies",
+      "status": "movement_buff",
+      "amount": 2,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": null,
-    "text": "+3 a todos, 2 turnos, 5m"
+    "text": "+3 a todos, 2 turnos, 5m",
+    "effects": [
+     {
+      "type": "apply_status_all_allies",
+      "status": "movement_buff",
+      "amount": 3,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 2
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "aurelia_dissonancia",
@@ -5775,15 +6049,44 @@
     "rank": 2,
     "cost": 4,
     "range": 4,
-    "text": "Remove + -3 mana pessoal, 4m"
+    "text": "Remove + -3 mana pessoal, 4m",
+    "effects": [
+     {
+      "type": "remove_positive_effects",
+      "all": true
+     },
+     {
+      "type": "drain_personal_mana",
+      "amount": 3
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": 4,
-    "text": "Remove + -5 mana + silencia 1 turno, 5m"
+    "text": "Remove + -5 mana + silencia 1 turno, 5m",
+    "effects": [
+     {
+      "type": "remove_positive_effects",
+      "all": true
+     },
+     {
+      "type": "drain_personal_mana",
+      "amount": 5
+     },
+     {
+      "type": "apply_status",
+      "status": "silenced",
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "aurelia_pacto_arcano",
@@ -5797,15 +6100,38 @@
     "rank": 2,
     "cost": 4,
     "range": 4,
-    "text": "+2 dano aos dois, 2 rodadas, alc.4, 4m"
+    "text": "+2 dano aos dois, 2 rodadas, alc.4, 4m",
+    "effects": [
+     {
+      "type": "link_buff",
+      "status": "damage_buff",
+      "amount": 2,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": 4,
-    "text": "+3 aos dois, 3 rodadas, 5m"
+    "text": "+3 aos dois, 3 rodadas, 5m",
+    "effects": [
+     {
+      "type": "link_buff",
+      "status": "damage_buff",
+      "amount": 3,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "ally"
  },
  {
   "id": "aurelia_crescendo",
@@ -5819,21 +6145,56 @@
     "rank": 1,
     "cost": 13,
     "range": null,
-    "text": "+5 dano pra equipe toda, 2 rodadas, 13m"
+    "text": "+5 dano pra equipe toda, 2 rodadas, 13m",
+    "effects": [
+     {
+      "type": "apply_status_all_allies",
+      "status": "damage_buff",
+      "amount": 5,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 14,
     "range": null,
-    "text": "+6, 14m"
+    "text": "+6, 14m",
+    "effects": [
+     {
+      "type": "apply_status_all_allies",
+      "status": "damage_buff",
+      "amount": 6,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      },
+      "assumed_duration": true
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 15,
     "range": null,
-    "text": "+8, 3 rodadas, 15m"
+    "text": "+8, 3 rodadas, 15m",
+    "effects": [
+     {
+      "type": "apply_status_all_allies",
+      "status": "damage_buff",
+      "amount": 8,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "aurelia_juizo_arcano",
@@ -5847,20 +6208,117 @@
     "rank": 1,
     "cost": 13,
     "range": 6,
-    "text": "-4 em dano/defesa/movimento de todos os inimigos no alcance 6, 2 rodadas, 13m"
+    "text": "-4 em dano/defesa/movimento de todos os inimigos no alcance 6, 2 rodadas, 13m",
+    "effects": [
+     {
+      "type": "apply_status_area",
+      "status": "damage_down",
+      "amount": 4,
+      "radius": 6,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     },
+     {
+      "type": "apply_status_area",
+      "status": "defense_down",
+      "amount": 4,
+      "radius": 6,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     },
+     {
+      "type": "apply_status_area",
+      "status": "movement_reduced",
+      "amount": 4,
+      "radius": 6,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 14,
     "range": 6,
-    "text": "-5, 14m"
+    "text": "-5, 14m",
+    "effects": [
+     {
+      "type": "apply_status_area",
+      "status": "damage_down",
+      "amount": 5,
+      "radius": 6,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     },
+     {
+      "type": "apply_status_area",
+      "status": "defense_down",
+      "amount": 5,
+      "radius": 6,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     },
+     {
+      "type": "apply_status_area",
+      "status": "movement_reduced",
+      "amount": 5,
+      "radius": 6,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 15,
     "range": 6,
-    "text": "-7, 3 rodadas, 15m"
+    "text": "-7, 3 rodadas, 15m",
+    "effects": [
+     {
+      "type": "apply_status_area",
+      "status": "damage_down",
+      "amount": 7,
+      "radius": 6,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     },
+     {
+      "type": "apply_status_area",
+      "status": "defense_down",
+      "amount": 7,
+      "radius": 6,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     },
+     {
+      "type": "apply_status_area",
+      "status": "movement_reduced",
+      "amount": 7,
+      "radius": 6,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  }
 ]

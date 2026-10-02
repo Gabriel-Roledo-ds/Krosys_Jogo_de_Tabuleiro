@@ -1,9 +1,9 @@
 // Testes do `effects` estruturado das cartas v2 (data/cards_v2.json), derivado
 // campeão por campeão a partir do `text` — ver regras-e-decisoes.md §19 e
-// claude/formato-dados.md ("effects estruturado das cartas v2"). Só cobre as
-// cartas que já têm `target` + `effects` preenchidos; as que ainda não foram
-// convertidas (só têm `text`) são ignoradas aqui de propósito, pra esse teste
-// não quebrar enquanto o trabalho avança campeão por campeão.
+// claude/formato-dados.md ("effects estruturado das cartas v2"). Cobre as
+// cartas que têm `target` + `effects` preenchidos — hoje as 120 (10 campeões),
+// trabalho completo. Nenhum dos tipos/status novos catalogados aqui está
+// implementado no motor ainda; isso é a próxima etapa ("motor hexagonal").
 
 import { describe, it, expect } from "vitest";
 import cardsV2 from "../data/cards_v2.json";
@@ -102,15 +102,25 @@ const KNOWN_EFFECT_TYPES = new Set([
   "block_ranged_attacks",
   "extend_existing_control",
   "protective_dome",
+  "grant_personal_mana",
+  "apply_status_all_allies",
+  "remove_positive_effects",
+  "drain_personal_mana",
+  "link_buff",
 ]);
 
 const convertedCards = cardsV2.filter((c): c is typeof c & { target: string } => "target" in c);
 
 describe("effects estruturado das cartas v2 (parcial — campeão por campeão)", () => {
-  it("Niara, Borak, Ignira, Vextra, Thorne, Selene, Varek, Sylvane e Dorin já estão convertidos (progresso mínimo)", () => {
-    for (const owner of ["niara", "borak", "ignira", "vextra", "thorne", "selene", "varek", "sylvane", "dorin"]) {
+  it("os 10 campeões estão convertidos — 120/120 cartas (trabalho completo)", () => {
+    const owners = [
+      "niara", "borak", "ignira", "vextra", "thorne",
+      "selene", "varek", "sylvane", "dorin", "aurelia",
+    ];
+    for (const owner of owners) {
       expect(convertedCards.filter((c) => c.owner === owner), owner).toHaveLength(12);
     }
+    expect(convertedCards).toHaveLength(120);
   });
 
   it("toda carta convertida tem um target do vocabulário conhecido", () => {
