@@ -88,13 +88,19 @@ const KNOWN_EFFECT_TYPES = new Set([
   "delayed_damage",
   "detonate_nearby_ground_fire",
   "death_ward",
+  "damage_all_adjacent_during_move",
+  "gap_close_strike",
+  "apply_venom_stacks",
+  "venom_zone",
+  "detonate_venom_stacks",
+  "venom_terrain",
 ]);
 
 const convertedCards = cardsV2.filter((c): c is typeof c & { target: string } => "target" in c);
 
 describe("effects estruturado das cartas v2 (parcial — campeão por campeão)", () => {
-  it("Niara, Borak e Ignira já estão convertidos (progresso mínimo)", () => {
-    for (const owner of ["niara", "borak", "ignira"]) {
+  it("Niara, Borak, Ignira, Vextra e Thorne já estão convertidos (progresso mínimo)", () => {
+    for (const owner of ["niara", "borak", "ignira", "vextra", "thorne"]) {
       expect(convertedCards.filter((c) => c.owner === owner), owner).toHaveLength(12);
     }
   });
