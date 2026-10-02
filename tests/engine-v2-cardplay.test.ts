@@ -6,7 +6,9 @@
 
 import { describe, it, expect } from "vitest";
 import { createGameV2 } from "../src/engine-v2/state";
-import { playCardV2, IllegalActionV2 } from "../src/engine-v2/cardPlay";
+import { playCardV2, playBasicV2, IllegalActionV2 } from "../src/engine-v2/cardPlay";
+import { basicTargetV2, getChampionDefV2 } from "../src/engine-v2/data";
+import { wallAtV2 } from "../src/engine-v2/world";
 import type { CardInstanceV2 } from "../src/engine-v2/state";
 
 function putCardInHand(game: ReturnType<typeof createGameV2>, team: "A" | "B", ownerUid: string, cardId: string): CardInstanceV2 {
@@ -118,5 +120,60 @@ describe("playCardV2 — buff_next_card (Passo das Sombras) consumido pela próx
 
     expect(borak.hp).toBe(before - 7); // 4 (rank 1) + 3 (buff) - 0 defesa
     expect(game.teams.A.nextCardBuff).toBeNull(); // consumido, não propaga pra uma 3ª carta
+  });
+});
+
+describe("basicTargetV2 — alvo inferido das 10 básicas (regras-e-decisoes.md §6)", () => {
+  it("dano sem cura -> enemy; cura sem dano -> ally; cria parede -> cell; target explícito vence", () => {
+    expect(basicTargetV2(getChampionDefV2("niara").basic)).toBe("enemy");
+    expect(basicTargetV2(getChampionDefV2("varek").basic)).toBe("enemy"); // dano + push, sem cura
+    expect(basicTargetV2(getChampionDefV2("sylvane").basic)).toBe("enemy"); // controle sem alvo explícito
+    expect(basicTargetV2(getChampionDefV2("selene").basic)).toBe("ally"); // heal, sem dano
+    expect(basicTargetV2(getChampionDefV2("dorin").basic)).toBe("cell"); // create_wall
+    expect(basicTargetV2(getChampionDefV2("aurelia").basic)).toBe("ally"); // target explícito no efeito
+  });
+});
+
+describe("playBasicV2", () => {
+  it("básica de dano (Niara) acerta o inimigo ao alcance", () => {
+    const game = createGameV2(1);
+    const niara = game.teams.A.champions.find((c) => c.defId === "niara")!;
+    const borak = game.teams.B.champions.find((c) => c.defId === "borak")!;
+    borak.pos = { q: niara.pos.q + 2, r: niara.pos.r };
+    borak.defense = 0;
+    const before = borak.hp;
+    playBasicV2(game, niara.uid, { uid: borak.uid });
+    expect(borak.hp).toBe(before - 2);
+  });
+
+  it("básica de cura (Selene) só aceita aliado", () => {
+    const game = createGameV2(1);
+    const selene = game.teams.A.champions.find((c) => c.defId === "selene")!;
+    const niara = game.teams.A.champions.find((c) => c.defId === "niara")!;
+    const borak = game.teams.B.champions.find((c) => c.defId === "borak")!;
+    niara.pos = { ...selene.pos, q: selene.pos.q + 1 };
+    borak.pos = { ...selene.pos, q: selene.pos.q + 1 };
+    niara.hp = niara.maxHp - 5;
+    playBasicV2(game, selene.uid, { uid: niara.uid });
+    expect(niara.hp).toBe(niara.maxHp - 2);
+    expect(() => playBasicV2(game, selene.uid, { uid: borak.uid })).toThrow(/aliado/);
+  });
+
+  it("básica de parede (Dorin) cria parede na casa escolhida, sem custar mana (básica é custo 0)", () => {
+    const game = createGameV2(1);
+    const dorin = game.teams.B.champions.find((c) => c.defId === "dorin")!;
+    const pos = { q: dorin.pos.q + 1, r: dorin.pos.r };
+    const manaBefore = game.teams.B.mana;
+    playBasicV2(game, dorin.uid, { pos });
+    expect(wallAtV2(game, pos)?.hp).toBe(2);
+    expect(game.teams.B.mana).toBe(manaBefore);
+  });
+
+  it("recusa alvo fora de alcance", () => {
+    const game = createGameV2(1);
+    const niara = game.teams.A.champions.find((c) => c.defId === "niara")!;
+    const borak = game.teams.B.champions.find((c) => c.defId === "borak")!;
+    borak.pos = { q: niara.pos.q + 20, r: niara.pos.r };
+    expect(() => playBasicV2(game, niara.uid, { uid: borak.uid })).toThrow(IllegalActionV2);
   });
 });

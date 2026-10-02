@@ -132,6 +132,29 @@ export function deckCardIdsV2(championId: string, potionChoice: ("life" | "mana"
   return ids;
 }
 
+const SUPPORT_EFFECT_TYPES = new Set(["heal", "heal_over_time", "shield", "remove_negative_effects", "grant_personal_mana"]);
+const GROUND_EFFECT_TYPES = new Set(["create_wall", "create_structure", "ground_fire", "venom_zone"]);
+
+/**
+ * Alvo da habilidade básica de um campeão v2 — `champions_v2.json` não guarda
+ * um campo `target` pra ela (só `range`+`effects`), diferente das cartas de
+ * `cards_v2.json`. Inferido dos próprios `effects`, regra [PADRÃO] documentada
+ * em regras-e-decisoes.md §6 ("Alvo da habilidade básica no roster v2"):
+ * 1) um `target` explícito num bloco de efeito vence (ex. Bênção da Aurelia);
+ * 2) senão, só efeito de apoio (heal/shield/etc., sem nenhum dano) -> "ally";
+ * 3) senão, cria parede/estrutura/área no chão -> "cell";
+ * 4) senão (dano, empurrão, controle sem alvo explícito) -> "enemy".
+ */
+export function basicTargetV2(def: BasicDefV2): string {
+  for (const e of def.effects) {
+    if (typeof e.target === "string") return e.target;
+  }
+  const hasDamage = def.effects.some((e) => e.type === "damage");
+  if (!hasDamage && def.effects.some((e) => SUPPORT_EFFECT_TYPES.has(e.type))) return "ally";
+  if (def.effects.some((e) => GROUND_EFFECT_TYPES.has(e.type))) return "cell";
+  return "enemy";
+}
+
 export const ALL_CHAMPION_IDS: string[] = championsV2.map((c) => c.id);
 export const DANO_CHAMPION_IDS: string[] = championsV2.filter((c) => c.role === "dano").map((c) => c.id);
 export const SUPORTE_CHAMPION_IDS: string[] = championsV2.filter((c) => c.role === "suporte").map((c) => c.id);

@@ -8,14 +8,18 @@
 // que ainda não existe — playCardV2 só executa UMA carta já escolhida,
 // testável isoladamente (como os testes de effects.ts já fazem à mão).
 //
+// playBasicV2 cobre a habilidade básica (custo 0, alvo inferido por
+// basicTargetV2 em data.ts — ver regras-e-decisoes.md §6, "Alvo da
+// habilidade básica no roster v2").
+//
 // Fora de escopo aqui (ver KANBAN.md pra cada um):
-// - habilidades básicas: champions_v2.json não guarda um `target` pra elas
-//   (só `range`+`effects`) — teria que ser inferido por herói/efeito, o que é
-//   um achado de design em aberto, não resolvido por suposição silenciosa.
 // - "wall"/"two_cells" com efeitos ainda não implementados (create_walls_line,
 //   create_portal_pair) — a carta valida o alvo mas applyEffectV2 lança erro
 //   claro ao tentar aplicar, igual qualquer outro tipo não implementado.
 // - resurrect/death_ward (item 5) e tudo que depende de boss v2 (item 6).
+// - silêncio/atordoamento bloqueando cartas e básicas: o motor v2 ainda não
+//   tem esses status de controle ligados aqui (fica pra quando a fase de
+//   turno/pilha de respostas existir de verdade, junto com silenced/stunned).
 
 import { rngOf } from "../engine/rng";
 import type { Effect } from "../engine/data";
@@ -23,7 +27,7 @@ import { hexDirectionTo } from "../design/hexGrid";
 import { applyEffectV2, type EffectContextV2 } from "./effects";
 import { discardCardV2 } from "./deck";
 import { canPayV2, spendManaV2 } from "./mana";
-import { getCardDefV2, getCardRankV2, type CardDefV2, type CardRank } from "./data";
+import { basicTargetV2, getCardDefV2, getCardRankV2, getChampionDefV2, type BasicDefV2, type CardDefV2, type CardRank } from "./data";
 import { getChampionV2, logV2, nextIdV2, type ChampionStateV2, type GameStateV2, type TeamId } from "./state";
 import { enemiesInRange, validateTargetV2, type TargetV2 } from "./targeting";
 
@@ -166,4 +170,40 @@ export function playCardV2(game: GameStateV2, team: TeamId, cardUid: string, ran
 
   logV2(game, `${owner.defId} (${team}) usa ${def.name} (rank ${rankNumber})`);
   return { owner, card: def, rank };
+}
+
+export interface PlayBasicResultV2 {
+  owner: ChampionStateV2;
+  basic: BasicDefV2;
+}
+
+/**
+ * Executa a habilidade básica de um campeão (custo 0, fora do baralho — não
+ * passa por mana nem descarte). O alvo é validado contra `basic.range` e o
+ * `target` inferido por `basicTargetV2` (ver cabeçalho do arquivo e
+ * regras-e-decisoes.md §6). Lança `IllegalActionV2` se o dono estiver fora de
+ * campo ou o alvo for inválido.
+ */
+export function playBasicV2(game: GameStateV2, championUid: string, t: TargetV2): PlayBasicResultV2 {
+  const owner = getChampionV2(game, championUid);
+  if (!owner.alive) fail("O campeão não está em campo");
+  const def = getChampionDefV2(owner.defId);
+  const basic = def.basic;
+  const target = basicTargetV2(basic);
+
+  const err = validateTargetV2(game, owner, { range: basic.range, target }, t);
+  if (err) fail(err);
+
+  const { targets, ctxExtra } = resolveCardTargetsV2(owner, target, t, game);
+  const ctx: EffectContextV2 = {
+    game,
+    attacker: owner,
+    nextId: () => nextIdV2(game),
+    ...ctxExtra,
+  };
+
+  for (const effect of basic.effects) applyEffectV2(ctx, effect, targets);
+
+  logV2(game, `${owner.defId} (${owner.team}) usa a básica (${basic.name})`);
+  return { owner, basic };
 }
