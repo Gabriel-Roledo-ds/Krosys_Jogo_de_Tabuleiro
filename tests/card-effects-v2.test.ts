@@ -101,13 +101,14 @@ const KNOWN_EFFECT_TYPES = new Set([
   "taunt_area",
   "block_ranged_attacks",
   "extend_existing_control",
+  "protective_dome",
 ]);
 
 const convertedCards = cardsV2.filter((c): c is typeof c & { target: string } => "target" in c);
 
 describe("effects estruturado das cartas v2 (parcial — campeão por campeão)", () => {
-  it("Niara, Borak, Ignira, Vextra, Thorne, Selene, Varek e Sylvane já estão convertidos (progresso mínimo)", () => {
-    for (const owner of ["niara", "borak", "ignira", "vextra", "thorne", "selene", "varek", "sylvane"]) {
+  it("Niara, Borak, Ignira, Vextra, Thorne, Selene, Varek, Sylvane e Dorin já estão convertidos (progresso mínimo)", () => {
+    for (const owner of ["niara", "borak", "ignira", "vextra", "thorne", "selene", "varek", "sylvane", "dorin"]) {
       expect(convertedCards.filter((c) => c.owner === owner), owner).toHaveLength(12);
     }
   });

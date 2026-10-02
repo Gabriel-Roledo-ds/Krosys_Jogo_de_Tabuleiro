@@ -4985,21 +4985,41 @@
     "rank": 1,
     "cost": 1,
     "range": 3,
-    "text": "4hp, 1m, alc.3"
+    "text": "4hp, 1m, alc.3",
+    "effects": [
+     {
+      "type": "create_wall",
+      "hp": 4
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 2,
     "range": 3,
-    "text": "6hp, 2m"
+    "text": "6hp, 2m",
+    "effects": [
+     {
+      "type": "create_wall",
+      "hp": 6
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 3,
     "range": 3,
-    "text": "9hp, 3m — bloqueia alcance"
+    "text": "9hp, 3m — bloqueia alcance",
+    "effects": [
+     {
+      "type": "create_wall",
+      "hp": 9,
+      "blocks_ranged_attacks": true
+     }
+    ]
    }
-  ]
+  ],
+  "target": "cell"
  },
  {
   "id": "dorin_armadilha",
@@ -5013,21 +5033,41 @@
     "rank": 1,
     "cost": 2,
     "range": 3,
-    "text": "Dano 3, 2m, alc.3"
+    "text": "Dano 3, 2m, alc.3",
+    "effects": [
+     {
+      "type": "hidden_trap",
+      "damage": 3
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 3,
     "range": 3,
-    "text": "Dano 5, 3m"
+    "text": "Dano 5, 3m",
+    "effects": [
+     {
+      "type": "hidden_trap",
+      "damage": 5
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": 3,
-    "text": "Dano 7, 4m — -2 movimento"
+    "text": "Dano 7, 4m — -2 movimento",
+    "effects": [
+     {
+      "type": "hidden_trap",
+      "damage": 7,
+      "slow_amount": 2
+     }
+    ]
    }
-  ]
+  ],
+  "target": "cell"
  },
  {
   "id": "dorin_mola",
@@ -5041,21 +5081,44 @@
     "rank": 1,
     "cost": 2,
     "range": 3,
-    "text": "Lança 3, 2m, alc.3"
+    "text": "Lança 3, 2m, alc.3",
+    "effects": [
+     {
+      "type": "spring",
+      "distance": 3
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 3,
     "range": 3,
-    "text": "Lança 4, 3m"
+    "text": "Lança 4, 3m",
+    "effects": [
+     {
+      "type": "spring",
+      "distance": 4
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": 3,
-    "text": "Lança 5 + dano 2, 4m"
+    "text": "Lança 5 + dano 2, 4m",
+    "effects": [
+     {
+      "type": "spring",
+      "distance": 5
+     },
+     {
+      "type": "damage",
+      "amount": 2
+     }
+    ]
    }
-  ]
+  ],
+  "target": "cell"
  },
  {
   "id": "dorin_reforcar",
@@ -5069,21 +5132,41 @@
     "rank": 1,
     "cost": 1,
     "range": 3,
-    "text": "+3hp, 1m, alc.3"
+    "text": "+3hp, 1m, alc.3",
+    "effects": [
+     {
+      "type": "reinforce_wall",
+      "amount": 3
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 2,
     "range": 3,
-    "text": "+5hp, 2m"
+    "text": "+5hp, 2m",
+    "effects": [
+     {
+      "type": "reinforce_wall",
+      "amount": 5
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 3,
     "range": 3,
-    "text": "+8hp permanente, 3m"
+    "text": "+8hp permanente, 3m",
+    "effects": [
+     {
+      "type": "reinforce_wall",
+      "amount": 8,
+      "permanent": true
+     }
+    ]
    }
-  ]
+  ],
+  "target": "wall"
  },
  {
   "id": "dorin_torre_vigia",
@@ -5097,21 +5180,43 @@
     "rank": 1,
     "cost": 3,
     "range": 3,
-    "text": "2/rodada, 3hp, 3m, alc.3"
+    "text": "2/rodada, 3hp, 3m, alc.3",
+    "effects": [
+     {
+      "type": "create_structure",
+      "hp": 3,
+      "damage_per_round": 2
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 4,
     "range": 3,
-    "text": "3/rodada, 4hp, 4m"
+    "text": "3/rodada, 4hp, 4m",
+    "effects": [
+     {
+      "type": "create_structure",
+      "hp": 4,
+      "damage_per_round": 3
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": 4,
-    "text": "4/rodada, 6hp, alc.4, 5m"
+    "text": "4/rodada, 6hp, alc.4, 5m",
+    "effects": [
+     {
+      "type": "create_structure",
+      "hp": 6,
+      "damage_per_round": 4
+     }
+    ]
    }
-  ]
+  ],
+  "target": "cell"
  },
  {
   "id": "dorin_muralha",
@@ -5125,15 +5230,38 @@
     "rank": 2,
     "cost": 4,
     "range": null,
-    "text": "3 paredes, 5hp, 3 rodadas, 4m"
+    "text": "3 paredes, 5hp, 3 rodadas, 4m",
+    "effects": [
+     {
+      "type": "create_walls_line",
+      "count": 3,
+      "hp": 5,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": null,
-    "text": "4 paredes, 7hp, 4 rodadas, 5m"
+    "text": "4 paredes, 7hp, 4 rodadas, 5m",
+    "effects": [
+     {
+      "type": "create_walls_line",
+      "count": 4,
+      "hp": 7,
+      "duration": {
+       "unit": "rounds",
+       "value": 4
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "line"
  },
  {
   "id": "dorin_barricada",
@@ -5147,15 +5275,38 @@
     "rank": 2,
     "cost": 4,
     "range": null,
-    "text": "5 paredes, 4hp, 2 rodadas, 4m"
+    "text": "5 paredes, 4hp, 2 rodadas, 4m",
+    "effects": [
+     {
+      "type": "create_walls_shape",
+      "count": 5,
+      "hp": 4,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": null,
-    "text": "6 paredes, 6hp, 3 rodadas, 5m"
+    "text": "6 paredes, 6hp, 3 rodadas, 5m",
+    "effects": [
+     {
+      "type": "create_walls_shape",
+      "count": 6,
+      "hp": 6,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "cell"
  },
  {
   "id": "dorin_portal",
@@ -5169,15 +5320,27 @@
     "rank": 2,
     "cost": 4,
     "range": 3,
-    "text": "4m, alc.3"
+    "text": "4m, alc.3",
+    "effects": [
+     {
+      "type": "create_portal_pair"
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": null,
-    "text": "5m, dura até destruído"
+    "text": "5m, dura até destruído",
+    "effects": [
+     {
+      "type": "create_portal_pair",
+      "lasts_until_destroyed": true
+     }
+    ]
    }
-  ]
+  ],
+  "target": "two_cells"
  },
  {
   "id": "dorin_cupula",
@@ -5191,15 +5354,38 @@
     "rank": 2,
     "cost": 4,
     "range": null,
-    "text": "2 rodadas, 4m"
+    "text": "2 rodadas, 4m",
+    "effects": [
+     {
+      "type": "protective_dome",
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": null,
-    "text": "3 rodadas + escudo 3, 5m"
+    "text": "3 rodadas + escudo 3, 5m",
+    "effects": [
+     {
+      "type": "protective_dome",
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     },
+     {
+      "type": "shield",
+      "amount": 3
+     }
+    ]
    }
-  ]
+  ],
+  "target": "ally"
  },
  {
   "id": "dorin_demolicao",
@@ -5213,15 +5399,35 @@
     "rank": 2,
     "cost": 3,
     "range": null,
-    "text": "Dano 4, 3m"
+    "text": "Dano 4, 3m",
+    "effects": [
+     {
+      "type": "destroy_wall"
+     },
+     {
+      "type": "damage",
+      "amount": 4
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": "area2",
-    "text": "Dano 7, área 2, 4m"
+    "text": "Dano 7, área 2, 4m",
+    "effects": [
+     {
+      "type": "destroy_wall"
+     },
+     {
+      "type": "damage",
+      "amount": 7,
+      "radius": 2
+     }
+    ]
    }
-  ]
+  ],
+  "target": "wall"
  },
  {
   "id": "dorin_bastiao_impenetravel",
@@ -5235,21 +5441,57 @@
     "rank": 1,
     "cost": 13,
     "range": null,
-    "text": "8 paredes 8hp ao redor de área, 3 rodadas, 13m"
+    "text": "8 paredes 8hp ao redor de área, 3 rodadas, 13m",
+    "effects": [
+     {
+      "type": "create_walls_around_target",
+      "count": 8,
+      "hp": 8,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 14,
     "range": null,
-    "text": "10hp, 14m"
+    "text": "10hp, 14m",
+    "effects": [
+     {
+      "type": "create_walls_around_target",
+      "count": 8,
+      "hp": 10,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      },
+      "assumed_duration": true
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 15,
     "range": null,
-    "text": "12hp, 15m"
+    "text": "12hp, 15m",
+    "effects": [
+     {
+      "type": "create_walls_around_target",
+      "count": 8,
+      "hp": 12,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      },
+      "assumed_duration": true
+     }
+    ]
    }
-  ]
+  ],
+  "target": "cell"
  },
  {
   "id": "dorin_fortaleza_movel",
@@ -5263,21 +5505,57 @@
     "rank": 1,
     "cost": 13,
     "range": 5,
-    "text": "Estrutura 15hp, 5 por rodada, alc.5, 4 rodadas, 13m"
+    "text": "Estrutura 15hp, 5 por rodada, alc.5, 4 rodadas, 13m",
+    "effects": [
+     {
+      "type": "create_structure",
+      "hp": 15,
+      "damage_per_round": 5,
+      "duration": {
+       "unit": "rounds",
+       "value": 4
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 14,
     "range": 5,
-    "text": "18hp, 6 por rodada, 14m"
+    "text": "18hp, 6 por rodada, 14m",
+    "effects": [
+     {
+      "type": "create_structure",
+      "hp": 18,
+      "damage_per_round": 6,
+      "duration": {
+       "unit": "rounds",
+       "value": 4
+      },
+      "assumed_duration": true
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 15,
     "range": 5,
-    "text": "22hp, 7 por rodada, 15m"
+    "text": "22hp, 7 por rodada, 15m",
+    "effects": [
+     {
+      "type": "create_structure",
+      "hp": 22,
+      "damage_per_round": 7,
+      "duration": {
+       "unit": "rounds",
+       "value": 4
+      },
+      "assumed_duration": true
+     }
+    ]
    }
-  ]
+  ],
+  "target": "cell"
  },
  {
   "id": "aurelia_fervor",
