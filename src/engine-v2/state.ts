@@ -30,6 +30,8 @@ export interface StatusV2 {
   partner?: string;
   /** Aplicado durante o turno do próprio campeão: só vale a partir do próximo (ver tick.ts). */
   fresh?: boolean;
+  /** Raio da explosão — só usado pelo status "death_ward" (Fênix Momentânea da Ignira, ver death.ts). */
+  radius?: number;
 }
 
 export interface ChampionStateV2 {
@@ -112,6 +114,8 @@ export interface TeamStateV2 {
   /** Bônus da próxima carta jogada pela equipe (Passo das Sombras da Vextra), consumido em cardPlay.ts. */
   nextCardBuff: { bonusDamage: number } | null;
   turnsTaken: number;
+  /** Ressurgir (Selene) só pode ser usado uma vez por partida, por equipe. */
+  resurrectUsed: boolean;
 }
 
 export type PhaseV2 = "draw" | "act" | "discard";
@@ -234,6 +238,7 @@ export function createGameV2(seed: number, options: CreateGameV2Options = {}): G
       decks,
       nextCardBuff: null,
       turnsTaken: 0,
+      resurrectUsed: false,
     };
   }
 

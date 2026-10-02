@@ -10,8 +10,13 @@
 import { balance } from "../engine/data";
 import { rngOf } from "../engine/rng";
 import type { Hex } from "../design/hexGrid";
-import { inHexBoard } from "../design/hexBoard";
+import { inHexBoard, startAreaCells } from "../design/hexBoard";
+import { dealDamageV2 } from "./damage";
+import { hasStatus, removeStatus, statusAmount } from "./status";
+import { championsInRadius } from "./targeting";
 import { allChampionsV2, logV2, type ChampionStateV2, type GameStateV2, type TeamId } from "./state";
+
+const startCellsForTeam = (s: GameStateV2, team: TeamId): Hex[] => startAreaCells(team === "A" ? "equipe_a" : "equipe_b", s.board);
 
 /** Casa livre (dentro do tabuleiro, sem campeão vivo) entre as da área de largada da equipe, ou a mais próxima do centro dela. */
 function freeStartCellV2(s: GameStateV2, startCells: Hex[]): Hex {
@@ -22,8 +27,45 @@ function freeStartCellV2(s: GameStateV2, startCells: Hex[]): Hex {
   return { ...startCells[0] }; // área lotada: usa a primeira mesmo assim (sem campeão sólido duplicado nunca deveria chegar aqui)
 }
 
-/** Campeão morre: some do tabuleiro, guarda a mão dele, só volta depois de `outTurns` turnos da própria equipe. */
+/**
+ * Faz o campeão voltar ao campo agora: vida cheia (ou `hpPercent` dela),
+ * largada livre, imune até o fim do próprio turno, mão devolvida ao baralho
+ * e embaralhada. Usado tanto pelo retorno natural (`returnDeadChampionsV2`,
+ * depois de `outTurns`) quanto por `resurrect` (Ressurgir da Selene, item 5
+ * do KANBAN), que chama isso na hora, pulando a espera.
+ */
+export function reviveChampionV2(s: GameStateV2, c: ChampionStateV2, hpPercent = 100): void {
+  const team = s.teams[c.team];
+  c.alive = true;
+  c.hp = Math.max(1, Math.round((c.maxHp * hpPercent) / 100));
+  c.outTurns = 0;
+  c.pos = freeStartCellV2(s, startCellsForTeam(s, c.team));
+  c.untargetable = true;
+  const deck = team.decks[c.uid];
+  deck.draw = rngOf(s).shuffle([...deck.draw, ...c.limbo]);
+  c.limbo = [];
+  logV2(s, `${c.defId} (${c.team}) volta ao campo com ${hpPercent}% de vida`);
+}
+
+/**
+ * Campeão morre: some do tabuleiro, guarda a mão dele, só volta depois de
+ * `outTurns` turnos da própria equipe. Antes de matar de verdade, checa
+ * `death_ward` (Fênix Momentânea da Ignira): se o campeão tiver o status,
+ * ele é consumido — o campeão sobrevive com 1hp e explode dano na área ao
+ * redor (fogo amigo incluso, mesma regra de área de effects.ts).
+ */
 export function killChampionV2(s: GameStateV2, c: ChampionStateV2): void {
+  if (hasStatus(c, "death_ward")) {
+    const amount = statusAmount(c, "death_ward");
+    const radius = c.statuses.find((x) => x.status === "death_ward")?.radius ?? 0;
+    removeStatus(c, "death_ward");
+    c.hp = 1;
+    logV2(s, `${c.defId} (${c.team}) sobrevive com a Fênix Momentânea e explode`);
+    for (const target of championsInRadius(s, c.pos, radius, { excludeUid: c.uid })) {
+      dealDamageV2(c, target, amount);
+    }
+    return;
+  }
   logV2(s, `${c.defId} (${c.team}) morreu`);
   c.alive = false;
   c.deaths += 1;
@@ -39,7 +81,7 @@ export function killChampionV2(s: GameStateV2, c: ChampionStateV2): void {
 }
 
 /** Início do turno: campeões mortos da equipe voltam à largada, imunes até o fim do próprio turno, vida cheia, mão devolvida ao baralho. */
-export function returnDeadChampionsV2(s: GameStateV2, team: TeamId, startCells: { q: number; r: number }[]): void {
+export function returnDeadChampionsV2(s: GameStateV2, team: TeamId): void {
   for (const c of s.teams[team].champions) {
     if (c.alive) continue;
     if (c.outTurns > 0) {
@@ -47,14 +89,7 @@ export function returnDeadChampionsV2(s: GameStateV2, team: TeamId, startCells: 
       logV2(s, `${c.defId} (${team}) ainda está fora (${c.outTurns > 0 ? c.outTurns + " turno(s)" : "volta no próximo turno"})`);
       continue;
     }
-    c.alive = true;
-    c.hp = c.maxHp;
-    c.pos = freeStartCellV2(s, startCells);
-    c.untargetable = true;
-    const deck = s.teams[team].decks[c.uid];
-    deck.draw = rngOf(s).shuffle([...deck.draw, ...c.limbo]);
-    c.limbo = [];
-    logV2(s, `${c.defId} (${team}) volta à largada`);
+    reviveChampionV2(s, c, 100);
   }
 }
 

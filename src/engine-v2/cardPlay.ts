@@ -16,7 +16,7 @@
 // - "wall"/"two_cells" com efeitos ainda não implementados (create_walls_line,
 //   create_portal_pair) — a carta valida o alvo mas applyEffectV2 lança erro
 //   claro ao tentar aplicar, igual qualquer outro tipo não implementado.
-// - resurrect/death_ward (item 5) e tudo que depende de boss v2 (item 6).
+// - boss v2 (item 6) e tudo que depende dele.
 // - silêncio/atordoamento bloqueando cartas e básicas: o motor v2 ainda não
 //   tem esses status de controle ligados aqui (fica pra quando a fase de
 //   turno/pilha de respostas existir de verdade, junto com silenced/stunned).
@@ -36,6 +36,10 @@ export class IllegalActionV2 extends Error {}
 function fail(msg: string): never {
   throw new IllegalActionV2(msg);
 }
+
+/** Ressurgir (resurrect) só pode ser usado 1x por partida, por equipe (ver death.ts). */
+export const resurrectBlockedV2 = (game: GameStateV2, team: TeamId, effects: Effect[]): boolean =>
+  effects.some((e) => e.type === "resurrect") && game.teams[team].resurrectUsed;
 
 /** `rank.range` vem como number | "self" | null (direction/line sem alcance numérico) — null é tratado como 0 pra validação, já que esses targets não checam alcance por casa (ex. "direction"). */
 export function rankRangeV2(rank: CardRank): number | "self" {
@@ -78,6 +82,7 @@ export function resolveCardTargetsV2(owner: ChampionStateV2, cardTarget: string,
     case "ally":
     case "champion":
     case "champion_in_line":
+    case "dead_ally":
       if (t.uid) targets = [getChampionV2(game, t.uid)];
       break;
     case "random_enemies":
@@ -171,6 +176,7 @@ export function playCardV2(game: GameStateV2, team: TeamId, cardUid: string, ran
   const err = validateTargetV2(game, owner, { range: rankRangeV2(rank), target: def.target }, t);
   if (err) fail(err);
   if (!canPayV2(game, team, rank.cost)) fail("Mana insuficiente");
+  if (resurrectBlockedV2(game, team, rank.effects)) fail("Ressurgir já foi usado");
 
   const buff = game.teams[team].nextCardBuff ?? undefined;
 

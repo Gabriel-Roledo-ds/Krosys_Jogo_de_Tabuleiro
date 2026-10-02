@@ -100,8 +100,16 @@ export function validateTargetV2(s: GameStateV2, owner: ChampionStateV2, def: Ta
       if (!inRange(s, owner.pos, t.pos, range)) return "fora de alcance";
       return wallAtV2(s, t.pos) ? null : "não há parede nessa casa";
     }
-    case "dead_ally":
-      return `alvo "${def.target}" ainda não implementado no motor v2`;
+    case "dead_ally": {
+      // Sem checagem de alcance: um campeão morto não tem posição relevante
+      // em campo (ver death.ts) — "alcance" aqui é só até onde o rank chega,
+      // mas o que importa é escolher QUAL aliado caído, não onde ele está.
+      const u = findChampion(s, t.uid);
+      if (!u) return "alvo inválido";
+      if (u.team !== owner.team) return "alvo não é aliado";
+      if (u.alive) return "alvo não está morto";
+      return null;
+    }
     default:
       return `tipo de alvo desconhecido: ${def.target}`;
   }
@@ -150,8 +158,7 @@ export function championsInRadius(s: GameStateV2, center: Hex, radius: number, f
  * decidir se uma carta/básica tem pelo menos um alvo válido (jogadas rápidas
  * possíveis, ações legais) e, nos testes/bots, pra listar opções. Não cobre
  * `two_cells` (único consumidor hoje é `create_portal_pair`, ainda não
- * implementado em effects.ts) nem `dead_ally` (resurrect, item 5 do KANBAN)
- * — ambos devolvem lista vazia por enquanto.
+ * implementado em effects.ts) — devolve lista vazia por enquanto.
  */
 export function enumerateTargetsV2(s: GameStateV2, owner: ChampionStateV2, def: TargetableV2, rangeBonus = 0, cap = 30): TargetV2[] {
   const out: TargetV2[] = [];
@@ -204,8 +211,12 @@ export function enumerateTargetsV2(s: GameStateV2, owner: ChampionStateV2, def: 
         if (inHexBoard(h, s.board) && wallAtV2(s, h)) push({ pos: h });
       }
       break;
-    case "two_cells":
     case "dead_ally":
+      for (const c of allChampionsV2(s)) {
+        if (c.team === owner.team && !c.alive) push({ uid: c.uid });
+      }
+      break;
+    case "two_cells":
       break;
     default:
       break;

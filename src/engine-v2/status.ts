@@ -27,6 +27,8 @@ export interface AddStatusOptions {
   amount?: number;
   negative?: boolean;
   partner?: string;
+  /** Raio da explosão — só usado por "death_ward" (ver death.ts). */
+  radius?: number;
 }
 
 /** Adiciona um status com duração; não funde com um já existente (pode haver vários). */
@@ -46,6 +48,7 @@ export function addStatus(
     amount: opts.amount,
     negative: opts.negative ?? false,
     partner: opts.partner,
+    radius: opts.radius,
   };
   c.statuses.push(entry);
   return entry;

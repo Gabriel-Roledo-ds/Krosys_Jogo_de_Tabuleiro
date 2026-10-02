@@ -18,6 +18,7 @@ import { addStatus, heal, removeNegativeStatuses, removePositiveStatuses, remove
 import { forcedMove, pullChampion, pushChampion, teleportChampion } from "./movement";
 import { championsInRadius } from "./targeting";
 import { wallAtV2 } from "./world";
+import { reviveChampionV2 } from "./death";
 
 /** Nenhum campeão vivo (de qualquer equipe) na casa. */
 function isEmptyOfChampions(game: GameStateV2, h: Hex): boolean {
@@ -569,10 +570,42 @@ export function applyGapCloseStrike(ctx: EffectContextV2, effect: Effect, target
   ctx.attacker.pos = { ...dest };
 }
 
-/** `buff_next_card`: guarda o bônus pra próxima carta jogada pela equipe (Passo das Sombras da Vextra). Consumir esse bônus é tarefa da camada de "jogar carta", que ainda não existe (ver KANBAN.md). */
+/** `buff_next_card`: guarda o bônus pra próxima carta jogada pela equipe (Passo das Sombras da Vextra). Consumido em cardPlay.ts/turn.ts (ctx.bonusDamage). */
 export function applyBuffNextCard(ctx: EffectContextV2, effect: Effect): void {
   if (!ctx.attacker) return;
   ctx.game.teams[ctx.attacker.team].nextCardBuff = { bonusDamage: effect.bonus_damage ?? 0 };
+}
+
+/**
+ * `resurrect` (Ressurgir da Selene): traz um aliado morto de volta na hora,
+ * pulando a espera de `outTurns` (ver death.ts). `targets` é o único aliado
+ * morto escolhido (target "dead_ally", já validado por targeting.ts). O
+ * limite de 1x por partida é checado antes de pagar a carta, em
+ * cardPlay.ts/turn.ts (`resurrectBlockedV2`) — aqui só marca `resurrectUsed`
+ * depois de resolver, pra não travar se o efeito falhar por algum motivo.
+ */
+export function applyResurrect(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
+  const target = targets[0];
+  if (!target) return;
+  reviveChampionV2(ctx.game, target, effect.hp_percent ?? 100);
+  ctx.game.teams[target.team].resurrectUsed = true;
+}
+
+/**
+ * `death_ward` (Fênix Momentânea da Ignira): concede ao próprio dono um
+ * status que, na PRÓXIMA vez que ele morreria, o salva com 1hp e explode
+ * dano em área ao redor — a consequência de verdade mora em death.ts
+ * (killChampionV2 checa o status antes de matar). Aqui só concede o status,
+ * sem duração natural (persiste até ser consumido).
+ */
+export function applyDeathWard(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
+  for (const target of targets) {
+    addStatus(target, ctx.nextId(), "death_ward", "rounds", PERSISTENT_REMAINING, {
+      amount: effect.explode_damage ?? 0,
+      radius: effect.explode_radius ?? 0,
+      negative: false,
+    });
+  }
 }
 
 const DISPATCH: Record<string, (ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]) => void> = {
@@ -617,6 +650,8 @@ const DISPATCH: Record<string, (ctx: EffectContextV2, effect: Effect, targets: C
   damage_third_target: (ctx, effect) => applyDamageThirdTarget(ctx, effect) as unknown as void,
   gap_close_strike: (ctx, effect, targets) => applyGapCloseStrike(ctx, effect, targets),
   buff_next_card: (ctx, effect) => applyBuffNextCard(ctx, effect),
+  resurrect: (ctx, effect, targets) => applyResurrect(ctx, effect, targets),
+  death_ward: (ctx, effect, targets) => applyDeathWard(ctx, effect, targets),
 };
 
 /** Tipos de efeito que já têm execução real no motor v2 (os outros ainda só existem como dado). */

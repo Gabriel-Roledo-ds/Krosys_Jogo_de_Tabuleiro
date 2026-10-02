@@ -6,7 +6,6 @@
 import { describe, it, expect } from "vitest";
 import { createGameV2, nextIdV2 } from "../src/engine-v2/state";
 import { killChampionV2, returnDeadChampionsV2, resolveDeathsV2, checkEliminationV2 } from "../src/engine-v2/death";
-import { startAreaCells } from "../src/design/hexBoard";
 import { addStatus } from "../src/engine-v2/status";
 
 describe("killChampionV2", () => {
@@ -46,12 +45,11 @@ describe("returnDeadChampionsV2", () => {
     const game = createGameV2(1);
     const c = game.teams.A.champions[0];
     killChampionV2(game, c);
-    const startCells = startAreaCells("equipe_a", game.board);
     while (c.outTurns > 0) {
-      returnDeadChampionsV2(game, "A", startCells);
+      returnDeadChampionsV2(game, "A");
       expect(c.alive).toBe(false);
     }
-    returnDeadChampionsV2(game, "A", startCells);
+    returnDeadChampionsV2(game, "A");
     expect(c.alive).toBe(true);
     expect(c.hp).toBe(c.maxHp);
     expect(c.untargetable).toBe(true);
@@ -63,9 +61,8 @@ describe("returnDeadChampionsV2", () => {
     const deckBefore = game.teams.A.decks[c.uid].draw.length;
     game.teams.A.hand.push({ uid: "card#1", cardId: "niara_tiro_certeiro", owner: c.uid });
     killChampionV2(game, c);
-    const startCells = startAreaCells("equipe_a", game.board);
     const callsNeeded = c.outTurns + 1; // outTurns muda a cada chamada — captura o valor inicial antes do laço
-    for (let i = 0; i < callsNeeded; i++) returnDeadChampionsV2(game, "A", startCells);
+    for (let i = 0; i < callsNeeded; i++) returnDeadChampionsV2(game, "A");
     expect(game.teams.A.decks[c.uid].draw.length).toBe(deckBefore + 1);
     expect(c.limbo).toHaveLength(0);
   });

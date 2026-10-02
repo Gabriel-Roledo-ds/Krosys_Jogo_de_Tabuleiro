@@ -18,12 +18,11 @@
 
 import { balance } from "../engine/data";
 import { basicTargetV2, getCardDefV2, getCardRankV2, getChampionDefV2 } from "./data";
-import { startAreaCells } from "../design/hexBoard";
 import type { Hex } from "../design/hexGrid";
 import { hexKey } from "../design/hexGrid";
 import { discardCardV2, deckSizeV2, drawFromV2 } from "./deck";
 import { resolveDeathsV2, returnDeadChampionsV2 } from "./death";
-import { IllegalActionV2, rankRangeV2, resolveBasicEffectsV2, resolveCardEffectsV2 } from "./cardPlay";
+import { IllegalActionV2, rankRangeV2, resolveBasicEffectsV2, resolveCardEffectsV2, resurrectBlockedV2 } from "./cardPlay";
 
 export { IllegalActionV2 };
 import { canPayV2, gainTurnManaV2, spendManaV2 } from "./mana";
@@ -57,8 +56,6 @@ function fail(msg: string): never {
   throw new IllegalActionV2(msg);
 }
 
-const startCellsFor = (team: TeamId, game: GameStateV2): Hex[] => startAreaCells(team === "A" ? "equipe_a" : "equipe_b", game.board);
-
 /** Começa a partida: primeiro turno da equipe A. */
 export function startGameV2(game: GameStateV2): void {
   beginTurn(game);
@@ -66,7 +63,7 @@ export function startGameV2(game: GameStateV2): void {
 
 function beginTurn(game: GameStateV2): void {
   const team = game.turn.team;
-  returnDeadChampionsV2(game, team, startCellsFor(team, game));
+  returnDeadChampionsV2(game, team);
   logV2(game, `Turno da equipe ${team} (rodada ${game.round})`);
   enterDrawPhase(game);
 }
@@ -179,6 +176,7 @@ function commitCardV2(game: GameStateV2, team: TeamId, cardUid: string, rankNumb
   const err = validateTargetV2(game, owner, { range: rankRangeV2(rank), target: def.target }, t);
   if (err) fail(err);
   if (!canPayV2(game, team, rank.cost)) fail("Mana insuficiente");
+  if (resurrectBlockedV2(game, team, rank.effects)) fail("Ressurgir já foi usado");
 
   const buff = game.teams[team].nextCardBuff ?? undefined;
   spendManaV2(game, team, rank.cost);
@@ -352,6 +350,7 @@ export function legalActionsV2(game: GameStateV2, team: TeamId): ActionV2[] {
         if (!owner.alive) continue;
         for (const rank of def.ranks) {
           if (!canPayV2(game, team, rank.cost)) continue;
+          if (resurrectBlockedV2(game, team, rank.effects)) continue;
           for (const target of enumerateTargetsV2(game, owner, { range: rankRangeV2(rank), target: def.target })) {
             out.push({ type: "play", card: card.uid, rank: rank.rank, target });
           }
