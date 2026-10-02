@@ -1,0 +1,133 @@
+{
+  "_status": "design-only — roster v2 (fichas-campeoes.md). Não implementado no motor; coexiste com champions.json (MVP atual, 6 classes antigas), que não foi tocado.",
+  "deck_size": 30,
+  "potion_templates": {
+    "life": {
+      "name": "Poção de Vida",
+      "cost": 0,
+      "fast": true,
+      "effects": [{ "type": "heal", "amount": 6, "target": "self" }],
+      "text": "Cura 6 em quem usa."
+    },
+    "mana": {
+      "name": "Poção de Mana",
+      "cost": 0,
+      "fast": true,
+      "effects": [{ "type": "grant_personal_mana", "amount": 4 }],
+      "text": "Dá 4 de mana pessoal (só serve pras cartas do próprio campeão, não entra no mana compartilhado da equipe)."
+    }
+  },
+  "potions_per_champion": { "count": 3, "templates": ["life", "mana"], "proportion_choice": "escolhida pelo jogador antes da partida" },
+  "champions": [
+    {
+      "id": "niara",
+      "name": "Niara",
+      "archetype": "Atiradora (dano único, francotiradora)",
+      "role": "dano",
+      "hp": 14,
+      "defense": 0,
+      "basic": { "name": "Disparo Rápido", "range": 4, "effects": [{ "type": "damage", "amount": 2 }], "text": "Alcance 4, dano 2." },
+      "passive": { "name": "Sniper", "text": "Pode abrir mão de toda a movimentação do turno; em troca, as habilidades ganham +2 de alcance e +50% de dano (x1,5) no turno." },
+      "sacrifice": null
+    },
+    {
+      "id": "borak",
+      "name": "Borak",
+      "archetype": "Guerreiro Selvagem (corpo a corpo, risco com a própria vida)",
+      "role": "dano",
+      "hp": 20,
+      "defense": 2,
+      "basic": { "name": "Golpe Bruto", "range": 1, "effects": [{ "type": "damage", "amount": 4 }], "text": "Alcance 1, dano 4." },
+      "passive": { "name": "Fúria do Sangue", "text": "+1 de dano em tudo a cada 20% de vida perdida (até +4 com 20% ou menos)." },
+      "sacrifice": { "name": "Fúria Desenfreada", "text": "No início do turno, pode perder 4 de vida (só com 5+) para que toda carta e a básica usadas no turno causem +3 de dano." }
+    },
+    {
+      "id": "ignira",
+      "name": "Ignira",
+      "archetype": "Piromante Caótica (área que escala com fogo acumulado)",
+      "role": "dano",
+      "hp": 14,
+      "defense": 0,
+      "basic": { "name": "Fagulha Dupla", "range": 3, "effects": [{ "type": "damage", "amount": 2, "element": "fire" }], "text": "Alcance 3, dano 2 (fogo)." },
+      "passive": { "name": "Combustão Crescente", "text": "Dano em alvo já queimando tem +50%." },
+      "sacrifice": { "name": "Fogo Selvagem", "text": "Pode abrir mão de comprar carta; cartas de fogo do turno ganham +1 de raio e o chão em chamas dura +1 rodada." }
+    },
+    {
+      "id": "vextra",
+      "name": "Vextra",
+      "archetype": "Assassina das Sombras (burst a partir de furtividade)",
+      "role": "dano",
+      "hp": 12,
+      "defense": 0,
+      "basic": { "name": "Punhal Arremessado", "range": 2, "effects": [{ "type": "damage", "amount": 3 }], "text": "Alcance 2, dano 3." },
+      "passive": { "name": "Golpe Furtivo", "text": "Primeiro ataque do turno contra inimigo sem linha de visão no turno anterior causa dano dobrado." },
+      "sacrifice": { "name": "Em Sombras", "text": "Pode abrir mão de agir totalmente no turno pra ficar invisível até o início do próprio próximo turno; o primeiro ataque depois é Golpe Furtivo garantido." }
+    },
+    {
+      "id": "thorne",
+      "name": "Thorne",
+      "archetype": "Praga Rastejante (veneno que acumula e estoura)",
+      "role": "dano",
+      "hp": 16,
+      "defense": 1,
+      "basic": { "name": "Picada", "range": 3, "effects": [{ "type": "damage", "amount": 1 }, { "type": "apply_status", "status": "poison_stack", "amount": 1 }], "text": "Alcance 3, dano 1, +1 estaca de veneno." },
+      "passive": { "name": "Infecção", "text": "Estacas (máx. 5) estouram sozinhas ao chegar em 5: 4 de dano extra (ignora defesa), zera." },
+      "sacrifice": { "name": "Toxina Concentrada", "text": "Pode abrir mão de 2 casas de alcance em todas as cartas do turno; cada acerto aplica 2 estacas em vez de 1." }
+    },
+    {
+      "id": "selene",
+      "name": "Selene",
+      "archetype": "Curandeira da Luz (cura direta, contínua, ressurreição)",
+      "role": "suporte",
+      "hp": 16,
+      "defense": 0,
+      "basic": { "name": "Toque Curativo", "range": 2, "effects": [{ "type": "heal", "amount": 3 }], "text": "Alcance 2, cura 3." },
+      "passive": { "name": "Luz Compartilhada", "text": "Toda cura que aplica em aliado também cura 1 em si mesma." },
+      "sacrifice": { "name": "Prece Desesperada", "text": "Pode perder 3 de vida própria pra fazer uma cura do turno valer o dobro." }
+    },
+    {
+      "id": "varek",
+      "name": "Varek",
+      "archetype": "Guardião de Ferro (escudos, provocação, redireciona dano)",
+      "role": "suporte",
+      "hp": 22,
+      "defense": 3,
+      "basic": { "name": "Golpe de Escudo", "range": 1, "effects": [{ "type": "damage", "amount": 2 }, { "type": "push", "distance": 1 }], "text": "Alcance 1, dano 2, empurra 1." },
+      "passive": { "name": "Baluarte", "text": "Com escudo ativo, aliados adjacentes recebem -1 de dano de qualquer fonte." },
+      "sacrifice": { "name": "Último Bastião", "text": "Pode abrir mão de toda movimentação pra redirecionar pra si todo o dano que um aliado sofreria até o início do próximo turno dele." }
+    },
+    {
+      "id": "sylvane",
+      "name": "Sylvane",
+      "archetype": "Guardiã das Raízes (controle de grupo)",
+      "role": "suporte",
+      "hp": 18,
+      "defense": 1,
+      "basic": { "name": "Raízes Finas", "range": 2, "effects": [{ "type": "apply_status", "status": "move_penalty", "amount": 1, "duration": { "unit": "champion_turns", "value": 1 }, "control": true }], "text": "Alcance 2, -1 movimento 1 turno." },
+      "passive": { "name": "Presença Sufocante", "text": "Inimigos adjacentes têm -1 no dado de movimento." },
+      "sacrifice": { "name": "Floresta Desperta", "text": "Pode abrir mão da básica pra fazer cartas de controle do turno alcançarem +1 casa de raio." }
+    },
+    {
+      "id": "dorin",
+      "name": "Dorin",
+      "archetype": "Engenheiro de Guerra (paredes, armadilhas, estruturas)",
+      "role": "suporte",
+      "hp": 20,
+      "defense": 2,
+      "basic": { "name": "Barreira Rápida", "range": 1, "effects": [{ "type": "create_wall", "hp": 2 }], "text": "Alcance 1, cria 1 parede com 2hp." },
+      "passive": { "name": "Mestre de Obras", "text": "Atravessa as próprias paredes/estruturas; elas têm +2hp." },
+      "sacrifice": { "name": "Construção Acelerada", "text": "Pode abrir mão de comprar carta pra criar o dobro de paredes/estruturas das cartas do turno." }
+    },
+    {
+      "id": "aurelia",
+      "name": "Aurelia",
+      "archetype": "Encantadora de Auras (buffs e debuffs em equipe)",
+      "role": "suporte",
+      "hp": 15,
+      "defense": 0,
+      "basic": { "name": "Toque Arcano", "range": 3, "effects": [{ "type": "apply_status", "status": "next_card_bonus_damage", "amount": 1, "target": "ally" }], "text": "Alcance 3, +1 dano na próxima carta de um aliado." },
+      "passive": { "name": "Ressonância", "text": "Todo buff aplicado num aliado também dá +1 mana pessoal a ele." },
+      "sacrifice": { "name": "Canalização Total", "text": "Pode abrir mão da básica e de se mover pra fazer buffs do turno durarem +1 rodada e valerem +50%." }
+    }
+  ]
+}
