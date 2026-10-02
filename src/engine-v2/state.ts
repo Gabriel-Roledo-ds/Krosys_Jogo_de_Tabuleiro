@@ -109,6 +109,8 @@ export interface TeamStateV2 {
   champions: ChampionStateV2[];
   hand: CardInstanceV2[];
   decks: Record<string, DeckStateV2>;
+  /** Bônus da próxima carta jogada pela equipe (Passo das Sombras da Vextra) — consumido pela camada de "jogar carta", que ainda não existe. */
+  nextCardBuff: { bonusDamage: number } | null;
 }
 
 export interface GameStateV2 {
@@ -185,10 +187,11 @@ export function createGameV2(seed: number, options: CreateGameV2Options = {}): G
     });
     teams[teamId] = {
       id: teamId,
-      mana: balance.mana.start,
+      mana: balance.mana_v2.start,
       champions,
       hand: [],
       decks,
+      nextCardBuff: null,
     };
   }
 
