@@ -13,6 +13,7 @@ import { rngOf } from "../engine/rng";
 import { addHex, hexDirectionTo, hexDistance, hexKey, hexNeighbors, sameHex, type Hex } from "../design/hexGrid";
 import { inHexBoard } from "../design/hexBoard";
 import { allChampionsV2, type ChampionStateV2, type GameStateV2 } from "./state";
+import { hasStatus, statusAmount } from "./status";
 import { wallAtV2 } from "./world";
 
 /** Joga o dado de movimento (d6 por padrão, mesma regra do MVP). */
@@ -23,6 +24,12 @@ export function rollMovementDie(s: GameStateV2): number {
 /** Casas de movimento = dado + bônus - penalidades, mínimo 0. */
 export function calcMovement(die: number, bonus = 0, penalty = 0): number {
   return Math.max(0, die + bonus - penalty);
+}
+
+/** Orçamento de movimento de um campeão no turno: 0 se imobilizado, senão dado + bônus - pilhas de `move_penalty`. Usado por turn.ts. */
+export function movementBudgetV2(c: ChampionStateV2, die: number, bonus = 0): number {
+  if (hasStatus(c, "immobilized")) return 0;
+  return calcMovement(die, bonus, statusAmount(c, "move_penalty"));
 }
 
 function isOccupiedByAliveChampion(s: GameStateV2, h: Hex, excludeUid: string): boolean {

@@ -145,4 +145,72 @@ export function championsInRadius(s: GameStateV2, center: Hex, radius: number, f
   });
 }
 
+/**
+ * Alvos candidatos pra um `target`+alcance dado — usado por turn.ts pra
+ * decidir se uma carta/básica tem pelo menos um alvo válido (jogadas rápidas
+ * possíveis, ações legais) e, nos testes/bots, pra listar opções. Não cobre
+ * `two_cells` (único consumidor hoje é `create_portal_pair`, ainda não
+ * implementado em effects.ts) nem `dead_ally` (resurrect, item 5 do KANBAN)
+ * — ambos devolvem lista vazia por enquanto.
+ */
+export function enumerateTargetsV2(s: GameStateV2, owner: ChampionStateV2, def: TargetableV2, rangeBonus = 0, cap = 30): TargetV2[] {
+  const out: TargetV2[] = [];
+  const push = (t: TargetV2) => {
+    if (out.length < cap) out.push(t);
+  };
+  const range = rangeOfV2(def, rangeBonus);
+
+  switch (def.target) {
+    case "self":
+    case "random_enemies":
+      push({});
+      break;
+    case "enemy":
+      for (const c of enemiesInRange(s, owner, def, rangeBonus)) push({ uid: c.uid });
+      break;
+    case "ally":
+    case "champion":
+      for (const c of allChampionsV2(s)) {
+        if (!c.alive) continue;
+        if (def.target === "ally" && c.team !== owner.team) continue;
+        if (def.target === "champion" && c.uid === owner.uid) continue;
+        if (!inRange(s, owner.pos, c.pos, range)) continue;
+        push({ uid: c.uid });
+      }
+      break;
+    case "champion_in_line":
+      for (const c of allChampionsV2(s)) {
+        if (!c.alive || c.uid === owner.uid) continue;
+        if (!inRange(s, owner.pos, c.pos, range)) continue;
+        if (!isHexInLine(owner.pos, c.pos)) continue;
+        push({ uid: c.uid });
+      }
+      break;
+    case "direction":
+      for (const dir of HEX_DIRECTIONS) push({ dir });
+      break;
+    case "cell":
+      for (const h of hexesInRadius(owner.pos, range)) {
+        if (inHexBoard(h, s.board)) push({ pos: h });
+      }
+      break;
+    case "line":
+      for (const h of hexesInRadius(owner.pos, range)) {
+        if (inHexBoard(h, s.board) && isHexInLine(owner.pos, h) && !sameHex(h, owner.pos)) push({ pos: h });
+      }
+      break;
+    case "wall":
+      for (const h of hexesInRadius(owner.pos, range)) {
+        if (inHexBoard(h, s.board) && wallAtV2(s, h)) push({ pos: h });
+      }
+      break;
+    case "two_cells":
+    case "dead_ally":
+      break;
+    default:
+      break;
+  }
+  return out;
+}
+
 export { hexAdjacent };

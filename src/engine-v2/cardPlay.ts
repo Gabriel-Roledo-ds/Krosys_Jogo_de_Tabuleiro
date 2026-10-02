@@ -126,11 +126,36 @@ export interface PlayCardResultV2 {
 }
 
 /**
+ * Roda cada bloco de `rank.effects` em sequência sobre o MESMO contexto
+ * (pra ricochete/encadeamento funcionar) — a parte de "jogar a carta" que
+ * turn.ts reaproveita pra resolver um item já pago/validado que estava
+ * esperando na pilha de respostas rápidas (ver pushItemV2/resolveStackV2).
+ * Não valida nem cobra nada: quem chama já fez isso antes (em `playCardV2`,
+ * no ato de jogar; em turn.ts, no ato de EMPILHAR, não no de resolver).
+ */
+export function resolveCardEffectsV2(game: GameStateV2, owner: ChampionStateV2, def: CardDefV2, rank: CardRank, t: TargetV2, bonusDamage?: number): void {
+  const { targets, ctxExtra } = resolveCardTargetsV2(owner, def.target, t, game);
+  const ctx: EffectContextV2 = {
+    game,
+    attacker: owner,
+    nextId: () => nextIdV2(game),
+    bonusDamage,
+    ...ctxExtra,
+  };
+  for (const effect of rank.effects) {
+    const effectTargets = resolveEffectTargetsV2(game, owner, effect, targets, rank);
+    applyEffectV2(ctx, effect, effectTargets);
+  }
+  logV2(game, `${owner.defId} (${owner.team}) usa ${def.name} (rank ${rank.rank})`);
+}
+
+/**
  * Executa uma carta já escolhida pelo jogador (carta + rank + alvo): valida
  * o alvo contra o alcance do rank, cobra a mana de equipe, consome e limpa o
  * bônus de `buff_next_card` (Passo das Sombras da Vextra) se a própria carta
- * não renová-lo, roda cada bloco de `rank.effects` em sequência sobre o
- * mesmo contexto e descarta a carta pro baralho do dono. Lança
+ * não renová-lo, e resolve os efeitos (resolveCardEffectsV2) na hora —
+ * resolução imediata, sem passar pela pilha de respostas rápidas (essa é
+ * turn.ts, que decide quando empilhar e quando resolver). Lança
  * `IllegalActionV2` se algo for inválido (carta fora da mão, alvo inválido,
  * mana insuficiente, dono fora de campo).
  */
@@ -154,21 +179,7 @@ export function playCardV2(game: GameStateV2, team: TeamId, cardUid: string, ran
   discardCardV2(game, cardInstance);
   if (buff && !rank.effects.some((e) => e.type === "buff_next_card")) game.teams[team].nextCardBuff = null;
 
-  const { targets, ctxExtra } = resolveCardTargetsV2(owner, def.target, t, game);
-  const ctx: EffectContextV2 = {
-    game,
-    attacker: owner,
-    nextId: () => nextIdV2(game),
-    bonusDamage: buff?.bonusDamage,
-    ...ctxExtra,
-  };
-
-  for (const effect of rank.effects) {
-    const effectTargets = resolveEffectTargetsV2(game, owner, effect, targets, rank);
-    applyEffectV2(ctx, effect, effectTargets);
-  }
-
-  logV2(game, `${owner.defId} (${team}) usa ${def.name} (rank ${rankNumber})`);
+  resolveCardEffectsV2(game, owner, def, rank, t, buff?.bonusDamage);
   return { owner, card: def, rank };
 }
 
@@ -177,23 +188,9 @@ export interface PlayBasicResultV2 {
   basic: BasicDefV2;
 }
 
-/**
- * Executa a habilidade básica de um campeão (custo 0, fora do baralho — não
- * passa por mana nem descarte). O alvo é validado contra `basic.range` e o
- * `target` inferido por `basicTargetV2` (ver cabeçalho do arquivo e
- * regras-e-decisoes.md §6). Lança `IllegalActionV2` se o dono estiver fora de
- * campo ou o alvo for inválido.
- */
-export function playBasicV2(game: GameStateV2, championUid: string, t: TargetV2): PlayBasicResultV2 {
-  const owner = getChampionV2(game, championUid);
-  if (!owner.alive) fail("O campeão não está em campo");
-  const def = getChampionDefV2(owner.defId);
-  const basic = def.basic;
+/** Mesma ideia de resolveCardEffectsV2, mas pra habilidade básica (sem rank/mana/descarte). */
+export function resolveBasicEffectsV2(game: GameStateV2, owner: ChampionStateV2, basic: BasicDefV2, t: TargetV2): void {
   const target = basicTargetV2(basic);
-
-  const err = validateTargetV2(game, owner, { range: basic.range, target }, t);
-  if (err) fail(err);
-
   const { targets, ctxExtra } = resolveCardTargetsV2(owner, target, t, game);
   const ctx: EffectContextV2 = {
     game,
@@ -201,9 +198,26 @@ export function playBasicV2(game: GameStateV2, championUid: string, t: TargetV2)
     nextId: () => nextIdV2(game),
     ...ctxExtra,
   };
-
   for (const effect of basic.effects) applyEffectV2(ctx, effect, targets);
-
   logV2(game, `${owner.defId} (${owner.team}) usa a básica (${basic.name})`);
+}
+
+/**
+ * Executa a habilidade básica de um campeão (custo 0, fora do baralho — não
+ * passa por mana nem descarte), resolvendo na hora. O alvo é validado contra
+ * `basic.range` e o `target` inferido por `basicTargetV2` (ver cabeçalho do
+ * arquivo e regras-e-decisoes.md §6). Lança `IllegalActionV2` se o dono
+ * estiver fora de campo ou o alvo for inválido.
+ */
+export function playBasicV2(game: GameStateV2, championUid: string, t: TargetV2): PlayBasicResultV2 {
+  const owner = getChampionV2(game, championUid);
+  if (!owner.alive) fail("O campeão não está em campo");
+  const def = getChampionDefV2(owner.defId);
+  const basic = def.basic;
+
+  const err = validateTargetV2(game, owner, { range: basic.range, target: basicTargetV2(basic) }, t);
+  if (err) fail(err);
+
+  resolveBasicEffectsV2(game, owner, basic, t);
   return { owner, basic };
 }
