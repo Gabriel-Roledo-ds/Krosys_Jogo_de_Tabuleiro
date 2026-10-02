@@ -3,7 +3,7 @@
 
 import { describe, it, expect } from "vitest";
 import { createGameV2 } from "../src/engine-v2/state";
-import { validateTargetV2, enemiesInRange, inRangeOf } from "../src/engine-v2/targeting";
+import { validateTargetV2, enemiesInRange, inRangeOf, championsInRadius } from "../src/engine-v2/targeting";
 import { isHexInLine, hexDistance } from "../src/design/hexGrid";
 
 describe("isHexInLine", () => {
@@ -131,5 +131,41 @@ describe("enemiesInRange / inRangeOf", () => {
     expect(hexDistance(owner.pos, pos)).toBe(2);
     expect(inRangeOf(game, owner, pos, { range: 2, target: "cell" })).toBe(true);
     expect(inRangeOf(game, owner, pos, { range: 1, target: "cell" })).toBe(false);
+  });
+});
+
+describe("championsInRadius", () => {
+  it("lista só quem está dentro do raio, centro incluso", () => {
+    const game = createGameV2(1);
+    const center = { q: 5, r: 5 };
+    const [inside, edge, outside] = game.teams.A.champions;
+    inside.pos = { q: 5, r: 5 };
+    edge.pos = { q: 7, r: 5 }; // distância 2
+    outside.pos = { q: 9, r: 5 }; // distância 4
+    const list = championsInRadius(game, center, 2);
+    const uids = list.map((c) => c.uid);
+    expect(uids).toContain(inside.uid);
+    expect(uids).toContain(edge.uid);
+    expect(uids).not.toContain(outside.uid);
+  });
+
+  it("ignora campeões mortos por padrão", () => {
+    const game = createGameV2(1);
+    const center = { q: 5, r: 5 };
+    const dead = game.teams.A.champions[0];
+    dead.pos = { ...center };
+    dead.alive = false;
+    expect(championsInRadius(game, center, 1).map((c) => c.uid)).not.toContain(dead.uid);
+  });
+
+  it("filtra por equipe e exclui um uid específico", () => {
+    const game = createGameV2(1);
+    const center = { q: 5, r: 5 };
+    for (const c of [...game.teams.A.champions, ...game.teams.B.champions]) c.pos = { ...center };
+    const onlyA = championsInRadius(game, center, 0, { team: "A" });
+    expect(onlyA.every((c) => c.team === "A")).toBe(true);
+    const caster = game.teams.A.champions[0];
+    const withoutCaster = championsInRadius(game, center, 0, { excludeUid: caster.uid });
+    expect(withoutCaster.map((c) => c.uid)).not.toContain(caster.uid);
   });
 });

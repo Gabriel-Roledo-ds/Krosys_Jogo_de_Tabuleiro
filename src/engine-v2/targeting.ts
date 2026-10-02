@@ -4,9 +4,9 @@
 // ainda não modelados no motor novo (ver KANBAN.md): "wall" e "dead_ally"
 // devolvem "ainda não implementado" por enquanto.
 
-import { hexAdjacent, hexDistance, HEX_DIRECTIONS, isHexInLine, sameHex, type Hex } from "../design/hexGrid";
+import { hexAdjacent, hexDistance, hexesInRadius, HEX_DIRECTIONS, isHexInLine, sameHex, type Hex } from "../design/hexGrid";
 import { inHexBoard } from "../design/hexBoard";
-import { allChampionsV2, getChampionV2, type ChampionStateV2, type GameStateV2 } from "./state";
+import { allChampionsV2, getChampionV2, type ChampionStateV2, type GameStateV2, type TeamId } from "./state";
 
 export interface TargetableV2 {
   range: number | "self";
@@ -111,6 +111,33 @@ export function enemiesInRange(s: GameStateV2, owner: ChampionStateV2, def: Targ
 /** `true` se `pos` está ao alcance de `owner` e dentro do tabuleiro. */
 export function inRangeOf(s: GameStateV2, owner: ChampionStateV2, pos: Hex, def: TargetableV2, rangeBonus = 0): boolean {
   return inRange(s, owner.pos, pos, rangeOfV2(def, rangeBonus));
+}
+
+export interface AreaFilterV2 {
+  /** Só campeões vivos (default true). */
+  aliveOnly?: boolean;
+  /** Restringe a uma equipe (ex. "allies_only" em cartas como Barreira em Área). */
+  team?: TeamId;
+  /** Exclui um uid específico (ex. o próprio campeão que lançou a carta). */
+  excludeUid?: string;
+}
+
+/**
+ * Campeões dentro de `radius` casas de `center` (centro incluso, raio 0 =
+ * só a própria casa). Usado pra resolver "quem é afetado" de cartas de área
+ * (`damage`/`apply_status_area` com `radius`, `heal_all_allies`/`shield_all_allies`
+ * não passam por aqui — já são "toda a equipe", sem centro) depois que a
+ * casa-centro em si já foi validada por `validateTargetV2` (target "cell").
+ */
+export function championsInRadius(s: GameStateV2, center: Hex, radius: number, filter: AreaFilterV2 = {}): ChampionStateV2[] {
+  const cells = new Set(hexesInRadius(center, radius).map((h) => `${h.q},${h.r}`));
+  const aliveOnly = filter.aliveOnly ?? true;
+  return allChampionsV2(s).filter((c) => {
+    if (aliveOnly && !c.alive) return false;
+    if (filter.team && c.team !== filter.team) return false;
+    if (filter.excludeUid && c.uid === filter.excludeUid) return false;
+    return cells.has(`${c.pos.q},${c.pos.r}`);
+  });
 }
 
 export { hexAdjacent };
