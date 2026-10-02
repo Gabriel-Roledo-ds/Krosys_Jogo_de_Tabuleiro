@@ -4327,21 +4327,53 @@
     "rank": 1,
     "cost": 2,
     "range": 2,
-    "text": "2m, alc.2, 1 turno"
+    "text": "2m, alc.2, 1 turno",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "root",
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 3,
     "range": 3,
-    "text": "3m, alc.3"
+    "text": "3m, alc.3",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "root",
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      },
+      "assumed_duration": true
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": 4,
-    "text": "4m, alc.4, 2 turnos"
+    "text": "4m, alc.4, 2 turnos",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "root",
+      "duration": {
+       "unit": "champion_turns",
+       "value": 2
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "sylvane_teia",
@@ -4355,21 +4387,52 @@
     "rank": 1,
     "cost": 1,
     "range": 3,
-    "text": "1m, área 1, alc.3, 2 rodadas"
+    "text": "1m, área 1, alc.3, 2 rodadas",
+    "effects": [
+     {
+      "type": "slow_cell",
+      "radius": 1,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 2,
     "range": 3,
-    "text": "2m, 3 rodadas"
+    "text": "2m, 3 rodadas",
+    "effects": [
+     {
+      "type": "slow_cell",
+      "radius": 1,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 3,
     "range": 3,
-    "text": "3m, área 2, 3 rodadas"
+    "text": "3m, área 2, 3 rodadas",
+    "effects": [
+     {
+      "type": "slow_cell",
+      "radius": 2,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "cell"
  },
  {
   "id": "sylvane_empurrao_raizes",
@@ -4383,21 +4446,43 @@
     "rank": 1,
     "cost": 2,
     "range": 3,
-    "text": "Dano 1, empurra 2, 2m, alc.3"
+    "text": "Dano 1, empurra 2, 2m, alc.3",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 1,
+      "push_distance": 2
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 3,
     "range": 3,
-    "text": "Empurra 3, 3m"
+    "text": "Empurra 3, 3m",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 1,
+      "push_distance": 3
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": 3,
-    "text": "Dano 3, empurra 4, 4m"
+    "text": "Dano 3, empurra 4, 4m",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 3,
+      "push_distance": 4
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "sylvane_amarras",
@@ -4411,21 +4496,56 @@
     "rank": 1,
     "cost": 2,
     "range": "area1",
-    "text": "2m, área 1, 1 turno"
+    "text": "2m, área 1, 1 turno",
+    "effects": [
+     {
+      "type": "apply_status_area",
+      "status": "root",
+      "radius": 1,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 3,
     "range": "area2",
-    "text": "Área 2, 3m"
+    "text": "Área 2, 3m",
+    "effects": [
+     {
+      "type": "apply_status_area",
+      "status": "root",
+      "radius": 2,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      },
+      "assumed_duration": true
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": "area2",
-    "text": "Área 2, 2 turnos, 4m"
+    "text": "Área 2, 2 turnos, 4m",
+    "effects": [
+     {
+      "type": "apply_status_area",
+      "status": "root",
+      "radius": 2,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 2
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "sylvane_marca_natureza",
@@ -4439,21 +4559,53 @@
     "rank": 1,
     "cost": 1,
     "range": 3,
-    "text": "1m, alc.3, 2 rodadas"
+    "text": "1m, alc.3, 2 rodadas",
+    "effects": [
+     {
+      "type": "extend_existing_control",
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 2,
     "range": 3,
-    "text": "2m, 3 rodadas"
+    "text": "2m, 3 rodadas",
+    "effects": [
+     {
+      "type": "extend_existing_control",
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 3,
     "range": 3,
-    "text": "3m, 3 rodadas + dano 2"
+    "text": "3m, 3 rodadas + dano 2",
+    "effects": [
+     {
+      "type": "extend_existing_control",
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     },
+     {
+      "type": "damage",
+      "amount": 2
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "sylvane_rede",
@@ -4467,15 +4619,40 @@
     "rank": 2,
     "cost": 4,
     "range": "area2",
-    "text": "Área 2, -2 movimento, 1 turno, 4m"
+    "text": "Área 2, -2 movimento, 1 turno, 4m",
+    "effects": [
+     {
+      "type": "apply_status_area",
+      "status": "movement_reduced",
+      "amount": 2,
+      "radius": 2,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": "area3",
-    "text": "Área 3, -3 movimento, 2 turnos, 5m"
+    "text": "Área 3, -3 movimento, 2 turnos, 5m",
+    "effects": [
+     {
+      "type": "apply_status_area",
+      "status": "movement_reduced",
+      "amount": 3,
+      "radius": 3,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 2
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "cell"
  },
  {
   "id": "sylvane_atordoar",
@@ -4489,15 +4666,41 @@
     "rank": 2,
     "cost": 4,
     "range": 3,
-    "text": "1 turno, 4m, alc.3"
+    "text": "1 turno, 4m, alc.3",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "stun",
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": 4,
-    "text": "1 turno + dano 3, alc.4, 5m"
+    "text": "1 turno + dano 3, alc.4, 5m",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "stun",
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      },
+      "assumed_duration": true
+     },
+     {
+      "type": "damage",
+      "amount": 3
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "sylvane_silencio",
@@ -4511,15 +4714,36 @@
     "rank": 2,
     "cost": 4,
     "range": 3,
-    "text": "1 turno, 4m, alc.3"
+    "text": "1 turno, 4m, alc.3",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "silenced",
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": 4,
-    "text": "2 turnos, alc.4, 5m"
+    "text": "2 turnos, alc.4, 5m",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "silenced",
+      "duration": {
+       "unit": "champion_turns",
+       "value": 2
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "sylvane_prisao_espinhos",
@@ -4533,15 +4757,43 @@
     "rank": 2,
     "cost": 5,
     "range": 4,
-    "text": "1 turno, área 2, alc.4, 5m"
+    "text": "1 turno, área 2, alc.4, 5m",
+    "effects": [
+     {
+      "type": "apply_status_area",
+      "status": "stun",
+      "radius": 2,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 6,
     "range": 4,
-    "text": "1 turno + dano 4, área 3, 6m"
+    "text": "1 turno + dano 4, área 3, 6m",
+    "effects": [
+     {
+      "type": "apply_status_area",
+      "status": "stun",
+      "radius": 3,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      },
+      "assumed_duration": true
+     },
+     {
+      "type": "damage",
+      "amount": 4
+     }
+    ]
    }
-  ]
+  ],
+  "target": "cell"
  },
  {
   "id": "sylvane_elo_natural",
@@ -4555,15 +4807,36 @@
     "rank": 2,
     "cost": 4,
     "range": null,
-    "text": "50%, 2 rodadas, 4m"
+    "text": "50%, 2 rodadas, 4m",
+    "effects": [
+     {
+      "type": "link",
+      "share_control_percent": 50,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": null,
-    "text": "75%, 3 rodadas, 5m"
+    "text": "75%, 3 rodadas, 5m",
+    "effects": [
+     {
+      "type": "link",
+      "share_control_percent": 75,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "sylvane_floresta_vingativa",
@@ -4577,21 +4850,56 @@
     "rank": 1,
     "cost": 13,
     "range": "area4",
-    "text": "Imobiliza todos em área 4, 1 turno, 13m"
+    "text": "Imobiliza todos em área 4, 1 turno, 13m",
+    "effects": [
+     {
+      "type": "apply_status_area",
+      "status": "root",
+      "radius": 4,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 14,
     "range": "area4",
-    "text": "1 turno, 14m"
+    "text": "1 turno, 14m",
+    "effects": [
+     {
+      "type": "apply_status_area",
+      "status": "root",
+      "radius": 4,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 1
+      },
+      "assumed_duration": true
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 15,
     "range": "area4",
-    "text": "2 turnos, 15m"
+    "text": "2 turnos, 15m",
+    "effects": [
+     {
+      "type": "apply_status_area",
+      "status": "root",
+      "radius": 4,
+      "duration": {
+       "unit": "champion_turns",
+       "value": 2
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "cell"
  },
  {
   "id": "sylvane_grande_prisao",
@@ -4605,21 +4913,65 @@
     "rank": 1,
     "cost": 13,
     "range": null,
-    "text": "Atordoa 2 turnos + dano 8, 13m"
+    "text": "Atordoa 2 turnos + dano 8, 13m",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "stun",
+      "duration": {
+       "unit": "champion_turns",
+       "value": 2
+      }
+     },
+     {
+      "type": "damage",
+      "amount": 8
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 14,
     "range": null,
-    "text": "2 turnos + dano 11, 14m"
+    "text": "2 turnos + dano 11, 14m",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "stun",
+      "duration": {
+       "unit": "champion_turns",
+       "value": 2
+      }
+     },
+     {
+      "type": "damage",
+      "amount": 11
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 15,
     "range": null,
-    "text": "3 turnos + dano 14, 15m — ignora imunidade a controle"
+    "text": "3 turnos + dano 14, 15m — ignora imunidade a controle",
+    "effects": [
+     {
+      "type": "apply_status",
+      "status": "stun",
+      "duration": {
+       "unit": "champion_turns",
+       "value": 3
+      },
+      "ignores_immune_to_control": true
+     },
+     {
+      "type": "damage",
+      "amount": 14
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "dorin_pilar",
