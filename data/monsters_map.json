@@ -1,0 +1,410 @@
+{
+  "_status": "design-only — roster v2 / mapa de monstros (claude/monstros-mapa.md). Não consumido pelo motor ainda. monsters.json (MVP antigo) continua sendo o arquivo usado pelo jogo jogável hoje.",
+  "zones": {
+    "vale_selvagem": {
+      "name": "Vale Selvagem",
+      "focus": "ferramentas (cartas ativas), multiplicador secundário",
+      "secondary_reward": { "type": "damage_permanent", "curve": "reduced" }
+    },
+    "terra_petrificada": {
+      "name": "Terra Petrificada",
+      "focus": "poder (multiplicadores permanentes), carta ativa só no topo (chefes)",
+      "secondary_reward": null
+    }
+  },
+  "postures": {
+    "agressiva": "Prioriza dano direto no atacante.",
+    "territorial": "Prioriza controle/mitigação (lentidão, +defesa); só vai pro dano se já tiver sido atacada antes no mesmo combate.",
+    "evasiva": "Prioriza fuga/reposicionamento; só ataca se não tiver pra onde fugir ou já tiver fugido 1 vez no mesmo combate."
+  },
+  "reaction_trigger": "attacked_by_champion",
+  "reaction_gradient": {
+    "1": "auto — 1 habilidade fixa, sem escolha, sem movimento",
+    "2": "choice — escolha entre 2 opções fixas, decidida pela postura, sem movimento",
+    "3": "mini_turn — move até N casas + 1 habilidade do kit (2 opções), repete a cada ataque recebido"
+  },
+  "types": {
+    "raposa_ardilosa": {
+      "name": "Raposa Ardilosa",
+      "zone": "vale_selvagem",
+      "level": 1,
+      "copies": 2,
+      "hp": 5,
+      "defense": 0,
+      "posture": "evasiva",
+      "reaction": {
+        "kind": "auto",
+        "options": [
+          { "name": "Mordida", "range": 1, "effects": [{ "type": "damage", "amount": 2 }] }
+        ]
+      },
+      "reward_primary": {
+        "type": "card",
+        "card_id": "salto_ardiloso"
+      },
+      "reward_secondary": { "type": "damage_permanent", "curve": "reduced" }
+    },
+    "javali_bravo": {
+      "name": "Javali Bravo",
+      "zone": "vale_selvagem",
+      "level": 1,
+      "copies": 2,
+      "hp": 6,
+      "defense": 0,
+      "posture": "agressiva",
+      "reaction": {
+        "kind": "auto",
+        "options": [
+          { "name": "Chifrada", "range": 1, "effects": [{ "type": "damage", "amount": 3 }, { "type": "push", "distance": 1 }] }
+        ]
+      },
+      "reward_primary": { "type": "card", "card_id": "carga_bruta" },
+      "reward_secondary": { "type": "damage_permanent", "curve": "reduced" }
+    },
+    "enxame_vespas": {
+      "name": "Enxame de Vespas",
+      "zone": "vale_selvagem",
+      "level": 1,
+      "copies": 2,
+      "hp": 4,
+      "defense": 0,
+      "posture": "territorial",
+      "reaction": {
+        "kind": "auto",
+        "options": [
+          { "name": "Picada Múltipla", "range": 1, "effects": [{ "type": "damage", "amount": 1 }, { "type": "apply_status", "status": "poison", "amount": 1, "duration": { "unit": "rounds", "value": 2 }, "ignores_defense": true }] }
+        ]
+      },
+      "reward_primary": { "type": "card", "card_id": "ferrao_vivo" },
+      "reward_secondary": { "type": "damage_permanent", "curve": "reduced" }
+    },
+    "lagarto_saltador": {
+      "name": "Lagarto Saltador",
+      "zone": "vale_selvagem",
+      "level": 1,
+      "copies": 2,
+      "hp": 5,
+      "defense": 0,
+      "posture": "evasiva",
+      "reaction": {
+        "kind": "auto",
+        "options": [
+          { "name": "Rabada", "range": 1, "effects": [{ "type": "damage", "amount": 2 }, { "type": "apply_status", "status": "move_penalty", "amount": 1, "duration": { "unit": "champion_turns", "value": 1 }, "control": true }] }
+        ]
+      },
+      "reward_primary": { "type": "card", "card_id": "salto_camaleao" },
+      "reward_secondary": { "type": "damage_permanent", "curve": "reduced" }
+    },
+    "corvo_cacador": {
+      "name": "Corvo Caçador",
+      "zone": "vale_selvagem",
+      "level": 2,
+      "copies": 2,
+      "hp": 10,
+      "defense": 0,
+      "posture": "agressiva",
+      "reaction": {
+        "kind": "choice",
+        "options": [
+          { "name": "Bicada", "range": 3, "effects": [{ "type": "damage", "amount": 4 }] },
+          { "name": "Vôo Rasante", "range": "self", "effects": [{ "type": "move_self_away_from_target", "distance": 2 }, { "type": "apply_status", "status": "move_penalty", "amount": 2, "duration": { "unit": "champion_turns", "value": 1 }, "control": true, "target": "attacker" }] }
+        ]
+      },
+      "reward_primary": { "type": "card", "card_id": "bicada_certeira" },
+      "reward_secondary": { "type": "damage_permanent", "curve": "reduced" }
+    },
+    "lobo_alfa": {
+      "name": "Lobo Alfa",
+      "zone": "vale_selvagem",
+      "level": 2,
+      "copies": 2,
+      "hp": 11,
+      "defense": 0,
+      "posture": "agressiva",
+      "reaction": {
+        "kind": "choice",
+        "options": [
+          { "name": "Mordida Alfa", "range": 1, "effects": [{ "type": "damage", "amount": 5 }] },
+          { "name": "Uivo de Caça", "range": 1, "effects": [{ "type": "apply_status", "status": "mark", "bonus_damage": 2, "duration": { "unit": "rounds", "value": 2 }, "target": "attacker" }] }
+        ]
+      },
+      "reward_primary": { "type": "card", "card_id": "instinto_matilha" },
+      "reward_secondary": { "type": "damage_permanent", "curve": "reduced" }
+    },
+    "serpente_copas": {
+      "name": "Serpente das Copas",
+      "zone": "vale_selvagem",
+      "level": 2,
+      "copies": 2,
+      "hp": 9,
+      "defense": 1,
+      "posture": "territorial",
+      "reaction": {
+        "kind": "choice",
+        "options": [
+          { "name": "Picada Tóxica", "range": 2, "effects": [{ "type": "damage", "amount": 2 }, { "type": "apply_status", "status": "poison", "amount": 2, "duration": { "unit": "rounds", "value": 2 } }] },
+          { "name": "Constrição", "range": 1, "effects": [{ "type": "apply_status", "status": "root", "duration": { "unit": "champion_turns", "value": 1 }, "control": true, "target": "attacker" }] }
+        ]
+      },
+      "reward_primary": { "type": "card", "card_id": "veneno_concentrado" },
+      "reward_secondary": { "type": "damage_permanent", "curve": "reduced" }
+    },
+    "texugo_escavador": {
+      "name": "Texugo Escavador",
+      "zone": "vale_selvagem",
+      "level": 2,
+      "copies": 2,
+      "hp": 12,
+      "defense": 1,
+      "posture": "territorial",
+      "reaction": {
+        "kind": "choice",
+        "options": [
+          { "name": "Emboscada", "range": 1, "effects": [{ "type": "damage", "amount": 5 }], "condition": "attacker_did_not_move_this_turn" },
+          { "name": "Tocas", "range": "self", "effects": [{ "type": "move_self_away_from_target", "distance": 1 }, { "type": "apply_status", "status": "evasion_next_attack", "duration": { "unit": "champion_turns", "value": 1 } }] }
+        ]
+      },
+      "reward_primary": { "type": "card", "card_id": "toca_rapida" },
+      "reward_secondary": { "type": "damage_permanent", "curve": "reduced" }
+    },
+    "espirito_vendaval": {
+      "name": "Espírito do Vendaval",
+      "zone": "vale_selvagem",
+      "level": 3,
+      "is_boss_tier": true,
+      "copies": 2,
+      "hp": 20,
+      "defense": 1,
+      "posture": "evasiva",
+      "reaction": {
+        "kind": "mini_turn",
+        "move": { "distance": 4, "ignores_solids": true, "mode": "fly" },
+        "options": [
+          { "name": "Rajada Cortante", "range": 3, "effects": [{ "type": "damage", "amount": 6 }] },
+          { "name": "Sopro do Vendaval", "range": 1, "effects": [{ "type": "push", "distance": 3, "target": "attacker" }] }
+        ],
+        "repeats_on_each_attack": true
+      },
+      "reward_primary": { "type": "card", "card_id": "voo_vendaval" },
+      "reward_secondary": { "type": "damage_permanent", "curve": "reduced" }
+    },
+    "matriarca_matilha": {
+      "name": "Matriarca da Matilha",
+      "zone": "vale_selvagem",
+      "level": 3,
+      "is_boss_tier": true,
+      "copies": 2,
+      "hp": 18,
+      "defense": 1,
+      "posture": "agressiva",
+      "reaction": {
+        "kind": "mini_turn",
+        "move": { "distance": 3, "mode": "pursue" },
+        "options": [
+          { "name": "Convocar Matilha", "range": 1, "effects": [{ "type": "summon_minion", "hp": 3, "damage": 2, "adjacent_to": "attacker" }] },
+          { "name": "Salto Duplo", "range": 1, "effects": [{ "type": "damage", "amount": 5, "targets": 2, "require_adjacent_to_each_other": true }] }
+        ],
+        "repeats_on_each_attack": true
+      },
+      "reward_primary": { "type": "card", "card_id": "chamado_matilha" },
+      "reward_secondary": { "type": "damage_permanent", "curve": "reduced" }
+    },
+    "sentinela_pedra": {
+      "name": "Sentinela de Pedra",
+      "zone": "terra_petrificada",
+      "level": 1,
+      "copies": 2,
+      "hp": 7,
+      "defense": 1,
+      "posture": "territorial",
+      "reaction": {
+        "kind": "auto",
+        "options": [
+          { "name": "Golpe de Pedra", "range": 1, "effects": [{ "type": "damage", "amount": 2 }] }
+        ]
+      },
+      "reward_primary": { "type": "stat_permanent", "stat": "damage", "curve": "full" },
+      "reward_secondary": null
+    },
+    "escaravelho_blindado": {
+      "name": "Escaravelho Blindado",
+      "zone": "terra_petrificada",
+      "level": 1,
+      "copies": 2,
+      "hp": 8,
+      "defense": 2,
+      "posture": "territorial",
+      "reaction": {
+        "kind": "auto",
+        "options": [
+          { "name": "Carapaça", "range": 1, "effects": [{ "type": "damage", "amount": 1 }, { "type": "reflect_damage", "amount": 1, "target": "attacker" }] }
+        ]
+      },
+      "reward_primary": { "type": "stat_permanent", "stat": "damage", "curve": "full" },
+      "reward_secondary": null
+    },
+    "gargula_adormecida": {
+      "name": "Gárgula Adormecida",
+      "zone": "terra_petrificada",
+      "level": 1,
+      "copies": 2,
+      "hp": 6,
+      "defense": 1,
+      "posture": "evasiva",
+      "reaction": {
+        "kind": "auto",
+        "options": [
+          { "name": "Despertar Repentino", "range": 1, "effects": [{ "type": "damage", "amount": 3 }], "condition": "first_attack_received_this_combat", "posture_after": "territorial" }
+        ]
+      },
+      "reward_primary": { "type": "stat_permanent", "stat": "damage", "curve": "full" },
+      "reward_secondary": null
+    },
+    "lemure_cristal": {
+      "name": "Lêmure de Cristal",
+      "zone": "terra_petrificada",
+      "level": 1,
+      "copies": 2,
+      "hp": 6,
+      "defense": 0,
+      "posture": "agressiva",
+      "reaction": {
+        "kind": "auto",
+        "options": [
+          { "name": "Corte de Cristal", "range": 1, "effects": [{ "type": "damage", "amount": 3, "ignores_defense": 1 }] }
+        ]
+      },
+      "reward_primary": { "type": "stat_permanent", "stat": "damage", "curve": "full" },
+      "reward_secondary": null
+    },
+    "colosso_rachado": {
+      "name": "Colosso Rachado",
+      "zone": "terra_petrificada",
+      "level": 2,
+      "copies": 2,
+      "hp": 13,
+      "defense": 2,
+      "posture": "territorial",
+      "reaction": {
+        "kind": "choice",
+        "options": [
+          { "name": "Punho Rachado", "range": 1, "effects": [{ "type": "damage", "amount": 5 }] },
+          { "name": "Casca Dura", "range": "self", "effects": [{ "type": "apply_status", "status": "defense_bonus", "amount": 2, "duration": { "unit": "champion_turns", "value": 1 } }] }
+        ]
+      },
+      "reward_primary": { "type": "stat_permanent", "stat": "defense", "curve": "full" },
+      "reward_secondary": null
+    },
+    "golem_ferrugem": {
+      "name": "Golem de Ferrugem",
+      "zone": "terra_petrificada",
+      "level": 2,
+      "copies": 2,
+      "hp": 15,
+      "defense": 2,
+      "posture": "territorial",
+      "reaction": {
+        "kind": "choice",
+        "options": [
+          { "name": "Golpe Enferrujado", "range": 1, "effects": [{ "type": "damage", "amount": 4 }, { "type": "apply_status", "status": "move_penalty", "amount": 1, "duration": { "unit": "champion_turns", "value": 1 }, "control": true, "target": "attacker" }] },
+          { "name": "Núcleo de Ferro", "range": "self", "effects": [{ "type": "apply_status", "status": "defense_bonus", "amount": 3, "duration": { "unit": "champion_turns", "value": 1 } }] }
+        ]
+      },
+      "reward_primary": { "type": "stat_permanent", "stat": "defense", "curve": "full" },
+      "reward_secondary": null
+    },
+    "harpia_granito": {
+      "name": "Harpia de Granito",
+      "zone": "terra_petrificada",
+      "level": 2,
+      "copies": 2,
+      "hp": 11,
+      "defense": 1,
+      "posture": "agressiva",
+      "reaction": {
+        "kind": "choice",
+        "options": [
+          { "name": "Mergulho", "range": 2, "effects": [{ "type": "damage", "amount": 5 }, { "type": "push", "distance": 1 }] },
+          { "name": "Garras de Pedra", "range": 1, "effects": [{ "type": "damage", "amount": 6 }] }
+        ]
+      },
+      "reward_primary": { "type": "stat_permanent", "stat": "defense", "curve": "full" },
+      "reward_secondary": null
+    },
+    "basilisco_pedra": {
+      "name": "Basilisco de Pedra",
+      "zone": "terra_petrificada",
+      "level": 2,
+      "copies": 2,
+      "hp": 12,
+      "defense": 2,
+      "posture": "agressiva",
+      "reaction": {
+        "kind": "choice",
+        "options": [
+          { "name": "Olhar Petrificante", "range": 2, "effects": [{ "type": "apply_status", "status": "root", "duration": { "unit": "champion_turns", "value": 1 }, "control": true, "target": "attacker" }] },
+          { "name": "Mordida Pétrea", "range": 1, "effects": [{ "type": "damage", "amount": 5 }] }
+        ]
+      },
+      "reward_primary": { "type": "stat_permanent", "stat": "defense", "curve": "full" },
+      "reward_secondary": null
+    },
+    "tita_ancestral": {
+      "name": "Titã Ancestral",
+      "zone": "terra_petrificada",
+      "level": 3,
+      "is_boss_tier": true,
+      "copies": 2,
+      "hp": 26,
+      "defense": 3,
+      "posture": "territorial",
+      "reaction": {
+        "kind": "mini_turn",
+        "move": { "distance": 2, "mode": "pursue" },
+        "options": [
+          { "name": "Esmagar", "range": 1, "effects": [{ "type": "damage", "amount": 7 }, { "type": "push", "distance": 2 }] },
+          { "name": "Erguer Muralha", "range": "self", "effects": [{ "type": "create_wall", "hp": 2, "adjacent_to": "self" }] }
+        ],
+        "repeats_on_each_attack": true
+      },
+      "reward_primary": { "type": "stat_permanent", "stat": "max_hp", "curve": "full" },
+      "reward_secondary": { "type": "card", "card_id": "muralha_ancestral" }
+    },
+    "coracao_montanha": {
+      "name": "Coração da Montanha",
+      "zone": "terra_petrificada",
+      "level": 3,
+      "is_boss_tier": true,
+      "copies": 2,
+      "hp": 24,
+      "defense": 2,
+      "posture": "territorial",
+      "reaction": {
+        "kind": "mini_turn",
+        "move": { "distance": 1, "mode": "pursue" },
+        "options": [
+          { "name": "Erupção", "range": 2, "effects": [{ "type": "damage", "amount": 6, "radius": 1 }] },
+          { "name": "Pulso de Pedra", "range": "self", "effects": [{ "type": "heal", "amount": 4, "target": "self" }] }
+        ],
+        "repeats_on_each_attack": true
+      },
+      "reward_primary": { "type": "stat_permanent", "stat": "max_hp", "curve": "full" },
+      "reward_secondary": { "type": "card", "card_id": "pulso_vital" }
+    }
+  },
+  "reward_cards": {
+    "salto_ardiloso": { "id": "salto_ardiloso", "owner": "monster", "name": "Salto Ardiloso", "cost": 0, "fast": true, "range": "self", "target": "self", "effects": [{ "type": "move_self", "distance": 4 }], "text": "Move 4 casas." },
+    "carga_bruta": { "id": "carga_bruta", "owner": "monster", "name": "Carga Bruta", "cost": 1, "fast": false, "range": "self", "target": "line", "effects": [{ "type": "move_self", "distance": 3 }, { "type": "damage", "amount": 2, "target": "champions_crossed" }], "text": "Move 3 casas em linha, dano 2 a quem atravessar." },
+    "ferrao_vivo": { "id": "ferrao_vivo", "owner": "monster", "name": "Ferrão Vivo", "cost": 1, "fast": true, "range": 2, "target": "enemy", "effects": [{ "type": "apply_status", "status": "poison", "amount": 1, "duration": { "unit": "rounds", "value": 2 } }], "text": "Aplica veneno 1/rodada, 2 rodadas." },
+    "salto_camaleao": { "id": "salto_camaleao", "owner": "monster", "name": "Salto Camaleão", "cost": 0, "fast": true, "range": 4, "target": "ally", "effects": [{ "type": "swap_places" }], "text": "Troca de lugar com um aliado em alcance 4." },
+    "bicada_certeira": { "id": "bicada_certeira", "owner": "monster", "name": "Bicada Certeira", "cost": 2, "fast": false, "range": 4, "target": "enemy", "effects": [{ "type": "damage", "amount": 5, "ignores_defense": 1 }], "text": "Dano 5, alcance 4, ignora 1 de defesa." },
+    "instinto_matilha": { "id": "instinto_matilha", "owner": "monster", "name": "Instinto de Matilha", "cost": 2, "fast": true, "range": 3, "target": "ally", "effects": [{ "type": "apply_status", "status": "next_card_bonus_damage", "amount": 2 }], "text": "+2 dano na próxima carta de um aliado." },
+    "veneno_concentrado": { "id": "veneno_concentrado", "owner": "monster", "name": "Veneno Concentrado", "cost": 2, "fast": false, "range": 3, "target": "enemy", "effects": [{ "type": "apply_status", "status": "poison", "amount": 2, "duration": { "unit": "rounds", "value": 3 }, "ignores_defense": true }], "text": "Aplica 2/rodada, 3 rodadas, ignora defesa." },
+    "toca_rapida": { "id": "toca_rapida", "owner": "monster", "name": "Toca Rápida", "cost": 1, "fast": true, "range": "self", "target": "self", "effects": [{ "type": "move_self", "distance": 3 }, { "type": "apply_status", "status": "evasion_next_attack", "duration": { "unit": "champion_turns", "value": 1 } }], "text": "Move 3 e ignora o próximo ataque recebido no turno." },
+    "voo_vendaval": { "id": "voo_vendaval", "owner": "monster", "name": "Voo do Vendaval", "cost": 4, "fast": false, "range": "self", "target": "direction", "effects": [{ "type": "move_self", "distance": 15, "ignores_solids": true }], "text": "Voa 15 casas em qualquer direção, ignora paredes e unidades no caminho." },
+    "chamado_matilha": { "id": "chamado_matilha", "owner": "monster", "name": "Chamado da Matilha", "cost": 3, "fast": false, "range": 3, "target": "cell", "effects": [{ "type": "summon_minion", "hp": 4, "damage": 3, "duration": { "unit": "rounds", "value": 3 } }], "text": "Invoca 1 lacaio (4hp/3dano) que some após 3 rodadas." },
+    "muralha_ancestral": { "id": "muralha_ancestral", "owner": "monster", "name": "Muralha Ancestral", "cost": 4, "fast": false, "range": 3, "target": "ally", "effects": [{ "type": "create_wall_ring", "duration": { "unit": "rounds", "value": 3 } }], "text": "Cria uma muralha em torno de um campeão por 3 rodadas." },
+    "pulso_vital": { "id": "pulso_vital", "owner": "monster", "name": "Pulso Vital", "cost": 4, "fast": false, "range": 3, "target": "cell", "effects": [{ "type": "heal", "amount": 4, "radius": 2 }], "text": "Cura 4 em área 2, uso único." }
+  },
+  "placements": []
+}

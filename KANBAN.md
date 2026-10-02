@@ -20,6 +20,12 @@ Sem prazos. Uma etapa só começa quando a anterior está pronta. Definição de
 
 - Etapa 7: balanceamento e arte definitiva
 - Pós-MVP: paredes fixas, tesouros, interagíveis, mais equipes, modos com 3 ou 4 jogadores
+- Roster v2 e mapa de monstros (regras-e-decisoes.md §19, claude/monstros-mapa.md) — entra em etapas, não bloqueia o MVP:
+  - [feito] fichas das 40 criaturas + sistema de reação ao ataque em data/monsters_map.json (design, ainda não ligado ao motor)
+  - converter fichas-campeoes.md (10 campeões v2) pra JSON
+  - testes automáticos da regra de reação com posições fictícias
+  - tabuleiro hexagonal
+  - ligar monsters_map.json/champions v2 ao motor
 
 ## Pronto
 
