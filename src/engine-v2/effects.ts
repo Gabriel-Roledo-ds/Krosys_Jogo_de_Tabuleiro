@@ -11,9 +11,9 @@
 
 import type { Effect } from "../engine/data";
 import type { Hex } from "../design/hexGrid";
-import type { ChampionStateV2, GameStateV2 } from "./state";
+import { allChampionsV2, type ChampionStateV2, type GameStateV2 } from "./state";
 import { dealDamageV2, type DamageOptsV2 } from "./damage";
-import { addStatus, removeNegativeStatuses, removePositiveStatuses, removeStatus, statusAmount } from "./status";
+import { addStatus, heal, removeNegativeStatuses, removePositiveStatuses, removeStatus, statusAmount } from "./status";
 import { forcedMove, pullChampion, pushChampion, teleportChampion } from "./movement";
 
 /** Status sem duração natural — persiste até ser consumido/removido (pilhas de veneno). */
@@ -80,8 +80,23 @@ export function applyStatus(ctx: EffectContextV2, effect: Effect, targets: Champ
   }
 }
 
-/** `heal`: cura, sem passar do hp máximo. Devolve a cura efetiva por alvo. */
-export function applyHeal(effect: Effect, targets: ChampionStateV2[]): Record<string, number> {
+/**
+ * Propaga uma fração da cura recebida ao parceiro de Elo de cura (Corrente de
+ * Vida da Selene), se houver. Não repropaga a partir do parceiro — evita
+ * ida-e-volta infinita entre os dois lados do vínculo.
+ */
+function propagateLinkedHeal(ctx: EffectContextV2, source: ChampionStateV2, healAmount: number): void {
+  if (healAmount <= 0) return;
+  const link = source.statuses.find((s) => s.status === "link_heal" && s.partner);
+  if (!link || link.amount === undefined) return;
+  const partner = allChampionsV2(ctx.game).find((c) => c.uid === link.partner);
+  if (!partner || !partner.alive) return;
+  const shared = Math.round((healAmount * link.amount) / 100);
+  if (shared > 0) heal(partner, shared);
+}
+
+/** `heal`: cura, sem passar do hp máximo. Devolve a cura efetiva por alvo (propaga ao Elo de cura, se houver). */
+export function applyHeal(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): Record<string, number> {
   const out: Record<string, number> = {};
   for (const target of targets) {
     if (!target.alive) {
@@ -90,7 +105,9 @@ export function applyHeal(effect: Effect, targets: ChampionStateV2[]): Record<st
     }
     const before = target.hp;
     target.hp = Math.min(target.maxHp, target.hp + (effect.amount ?? 0));
-    out[target.uid] = target.hp - before;
+    const healed = target.hp - before;
+    out[target.uid] = healed;
+    propagateLinkedHeal(ctx, target, healed);
   }
   return out;
 }
@@ -187,20 +204,33 @@ export function applyDetonateVenomStacks(ctx: EffectContextV2, effect: Effect, t
   return out;
 }
 
-/** `link`: cria o vínculo (Elo) entre quem usou a carta e o(s) aliado(s) ligado(s). */
+/**
+ * `link`: cria o vínculo (Elo) entre quem usou a carta e o alvo. Guardado
+ * como status "link_heal" (Corrente de Vida da Selene — propaga cura, ver
+ * propagateLinkedHeal) ou "link_control" (Elo Natural da Sylvane — propagação
+ * de controle ainda não implementada, ver KANBAN.md), conforme qual
+ * `share_*_percent` a carta trouxer.
+ *
+ * Nota de design em aberto: no texto original, o Elo Natural da Sylvane liga
+ * dois INIMIGOS entre si ("compartilha entre inimigos"), não o próprio
+ * campeão a um inimigo — mas a carta hoje só tem um `target: "enemy"" (um
+ * alvo só). Até a camada de "jogar uma carta" existir e resolver isso,
+ * applyLink liga sempre quem usou a carta a cada alvo recebido.
+ */
 export function applyLink(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
   if (!ctx.attacker) return;
   const duration = durationFromEffect(effect);
+  const kind = effect.share_heal_percent !== undefined ? "link_heal" : "link_control";
   const amount = effect.share_heal_percent ?? effect.share_control_percent ?? effect.amount;
   for (const target of targets) {
-    addStatus(ctx.attacker, ctx.nextId(), "link", duration.unit, duration.value, { amount, partner: target.uid });
-    addStatus(target, ctx.nextId(), "link", duration.unit, duration.value, { amount, partner: ctx.attacker.uid });
+    addStatus(ctx.attacker, ctx.nextId(), kind, duration.unit, duration.value, { amount, partner: target.uid });
+    addStatus(target, ctx.nextId(), kind, duration.unit, duration.value, { amount, partner: ctx.attacker.uid });
   }
 }
 
-/** uid do parceiro de Elo ativo de um campeão, se houver. */
+/** uid do parceiro de Elo ativo (cura ou controle) de um campeão, se houver. */
 export function linkedPartnerOf(c: ChampionStateV2): string | null {
-  return c.statuses.find((s) => s.status === "link")?.partner ?? null;
+  return c.statuses.find((s) => s.status === "link_heal" || s.status === "link_control")?.partner ?? null;
 }
 
 const DISPATCH: Record<string, (ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]) => void> = {
@@ -208,8 +238,8 @@ const DISPATCH: Record<string, (ctx: EffectContextV2, effect: Effect, targets: C
   apply_status: (ctx, effect, targets) => applyStatus(ctx, effect, targets),
   apply_status_area: (ctx, effect, targets) => applyStatus(ctx, effect, targets),
   apply_status_all_allies: (ctx, effect, targets) => applyStatus(ctx, effect, targets),
-  heal: (_ctx, effect, targets) => applyHeal(effect, targets) as unknown as void,
-  heal_all_allies: (_ctx, effect, targets) => applyHeal(effect, targets) as unknown as void,
+  heal: (ctx, effect, targets) => applyHeal(ctx, effect, targets) as unknown as void,
+  heal_all_allies: (ctx, effect, targets) => applyHeal(ctx, effect, targets) as unknown as void,
   shield: (_ctx, effect, targets) => applyShield(effect, targets),
   shield_all_allies: (_ctx, effect, targets) => applyShield(effect, targets),
   remove_negative_effects: (_ctx, effect, targets) => applyRemoveNegativeEffects(effect, targets),

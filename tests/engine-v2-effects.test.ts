@@ -12,6 +12,7 @@ import {
   applyRemoveNegativeEffects,
   applyRemovePositiveEffects,
   applyPersonalMana,
+  applyLink,
   type EffectContextV2,
 } from "../src/engine-v2/effects";
 import { addStatus, hasStatus, statusAmount } from "../src/engine-v2/status";
@@ -74,20 +75,44 @@ describe("applyEffectV2 — apply_status / apply_status_area", () => {
 
 describe("applyHeal", () => {
   it("cura sem passar do hp máximo", () => {
-    const { target } = setup();
+    const { target, ctx } = setup();
     target.hp = target.maxHp - 2;
-    const out = applyHeal({ type: "heal", amount: 10 }, [target]);
+    const out = applyHeal(ctx, { type: "heal", amount: 10 }, [target]);
     expect(out[target.uid]).toBe(2); // só curou o que faltava
     expect(target.hp).toBe(target.maxHp);
   });
 
   it("não cura quem não está vivo", () => {
-    const { target } = setup();
+    const { target, ctx } = setup();
     target.alive = false;
     target.hp = 0;
-    const out = applyHeal({ type: "heal", amount: 10 }, [target]);
+    const out = applyHeal(ctx, { type: "heal", amount: 10 }, [target]);
     expect(out[target.uid]).toBe(0);
     expect(target.hp).toBe(0);
+  });
+
+  it("propaga uma fração da cura ao parceiro de Elo de cura (Corrente de Vida)", () => {
+    const { game, attacker, target, ctx } = setup();
+    const partner = game.teams.B.champions[1];
+    applyLink(ctx, { type: "link", share_heal_percent: 50, duration: { unit: "rounds", value: 2 } }, [partner]);
+    target.hp = target.maxHp; // já no máximo, só o parceiro deve se curar
+    partner.hp = partner.maxHp - 10;
+    applyHeal(ctx, { type: "heal", amount: 6 }, [attacker]);
+    expect(partner.hp).toBe(partner.maxHp - 10); // ninguém curou o attacker ainda, então nada propagou
+  });
+
+  it("de fato propaga quando quem recebeu a cura tem o Elo", () => {
+    const { attacker, target, ctx } = setup();
+    applyLink(ctx, { type: "link", share_heal_percent: 50, duration: { unit: "rounds", value: 2 } }, [target]);
+    attacker.hp = attacker.maxHp; // attacker tá cheio, não é ele quem recebe a cura aqui
+    target.hp = target.maxHp - 10;
+    applyHeal(ctx, { type: "heal", amount: 10 }, [attacker]); // cura 0 no attacker (já cheio) -> nada propaga
+    expect(target.hp).toBe(target.maxHp - 10);
+
+    attacker.hp = attacker.maxHp - 10;
+    applyHeal(ctx, { type: "heal", amount: 6 }, [attacker]); // cura 6 no attacker -> propaga 3 (50%) pro target
+    expect(attacker.hp).toBe(attacker.maxHp - 4);
+    expect(target.hp).toBe(target.maxHp - 7);
   });
 });
 
