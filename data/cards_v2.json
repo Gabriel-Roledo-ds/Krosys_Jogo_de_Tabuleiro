@@ -1286,21 +1286,52 @@
     "rank": 1,
     "cost": 2,
     "range": 3,
-    "text": "Dano 5, área 1, 2m, alc.3"
+    "text": "Dano 5, área 1, 2m, alc.3",
+    "effects": [
+     {
+      "type": "damage",
+      "radius": 1,
+      "amount": 5
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 3,
     "range": 3,
-    "text": "Dano 7, área 2, 3m"
+    "text": "Dano 7, área 2, 3m",
+    "effects": [
+     {
+      "type": "damage",
+      "radius": 2,
+      "amount": 7
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": 4,
-    "text": "Dano 9, área 2, 4m, alc.4 — deixa fogo 1 rodada"
+    "text": "Dano 9, área 2, 4m, alc.4 — deixa fogo 1 rodada",
+    "effects": [
+     {
+      "type": "damage",
+      "radius": 2,
+      "amount": 9
+     },
+     {
+      "type": "ground_fire",
+      "radius": 2,
+      "damage_per_round": 2,
+      "duration": {
+       "unit": "rounds",
+       "value": 1
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "cell"
  },
  {
   "id": "ignira_chao_chamas",
@@ -1314,21 +1345,55 @@
     "rank": 1,
     "cost": 2,
     "range": 3,
-    "text": "2m, área 1, 2/rodada, 2 rodadas, alc.3"
+    "text": "2m, área 1, 2/rodada, 2 rodadas, alc.3",
+    "effects": [
+     {
+      "type": "ground_fire",
+      "radius": 1,
+      "damage_per_round": 2,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 3,
     "range": 3,
-    "text": "3m, área 2, 2/rodada, 3 rodadas"
+    "text": "3m, área 2, 2/rodada, 3 rodadas",
+    "effects": [
+     {
+      "type": "ground_fire",
+      "radius": 2,
+      "damage_per_round": 2,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": 4,
-    "text": "4m, área 2, 3/rodada, 3 rodadas, alc.4"
+    "text": "4m, área 2, 3/rodada, 3 rodadas, alc.4",
+    "effects": [
+     {
+      "type": "ground_fire",
+      "radius": 2,
+      "damage_per_round": 3,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "cell"
  },
  {
   "id": "ignira_rastro_fogo",
@@ -1342,21 +1407,53 @@
     "rank": 1,
     "cost": 1,
     "range": "self",
-    "text": "1m, 1/rodada, 2 rodadas"
+    "text": "1m, 1/rodada, 2 rodadas",
+    "effects": [
+     {
+      "type": "fire_trail",
+      "damage_per_round": 1,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 2,
     "range": "self",
-    "text": "2m, 2/rodada, 2 rodadas"
+    "text": "2m, 2/rodada, 2 rodadas",
+    "effects": [
+     {
+      "type": "fire_trail",
+      "damage_per_round": 2,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 3,
     "range": "self",
-    "text": "3m, 2/rodada, 3 rodadas — +2 instantâneo a quem passa"
+    "text": "3m, 2/rodada, 3 rodadas — +2 instantâneo a quem passa",
+    "effects": [
+     {
+      "type": "fire_trail",
+      "damage_per_round": 2,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      },
+      "instant_bonus_on_enter": 2
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "ignira_explosao_retardada",
@@ -1370,21 +1467,46 @@
     "rank": 1,
     "cost": 2,
     "range": 4,
-    "text": "Dano 6, 2m, alc.4"
+    "text": "Dano 6, 2m, alc.4",
+    "effects": [
+     {
+      "type": "delayed_damage",
+      "amount": 6,
+      "delay_rounds": 1,
+      "radius": 1
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 3,
     "range": 4,
-    "text": "Dano 8, 3m"
+    "text": "Dano 8, 3m",
+    "effects": [
+     {
+      "type": "delayed_damage",
+      "amount": 8,
+      "delay_rounds": 1,
+      "radius": 1
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": 5,
-    "text": "Dano 11, 4m, alc.5 — raio dobra"
+    "text": "Dano 11, 4m, alc.5 — raio dobra",
+    "effects": [
+     {
+      "type": "delayed_damage",
+      "amount": 11,
+      "delay_rounds": 1,
+      "radius": 2
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "ignira_nova_fogo",
@@ -1398,21 +1520,51 @@
     "rank": 1,
     "cost": 3,
     "range": "area2",
-    "text": "Dano 4, área 2, 3m"
+    "text": "Dano 4, área 2, 3m",
+    "effects": [
+     {
+      "type": "damage",
+      "around_self": true,
+      "radius": 2,
+      "amount": 4
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 4,
     "range": "area2",
-    "text": "Dano 6, área 2, 4m"
+    "text": "Dano 6, área 2, 4m",
+    "effects": [
+     {
+      "type": "damage",
+      "around_self": true,
+      "radius": 2,
+      "amount": 6
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": "area3",
-    "text": "Dano 8, área 3, 5m — empurra 1"
+    "text": "Dano 8, área 3, 5m — empurra 1",
+    "effects": [
+     {
+      "type": "damage",
+      "around_self": true,
+      "radius": 3,
+      "amount": 8
+     },
+     {
+      "type": "push",
+      "area_radius": 3,
+      "distance": 1
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "ignira_chuva_faiscas",
@@ -1426,15 +1578,30 @@
     "rank": 2,
     "cost": 3,
     "range": 5,
-    "text": "Dano 3, 3m, alc.5, 3 alvos"
+    "text": "Dano 3, 3m, alc.5, 3 alvos",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 3,
+      "random_targets": 3
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 4,
     "range": 6,
-    "text": "Dano 4, 4m, alc.6, 4 alvos"
+    "text": "Dano 4, 4m, alc.6, 4 alvos",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 4,
+      "random_targets": 4
+     }
+    ]
    }
-  ]
+  ],
+  "target": "random_enemies"
  },
  {
   "id": "ignira_muro_chamas",
@@ -1447,16 +1614,41 @@
    {
     "rank": 2,
     "cost": 3,
-    "range": null,
-    "text": "3m, comprimento 4, dano 3 ao entrar, 2 rodadas"
+    "range": 3,
+    "text": "3m, comprimento 4, dano 3 ao entrar, 2 rodadas",
+    "effects": [
+     {
+      "type": "fire_wall",
+      "length": 4,
+      "damage_on_enter": 3,
+      "duration": {
+       "unit": "rounds",
+       "value": 2
+      }
+     }
+    ],
+    "assumed_range": true
    },
    {
     "rank": 3,
     "cost": 4,
-    "range": null,
-    "text": "4m, comprimento 5, dano 5, 3 rodadas"
+    "range": 3,
+    "text": "4m, comprimento 5, dano 5, 3 rodadas",
+    "effects": [
+     {
+      "type": "fire_wall",
+      "length": 5,
+      "damage_on_enter": 5,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ],
+    "assumed_range": true
    }
-  ]
+  ],
+  "target": "direction"
  },
  {
   "id": "ignira_combustao_total",
@@ -1470,15 +1662,33 @@
     "rank": 2,
     "cost": 4,
     "range": 3,
-    "text": "Dano 10, 4m, alc.3"
+    "text": "Dano 10, 4m, alc.3",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 10,
+      "only_if": "target_burning_or_on_burning_ground"
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": 3,
-    "text": "Dano 14, 5m — detona chão em chamas próximo"
+    "text": "Dano 14, 5m — detona chão em chamas próximo",
+    "effects": [
+     {
+      "type": "damage",
+      "amount": 14,
+      "only_if": "target_burning_or_on_burning_ground"
+     },
+     {
+      "type": "detonate_nearby_ground_fire"
+     }
+    ]
    }
-  ]
+  ],
+  "target": "enemy"
  },
  {
   "id": "ignira_inferno_pessoal",
@@ -1492,15 +1702,38 @@
     "rank": 2,
     "cost": 5,
     "range": 4,
-    "text": "5m, área 3, 3/rodada, 3 rodadas, alc.4"
+    "text": "5m, área 3, 3/rodada, 3 rodadas, alc.4",
+    "effects": [
+     {
+      "type": "ground_fire",
+      "radius": 3,
+      "damage_per_round": 3,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 6,
     "range": 4,
-    "text": "6m, área 4, 4/rodada, 3 rodadas"
+    "text": "6m, área 4, 4/rodada, 3 rodadas",
+    "effects": [
+     {
+      "type": "ground_fire",
+      "radius": 4,
+      "damage_per_round": 4,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "cell"
  },
  {
   "id": "ignira_fenix_momentanea",
@@ -1514,15 +1747,30 @@
     "rank": 2,
     "cost": 4,
     "range": "area2",
-    "text": "Explode dano 8, área 2, 4m"
+    "text": "Explode dano 8, área 2, 4m",
+    "effects": [
+     {
+      "type": "death_ward",
+      "explode_damage": 8,
+      "explode_radius": 2
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 5,
     "range": "area3",
-    "text": "Explode dano 12, área 3, 5m"
+    "text": "Explode dano 12, área 3, 5m",
+    "effects": [
+     {
+      "type": "death_ward",
+      "explode_damage": 12,
+      "explode_radius": 3
+     }
+    ]
    }
-  ]
+  ],
+  "target": "self"
  },
  {
   "id": "ignira_juizo_flamejante",
@@ -1536,21 +1784,52 @@
     "rank": 1,
     "cost": 13,
     "range": 5,
-    "text": "Dano 12, área 3, 13m, alc.5"
+    "text": "Dano 12, área 3, 13m, alc.5",
+    "effects": [
+     {
+      "type": "damage",
+      "radius": 3,
+      "amount": 12
+     }
+    ]
    },
    {
     "rank": 2,
     "cost": 14,
     "range": 5,
-    "text": "Dano 15, área 3, 14m, alc.5"
+    "text": "Dano 15, área 3, 14m, alc.5",
+    "effects": [
+     {
+      "type": "damage",
+      "radius": 3,
+      "amount": 15
+     }
+    ]
    },
    {
     "rank": 3,
     "cost": 15,
     "range": 5,
-    "text": "Dano 18, área 4, 15m, alc.5 — fogo 3 rodadas"
+    "text": "Dano 18, área 4, 15m, alc.5 — fogo 3 rodadas",
+    "effects": [
+     {
+      "type": "damage",
+      "radius": 4,
+      "amount": 18
+     },
+     {
+      "type": "ground_fire",
+      "radius": 4,
+      "damage_per_round": 3,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ]
    }
-  ]
+  ],
+  "target": "cell"
  },
  {
   "id": "ignira_coracao_fornalha",
@@ -1563,22 +1842,59 @@
    {
     "rank": 1,
     "cost": 13,
-    "range": null,
-    "text": "Zona de 4 por rodada, área 3, 3 rodadas, 13m"
+    "range": 5,
+    "text": "Zona de 4 por rodada, área 3, 3 rodadas, 13m",
+    "effects": [
+     {
+      "type": "ground_fire",
+      "radius": 3,
+      "damage_per_round": 4,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ],
+    "assumed_range": true
    },
    {
     "rank": 2,
     "cost": 14,
-    "range": null,
-    "text": "Zona de 5 por rodada, área 3, 3 rodadas, 14m"
+    "range": 5,
+    "text": "Zona de 5 por rodada, área 3, 3 rodadas, 14m",
+    "effects": [
+     {
+      "type": "ground_fire",
+      "radius": 3,
+      "damage_per_round": 5,
+      "duration": {
+       "unit": "rounds",
+       "value": 3
+      }
+     }
+    ],
+    "assumed_range": true
    },
    {
     "rank": 3,
     "cost": 15,
-    "range": null,
-    "text": "Zona de 6 por rodada, área 4, 4 rodadas, 15m"
+    "range": 5,
+    "text": "Zona de 6 por rodada, área 4, 4 rodadas, 15m",
+    "effects": [
+     {
+      "type": "ground_fire",
+      "radius": 4,
+      "damage_per_round": 6,
+      "duration": {
+       "unit": "rounds",
+       "value": 4
+      }
+     }
+    ],
+    "assumed_range": true
    }
-  ]
+  ],
+  "target": "cell"
  },
  {
   "id": "vextra_lamina_rapida",
