@@ -1,11 +1,13 @@
 // Passagem de tempo do motor hexagonal (roster v2) — equivalente a src/engine/tick.ts
 // e ao expireTurnStatuses de src/engine/status.ts, mas só pro que já existe no
-// motor novo: status de campeão com duração em "rounds"/"champion_turns" e as
+// motor novo: status de campeão com duração em "rounds"/"champion_turns", as
 // áreas de chão (ground_fire, venom_zone — ver applyGroundFire/applyVenomZone
-// em effects.ts). venom_terrain (aplica ao entrar, não por rodada), fire_trail
-// (rastro do próprio movimento) e create_structure/delayed_damage ainda não
-// entram aqui — precisam de gancho no movimento ou numa fila de atraso que
-// não existe no motor novo ainda (ver KANBAN.md).
+// em effects.ts) e paredes com duração (as permanentes, remaining=null, não
+// expiram). venom_terrain (aplica ao entrar, não por rodada), fire_trail
+// (rastro do próprio movimento), estruturas/armadilhas/portais/molas e
+// create_structure/delayed_damage ainda não entram aqui — precisam de gancho
+// no movimento ou numa fila de atraso que não existe no motor novo ainda (ver
+// KANBAN.md).
 
 import { hexDistance } from "../design/hexGrid";
 import { allChampionsV2, type ChampionStateV2, type GameStateV2 } from "./state";
@@ -41,6 +43,9 @@ export function tickRoundV2(s: GameStateV2): void {
     g.remaining -= 1;
   }
   s.ground = s.ground.filter((g) => g.remaining > 0);
+
+  for (const w of s.walls) if (w.remaining !== null) w.remaining -= 1;
+  s.walls = s.walls.filter((w) => w.remaining === null || w.remaining > 0);
 }
 
 /**

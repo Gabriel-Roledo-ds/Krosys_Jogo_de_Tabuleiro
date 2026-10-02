@@ -3,16 +3,17 @@
 // especial — é assim que grid hexagonal funciona). "Até o valor": pode andar
 // menos. Dado de movimento é o mesmo d6 do MVP (balance.json "dice").
 //
-// Escopo atual: só bloqueio por outro campeão vivo (campeões são sólidos —
-// regras-e-decisoes.md §5). Paredes/estruturas/casas lentas do roster v2 ainda
-// não existem no estado (ver KANBAN.md) — entram quando o resto do motor
-// (efeitos de construção) for ligado.
+// Bloqueio por outro campeão vivo (campeões são sólidos — regras-e-decisoes.md
+// §5) e por parede (src/engine-v2/world.ts, ver KANBAN.md "paredes/estruturas").
+// Estruturas/armadilhas/portais/molas do roster v2 ainda não existem no
+// estado — entram num incremento seguinte.
 
 import { balance } from "../engine/data";
 import { rngOf } from "../engine/rng";
 import { addHex, hexDirectionTo, hexDistance, hexKey, hexNeighbors, sameHex, type Hex } from "../design/hexGrid";
 import { inHexBoard } from "../design/hexBoard";
 import { allChampionsV2, type ChampionStateV2, type GameStateV2 } from "./state";
+import { wallAtV2 } from "./world";
 
 /** Joga o dado de movimento (d6 por padrão, mesma regra do MVP). */
 export function rollMovementDie(s: GameStateV2): number {
@@ -26,6 +27,11 @@ export function calcMovement(die: number, bonus = 0, penalty = 0): number {
 
 function isOccupiedByAliveChampion(s: GameStateV2, h: Hex, excludeUid: string): boolean {
   return allChampionsV2(s).some((c) => c.alive && c.uid !== excludeUid && c.pos.q === h.q && c.pos.r === h.r);
+}
+
+/** Casa sólida (campeão vivo ou parede) — não pode ser atravessada nem ocupada. */
+function isSolid(s: GameStateV2, h: Hex, excludeUid: string): boolean {
+  return isOccupiedByAliveChampion(s, h, excludeUid) || wallAtV2(s, h) !== null;
 }
 
 interface Search {
@@ -45,7 +51,7 @@ function search(s: GameStateV2, mover: ChampionStateV2, budget: number): Search 
     if (cur.cost > (cost.get(hexKey(cur.pos)) ?? Infinity)) continue;
     for (const next of hexNeighbors(cur.pos)) {
       if (!inHexBoard(next, s.board)) continue;
-      if (isOccupiedByAliveChampion(s, next, mover.uid)) continue;
+      if (isSolid(s, next, mover.uid)) continue;
       const c = cur.cost + 1;
       const k = hexKey(next);
       if (c > budget || c >= (cost.get(k) ?? Infinity)) continue;
@@ -115,7 +121,7 @@ export function teleportChampion(s: GameStateV2, mover: ChampionStateV2, dest: H
   if (sameHex(mover.pos, dest)) return;
   if (!inHexBoard(dest, s.board)) throw new Error(`Destino fora do tabuleiro: (${dest.q},${dest.r})`);
   if (hexDistance(mover.pos, dest) > maxDistance) throw new Error(`Destino além do alcance de teleporte (${maxDistance})`);
-  if (isOccupiedByAliveChampion(s, dest, mover.uid)) throw new Error("Destino ocupado");
+  if (isSolid(s, dest, mover.uid)) throw new Error("Destino ocupado");
   mover.pos = { ...dest };
 }
 
@@ -129,7 +135,7 @@ export function forcedMove(s: GameStateV2, target: ChampionStateV2, dir: Hex, st
   let pos = target.pos;
   for (let i = 0; i < steps; i++) {
     const next = addHex(pos, dir);
-    if (!inHexBoard(next, s.board) || isOccupiedByAliveChampion(s, next, target.uid)) break;
+    if (!inHexBoard(next, s.board) || isSolid(s, next, target.uid)) break;
     pos = next;
     moved += 1;
   }

@@ -80,6 +80,24 @@ export interface GroundEffectV2 {
   stacksPerRound?: number;
 }
 
+/**
+ * Parede do motor hexagonal (roster v2) — igual a Wall do MVP, mas sem a
+ * distinção de "kind" (nenhuma carta v2 encontrada até agora cria parede
+ * baixa; todas são sólidas, bloqueiam movimento e alcance igual). Tem hp,
+ * mas por enquanto nada reduz esse hp além de `destroy_wall` removê-la
+ * direto — dano contra parede ainda não está ligado (ver KANBAN.md).
+ */
+export interface WallV2 {
+  id: number;
+  pos: Hex;
+  hp: number;
+  team: TeamId;
+  /** Rodadas restantes; null = permanente (Reforçar ★★★ do Dorin). */
+  remaining: number | null;
+  /** Pilar ★★★ do Dorin: também bloqueia ataques à distância através da casa. */
+  blocksRangedAttacks?: boolean;
+}
+
 export interface DeckStateV2 {
   draw: CardInstanceV2[];
   discard: CardInstanceV2[];
@@ -102,6 +120,7 @@ export interface GameStateV2 {
   rngState: number;
   log: string[];
   ground: GroundEffectV2[];
+  walls: WallV2[];
 }
 
 const DEFAULT_TEAM_COMPOSITION: Record<TeamId, string[]> = {
@@ -182,6 +201,7 @@ export function createGameV2(seed: number, options: CreateGameV2Options = {}): G
     rngState: holder.rngState,
     log: [],
     ground: [],
+    walls: [],
   };
 }
 

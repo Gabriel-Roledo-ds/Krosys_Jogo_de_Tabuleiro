@@ -9,13 +9,14 @@
 // etc.) é uma camada de cima ainda não construída (orquestração de jogar uma
 // carta). Então as funções aqui recebem os campeões-alvo já escolhidos.
 
-import type { Effect } from "../engine/data";
+import { balance, type Effect } from "../engine/data";
 import { sameHex, type Hex } from "../design/hexGrid";
 import { allChampionsV2, type ChampionStateV2, type GameStateV2 } from "./state";
 import { dealDamageV2, type DamageOptsV2 } from "./damage";
 import { addStatus, heal, removeNegativeStatuses, removePositiveStatuses, removeStatus, statusAmount } from "./status";
 import { forcedMove, pullChampion, pushChampion, teleportChampion } from "./movement";
 import { championsInRadius } from "./targeting";
+import { wallAtV2 } from "./world";
 
 /** Status sem duração natural — persiste até ser consumido/removido (pilhas de veneno). */
 const PERSISTENT_REMAINING = 999;
@@ -397,6 +398,35 @@ export function applyProtectiveDome(ctx: EffectContextV2, effect: Effect, target
   for (const target of targets) addStatus(target, ctx.nextId(), "protective_dome", duration.unit, duration.value, { negative: false });
 }
 
+/** `create_wall`: cria uma parede em `ctx.targetCell` (Barreira Rápida/Pilar do Dorin). */
+export function applyCreateWall(ctx: EffectContextV2, effect: Effect): void {
+  if (!ctx.attacker || !ctx.targetCell) return;
+  if (wallAtV2(ctx.game, ctx.targetCell)) return; // já tem parede ali — não duplica, não renova sozinha
+  ctx.game.walls.push({
+    id: ctx.nextId(),
+    pos: { ...ctx.targetCell },
+    hp: effect.hp ?? balance.walls.normal_wall_hp,
+    team: ctx.attacker.team,
+    remaining: balance.walls.default_duration_rounds,
+    blocksRangedAttacks: effect.blocks_ranged_attacks,
+  });
+}
+
+/** `reinforce_wall`: soma hp a uma parede já existente em `ctx.targetCell` (target "wall"). Sem parede ali, não faz nada. */
+export function applyReinforceWall(ctx: EffectContextV2, effect: Effect): void {
+  if (!ctx.targetCell) return;
+  const wall = wallAtV2(ctx.game, ctx.targetCell);
+  if (!wall) return;
+  wall.hp += effect.amount ?? effect.bonus_hp ?? 0;
+  if (effect.permanent) wall.remaining = null;
+}
+
+/** `destroy_wall`: remove a parede em `ctx.targetCell`, se houver. */
+export function applyDestroyWall(ctx: EffectContextV2): void {
+  if (!ctx.targetCell) return;
+  ctx.game.walls = ctx.game.walls.filter((w) => !sameHex(w.pos, ctx.targetCell!));
+}
+
 const DISPATCH: Record<string, (ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]) => void> = {
   damage: (ctx, effect, targets) => applyDamage(ctx, effect, targets),
   apply_status: (ctx, effect, targets) => applyStatus(ctx, effect, targets),
@@ -428,6 +458,9 @@ const DISPATCH: Record<string, (ctx: EffectContextV2, effect: Effect, targets: C
   taunt_area: (ctx, effect) => applyTauntArea(ctx, effect),
   block_ranged_attacks: (ctx, effect) => applyBlockRangedAttacks(ctx, effect),
   protective_dome: (ctx, effect, targets) => applyProtectiveDome(ctx, effect, targets),
+  create_wall: (ctx, effect) => applyCreateWall(ctx, effect),
+  reinforce_wall: (ctx, effect) => applyReinforceWall(ctx, effect),
+  destroy_wall: (ctx) => applyDestroyWall(ctx),
 };
 
 /** Tipos de efeito que já têm execução real no motor v2 (os outros ainda só existem como dado). */

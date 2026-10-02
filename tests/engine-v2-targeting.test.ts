@@ -103,10 +103,10 @@ describe("validateTargetV2", () => {
     expect(validateTargetV2(game, owner, { range: 2, target: "two_cells" }, { pos: a, pos2: a })).toMatch(/diferentes/);
   });
 
-  it("wall e dead_ally avisam que ainda não estão implementados", () => {
+  it("wall sem casa escolhida é inválido; dead_ally ainda avisa que não está implementado", () => {
     const game = createGameV2(1);
     const owner = game.teams.A.champions[0];
-    expect(validateTargetV2(game, owner, { range: 3, target: "wall" }, {})).toMatch(/não implementado/);
+    expect(validateTargetV2(game, owner, { range: 3, target: "wall" }, {})).toBe("alvo inválido");
     expect(validateTargetV2(game, owner, { range: 3, target: "dead_ally" }, {})).toMatch(/não implementado/);
   });
 });

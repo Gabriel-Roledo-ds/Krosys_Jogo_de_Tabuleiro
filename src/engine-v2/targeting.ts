@@ -1,12 +1,13 @@
 // Validação de alvos de cartas/habilidades no motor hexagonal (roster v2).
-// Equivalente a src/engine/targeting.ts, mas em coordenadas axiais e só para
-// os tipos de `target` que já existem sem depender de paredes/mortos/boss
-// ainda não modelados no motor novo (ver KANBAN.md): "wall" e "dead_ally"
-// devolvem "ainda não implementado" por enquanto.
+// Equivalente a src/engine/targeting.ts, mas em coordenadas axiais. "wall" já
+// resolve de verdade (ver world.ts); "dead_ally" continua "ainda não
+// implementado" — depende do campeão morto poder ser escolhido como alvo
+// (resurrect), o que ainda não foi ligado (ver KANBAN.md).
 
 import { hexAdjacent, hexDistance, hexesInRadius, HEX_DIRECTIONS, isHexInLine, sameHex, type Hex } from "../design/hexGrid";
 import { inHexBoard } from "../design/hexBoard";
 import { allChampionsV2, getChampionV2, type ChampionStateV2, type GameStateV2, type TeamId } from "./state";
+import { hasLineOfSightV2, wallAtV2 } from "./world";
 
 export interface TargetableV2 {
   range: number | "self";
@@ -23,7 +24,7 @@ export interface TargetV2 {
 }
 
 const inRange = (s: GameStateV2, from: Hex, to: Hex, range: number): boolean =>
-  inHexBoard(to, s.board) && hexDistance(from, to) <= range;
+  inHexBoard(to, s.board) && hexDistance(from, to) <= range && hasLineOfSightV2(s, from, to);
 
 const isDirection = (d?: Hex): boolean => !!d && HEX_DIRECTIONS.some((v) => v.q === d.q && v.r === d.r);
 
@@ -94,7 +95,11 @@ export function validateTargetV2(s: GameStateV2, owner: ChampionStateV2, def: Ta
       if (!t.pos) return "alvo inválido";
       if (!inRange(s, owner.pos, t.pos, range)) return "fora de alcance";
       return isHexInLine(owner.pos, t.pos) ? null : "fora de linha";
-    case "wall":
+    case "wall": {
+      if (!t.pos) return "alvo inválido";
+      if (!inRange(s, owner.pos, t.pos, range)) return "fora de alcance";
+      return wallAtV2(s, t.pos) ? null : "não há parede nessa casa";
+    }
     case "dead_ally":
       return `alvo "${def.target}" ainda não implementado no motor v2`;
     default:
