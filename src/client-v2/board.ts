@@ -61,17 +61,35 @@ function toCanvas(h: Hex): { x: number; y: number } {
   return { x: p.x + MARGIN, y: p.y + MARGIN };
 }
 
-/** Casa axial mais próxima de um ponto em pixel (canvas) — usado pro clique no tabuleiro. */
+/**
+ * Casa axial mais próxima de um ponto em pixel (canvas) — usado pro clique no
+ * tabuleiro. Arredondamento em coordenadas cúbicas (Red Blob Games): dos 3
+ * componentes (x=q, y=-q-r, z=r), o que tiver o MAIOR erro de arredondamento
+ * é recalculado a partir dos outros dois, pra manter x+y+z=0 depois de
+ * arredondar cada um separadamente.
+ *
+ * [Achado corrigido 03/10/2026, item 25 do KANBAN]: faltava o `else` que
+ * corrige `rz` quando o erro de z era o maior dos três (cobria só os casos
+ * "x é o maior" e "y é o maior", nunca "z é o maior") — pros ~1/3 dos
+ * cliques onde isso acontecia, a função devolvia a casa VIZINHA à clicada,
+ * não a clicada de verdade. Na prática, isso fazia o clique parecer não
+ * "pegar" alvos de carta/básica nem monstros com frequência (relatado pelo
+ * dono do projeto como "não consigo mirar nos monstros"/"cartas de
+ * habilidade com problema") — o alvo certo às vezes ficava fora da casa
+ * clicada, então `onCell(q, r)` nunca recebia a casa que o jogador via na
+ * tela.
+ */
 function pixelToHex(px: number, py: number): Hex {
   const x = (px - MARGIN) / SIZE;
   const y = (py - MARGIN) / SIZE;
   const qf = (SQRT3 / 3) * x - (1 / 3) * y;
   const rf = (2 / 3) * y;
-  // cube rounding
-  let rx = Math.round(qf), ry = Math.round(-qf - rf), rz = Math.round(rf);
-  const dx = Math.abs(rx - qf), dy = Math.abs(ry - (-qf - rf)), dz = Math.abs(rz - rf);
+  const zf = -qf - rf; // y cúbico (x=qf, y=zf, z=rf) — "zf" aqui é só pra não colidir com a var `y` em pixels
+  let rx = Math.round(qf), ry = Math.round(zf), rz = Math.round(rf);
+  const dx = Math.abs(rx - qf), dy = Math.abs(ry - zf), dz = Math.abs(rz - rf);
   if (dx > dy && dx > dz) rx = -ry - rz;
   else if (dy > dz) ry = -rx - rz;
+  else rz = -rx - ry;
   return { q: rx, r: rz };
 }
 
