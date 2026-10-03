@@ -21,7 +21,7 @@ import { enumerateTargetsV2 } from "../engine-v2/targeting";
 import { balance } from "../engine/data";
 
 export type AwaitingV2 =
-  | { team: TeamId; kind: "draw" | "act" | "discard" | "respond" | "over" };
+  | { team: TeamId; kind: "boss" | "draw" | "act" | "discard" | "respond" | "over" };
 
 export function awaitingV2(s: GameStateV2): AwaitingV2 {
   if (s.winner) return { team: s.turn.team, kind: "over" };

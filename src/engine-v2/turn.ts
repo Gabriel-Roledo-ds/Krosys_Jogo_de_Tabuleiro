@@ -19,13 +19,13 @@
 // (CardInstanceV2.monster === true) não contam no limite de mão (balance.hand.max_size)
 // — ver nonMonsterHandSizeV2, usado em vez de tm.hand.length nas 4 checagens de limite.
 
-import { balance } from "../engine/data";
+import { balance, getBossCard, type BossCardDef } from "../engine/data";
 import { basicTargetV2, getCardDefV2, getCardRankV2, getChampionDefV2 } from "./data";
 import type { Hex } from "../design/hexGrid";
 import { hexKey } from "../design/hexGrid";
 import { discardCardV2, deckSizeV2, drawFromV2 } from "./deck";
 import { resolveDeathsV2, returnDeadChampionsV2 } from "./death";
-import { activateBossV2, minionsAttackAdjacentV2 } from "./boss";
+import { beginBossActivationV2, bossShouldActivateV2, minionsAttackAdjacentV2, resolveBossItemV2 } from "./boss";
 import { IllegalActionV2, rankRangeV2, resolveBasicEffectsV2, resolveCardEffectsV2, resurrectBlockedV2 } from "./cardPlay";
 
 export { IllegalActionV2 };
@@ -79,11 +79,34 @@ export function startGameV2(game: GameStateV2): void {
 function beginTurn(game: GameStateV2): void {
   const team = game.turn.team;
   returnDeadChampionsV2(game, team);
-  activateBossV2(game, team);
-  resolveDeathsV2(game, team);
-  if (game.winner) return;
+  game.turn.phase = "boss";
   logV2(game, `Turno da equipe ${team} (rodada ${game.round})`);
-  enterDrawPhase(game);
+  const activated = bossShouldActivateV2(game, team);
+  activateBossV2(game, team);
+  if (game.winner) return;
+  // Se o boss não ativou, avança direto. Se ativou, activateBossV2 já
+  // resolveu na hora (chamando enterDrawPhase lá dentro) quando ninguém podia
+  // responder, ou deixou game.pending esperando uma resposta — nos dois casos
+  // não há nada mais a fazer aqui.
+  if (!activated) enterDrawPhase(game);
+}
+
+/**
+ * Ativa o boss pra equipe da vez (se houver campeão dela ao alcance): compra
+ * a carta, decide o alvo e empilha (StackItemV2 kind "boss") na pilha de
+ * respostas rápidas — igual a uma carta/básica, mas com prioridade pra
+ * QUALQUER equipe responder primeiro (não só o adversário de quem "jogou"),
+ * já que a ativação não tem dono (ver settlePriorityV2). Resolve na hora
+ * (chamando resolveStackV2, que aplica o efeito de verdade) quando nenhuma
+ * equipe tiver carta rápida pra reagir — o caso comum. Devolve a carta usada
+ * (pra log/depuração), ou null se o boss não ativou.
+ */
+export function activateBossV2(game: GameStateV2, team: TeamId): BossCardDef | null {
+  if (!bossShouldActivateV2(game, team)) return null;
+  const item = beginBossActivationV2(game, team);
+  game.pending = { stack: [item], priority: team, chain: 0 };
+  settlePriorityV2(game, team);
+  return getBossCard(item.cardId);
 }
 
 function enterDrawPhase(game: GameStateV2): void {
@@ -138,11 +161,23 @@ export function fastPlaysV2(game: GameStateV2, team: TeamId, cap = 20): { card: 
 /** Alguém dessa equipe pode responder agora com uma carta rápida? */
 export const canRespondV2 = (game: GameStateV2, team: TeamId): boolean => fastPlaysV2(game, team, 1).length > 0;
 
+/**
+ * Decide quem responde a seguir. Ativação do boss é especial: como não tem
+ * "dono" (não é a carta de ninguém), as DUAS equipes têm a chance de
+ * responder antes de resolver, começando por `first` (igual ao MVP,
+ * src/engine/turn.ts) — carta/básica normal só dá a chance ao adversário de
+ * quem jogou (chamado com first = otherTeam(item.team) em pushItemV2).
+ */
 function settlePriorityV2(game: GameStateV2, first: TeamId): void {
   const p = game.pending!;
-  if (p.chain < balance.fast_cards.max_chained_responses && canRespondV2(game, first)) {
-    p.priority = first;
-    return;
+  const order: TeamId[] = p.chain === 0 && p.stack[0].kind === "boss" ? [first, otherTeam(first)] : [first];
+  if (p.chain < balance.fast_cards.max_chained_responses) {
+    for (const team of order) {
+      if (canRespondV2(game, team)) {
+        p.priority = team;
+        return;
+      }
+    }
   }
   resolveStackV2(game);
 }
@@ -150,9 +185,15 @@ function settlePriorityV2(game: GameStateV2, first: TeamId): void {
 function resolveStackV2(game: GameStateV2): void {
   const p = game.pending;
   if (!p) return;
+  let wasBoss = false;
   while (p.stack.length > 0) {
     const item = p.stack.pop()!;
-    const owner = getChampionV2(game, item.owner);
+    if (item.kind === "boss") {
+      wasBoss = true;
+      resolveBossItemV2(game, item);
+      continue;
+    }
+    const owner = getChampionV2(game, item.owner!);
     if (!owner.alive) {
       logV2(game, `${item.owner} não está em campo: a ação falha`);
       continue;
@@ -167,6 +208,7 @@ function resolveStackV2(game: GameStateV2): void {
   }
   game.pending = null;
   resolveDeathsV2(game, game.turn.team);
+  if (wasBoss && !game.winner && game.turn.phase === "boss") enterDrawPhase(game);
 }
 
 function pushItemV2(game: GameStateV2, item: StackItemV2): void {

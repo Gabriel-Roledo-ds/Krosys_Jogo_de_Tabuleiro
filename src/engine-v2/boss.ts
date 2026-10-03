@@ -18,11 +18,17 @@
 //   "move" de turn.ts) e pode expirar por rodada se o summon_minion que o
 //   criou tiver `duration` (roundsLeft, ver state.ts/tick.ts) — a Prole do
 //   boss não define duration, então continua só morrendo por dano.
-// - Ativação resolve IMEDIATAMENTE (sem passar pela pilha de respostas rápidas
-//   de turn.ts) — diferente do MVP, que empilha e deixa o jogador responder
-//   com carta rápida antes do boss agir. Ampliar isso é trabalho de integração
-//   com turn.ts/StackItemV2, fora do escopo desta etapa [PADRÃO, documentar
-//   pendência].
+// - Ativação passa pela pilha de respostas rápidas de turn.ts (02/10/2026,
+//   igual ao MVP, src/engine/boss.ts beginBossActivation/resolveBossItem):
+//   `beginBossActivationV2` só compra a carta e decide o alvo (closest/
+//   last_attacker), devolvendo um StackItemV2 (kind "boss") que turn.ts
+//   empilha; `resolveBossItemV2` só aplica o efeito quando a pilha
+//   realmente resolver — então um jogador com carta rápida na mão pode
+//   responder (escudo, etc.) antes do boss acertar, e o alvo já escolhido
+//   é revalidado (vivo/atingível) na hora de resolver, caso tenha mudado
+//   no meio da resposta. `turn.ts` exporta `activateBossV2` como o ponto de
+//   entrada usado por `beginTurn` (empilha e tenta resolver na hora; só
+//   fica esperando se alguém realmente puder responder).
 // - Champions causam dano no boss por uma função dedicada (`attackBossV2`),
 //   não pelo pipeline genérico de cartas/efeitos (`applyDamage` em effects.ts,
 //   que só conhece ChampionStateV2) — generalizar aquele pipeline pra aceitar
@@ -33,7 +39,7 @@
 import { balance, getBossCard, type BossCardDef } from "../engine/data";
 import { hexAdjacent, hexDistance, hexNeighbors } from "../design/hexGrid";
 import { rngOf } from "../engine/rng";
-import { allChampionsV2, logV2, type ChampionStateV2, type GameStateV2, type TeamId } from "./state";
+import { allChampionsV2, logV2, type ChampionStateV2, type GameStateV2, type StackItemV2, type TeamId } from "./state";
 import { addStatus } from "./status";
 import { pushChampion } from "./movement";
 import { discardCardV2 } from "./deck";
@@ -72,16 +78,41 @@ function fury(s: GameStateV2): number {
 }
 
 /**
- * Ativa o boss para o jogador da vez (se houver campeão da equipe ao alcance):
- * compra a carta, resolve o alvo e aplica os efeitos na hora. Devolve a carta
- * usada (pra log/depuração), ou null se o boss não ativou.
+ * Começa a ativação do boss pro jogador da vez (chamado só depois de
+ * bossShouldActivateV2 confirmar que há campeão da equipe ao alcance):
+ * reseta a Carapaça, compra a carta e já decide o alvo de closest/
+ * last_attacker (aura/area são decididos no resolve, igual ao MVP). Devolve
+ * o StackItemV2 que turn.ts empilha — o efeito só acontece quando a pilha
+ * resolver de verdade (resolveBossItemV2 abaixo), depois de qualquer
+ * resposta rápida possível.
  */
-export function activateBossV2(s: GameStateV2, team: TeamId): BossCardDef | null {
-  if (!bossShouldActivateV2(s, team)) return null;
-
+export function beginBossActivationV2(s: GameStateV2, team: TeamId): StackItemV2 {
   s.boss.damageReduction = 0; // Carapaça dura até a próxima ativação
   const cardId = drawBossCardIdV2(s);
   const card = getBossCard(cardId);
+
+  let targetUid: string | undefined;
+  if (card.target === "closest") {
+    targetUid = closestToBoss(s, championsInBossRangeV2(s, team))?.uid;
+  } else if (card.target === "last_attacker") {
+    const last = s.boss.lastAttacker ? allChampionsV2(s).find((c) => c.uid === s.boss.lastAttacker) : null;
+    const valid = last && last.alive && !last.untargetable && hexDistance(last.pos, s.boss.pos) <= s.boss.range;
+    targetUid = (valid ? last : closestToBoss(s, championsInBossRangeV2(s, team)))?.uid;
+  }
+
+  const who = targetUid ? allChampionsV2(s).find((c) => c.uid === targetUid) : null;
+  logV2(s, `Boss ativa ${card.name}${who ? ` em ${who.defId} (${who.team})` : ""}: ${card.text ?? ""}`.trim());
+  return { kind: "boss", team, cardId, rank: 0, target: { uid: targetUid } };
+}
+
+/**
+ * Resolve a ativação do boss já decidida (chamado pela pilha de respostas
+ * rápidas quando ninguém mais puder/quiser responder). Revalida o alvo
+ * (vivo/atingível) na hora, caso uma resposta tenha mudado o campo entre a
+ * declaração e a resolução.
+ */
+export function resolveBossItemV2(s: GameStateV2, item: StackItemV2): void {
+  const card = getBossCard(item.cardId);
   s.boss.discard.push(card.id);
 
   if (card.target === "aura") {
@@ -89,27 +120,18 @@ export function activateBossV2(s: GameStateV2, team: TeamId): BossCardDef | null
     s.boss.aura = { cardId: card.id, cardsLeft: card.effects.find((e) => e.next_cards)?.next_cards };
     const red = card.effects.find((e) => e.type === "boss_damage_reduction");
     if (red) s.boss.damageReduction = red.amount ?? 0;
-    logV2(s, `Boss ativa ${card.name} (aura)`);
-    return card;
+    logV2(s, `Aura ${card.name} ativa`);
+    return;
   }
 
   const bonus = fury(s);
-  let target: ChampionStateV2 | null = null;
-  if (card.target === "closest") {
-    target = closestToBoss(s, championsInBossRangeV2(s, team));
-  } else if (card.target === "last_attacker") {
-    const last = s.boss.lastAttacker ? allChampionsV2(s).find((c) => c.uid === s.boss.lastAttacker) : null;
-    const valid = last && last.alive && !last.untargetable && hexDistance(last.pos, s.boss.pos) <= s.boss.range;
-    target = (valid ? last : closestToBoss(s, championsInBossRangeV2(s, team))) ?? null;
-  }
-
-  logV2(s, `Boss ativa ${card.name}${target ? ` em ${target.defId} (${target.team})` : ""}: ${card.text ?? ""}`.trim());
+  const target = item.target.uid ? allChampionsV2(s).find((c) => c.uid === item.target.uid) : null;
 
   if (card.target === "area") {
     for (const u of allChampionsV2(s)) {
       if (u.alive && !u.untargetable && hexDistance(u.pos, s.boss.pos) <= (card.radius ?? 3)) applyBossEffectsV2(s, card, u, bonus);
     }
-  } else if (target) {
+  } else if (target && target.alive && !target.untargetable) {
     applyBossEffectsV2(s, card, target, bonus);
   }
 
@@ -117,7 +139,6 @@ export function activateBossV2(s: GameStateV2, team: TeamId): BossCardDef | null
     s.boss.aura.cardsLeft -= 1;
     if (s.boss.aura.cardsLeft <= 0) s.boss.aura = null;
   }
-  return card;
 }
 
 function applyBossEffectsV2(s: GameStateV2, card: BossCardDef, target: ChampionStateV2, bonus: number): void {

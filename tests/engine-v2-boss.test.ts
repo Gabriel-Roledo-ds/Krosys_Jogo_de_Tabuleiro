@@ -4,13 +4,8 @@
 import { describe, it, expect } from "vitest";
 import { balance } from "../src/engine/data";
 import { createGameV2 } from "../src/engine-v2/state";
-import {
-  activateBossV2,
-  attackBossV2,
-  bossShouldActivateV2,
-  championsInBossRangeV2,
-  BOSS_UID_V2,
-} from "../src/engine-v2/boss";
+import { attackBossV2, bossShouldActivateV2, championsInBossRangeV2, BOSS_UID_V2 } from "../src/engine-v2/boss";
+import { activateBossV2, applyActionV2, startGameV2 } from "../src/engine-v2/turn";
 import { killChampionV2, resolveBossDeathV2, resolveDeathsV2, returnDeadChampionsV2 } from "../src/engine-v2/death";
 import { resurrectBlockedV2, playCardV2, playBasicV2 } from "../src/engine-v2/cardPlay";
 import { validateTargetV2, enumerateTargetsV2 } from "../src/engine-v2/targeting";
@@ -98,6 +93,87 @@ describe("activateBossV2", () => {
       }
     }
     expect(game.boss.deck.length + game.boss.discard.length).toBe(11);
+  });
+});
+
+describe("ativação do boss pela pilha de respostas rápidas (02/10/2026)", () => {
+  it("equipe alvo com carta rápida na mão NÃO sofre o dano na hora: fica esperando resposta", () => {
+    const game = createGameV2(1);
+    const varek = game.teams.A.champions.find((c) => c.defId === "varek")!;
+    varek.pos = { ...game.boss.pos }; // dentro do alcance (closest óbvio: só ele)
+    game.boss.deck = ["garra", ...game.boss.deck.filter((id) => id !== "garra")]; // força "Garra" (dano 3) no topo
+    game.teams.A.mana = 10;
+    const card = { uid: "resp1", cardId: "varek_escudo_reforcado", owner: varek.uid };
+    game.teams.A.hand.push(card);
+    const hpBefore = varek.hp;
+
+    const usedCard = activateBossV2(game, "A");
+    expect(usedCard?.id).toBe("garra");
+    // Varek é o alvo e tem carta rápida de escudo pagável: a pilha fica esperando a resposta dele, não resolve ainda.
+    expect(game.pending).not.toBeNull();
+    expect(game.pending?.priority).toBe("A");
+    expect(varek.hp).toBe(hpBefore); // dano do boss ainda não aconteceu
+
+    applyActionV2(game, "A", { type: "play", card: card.uid, rank: 1, target: { uid: varek.uid } });
+    // Escudo (rank 1, 5) resolve primeiro (LIFO, igual a qualquer resposta rápida), ANTES do
+    // dano do boss. dealBossDamageV2 ainda não desconta escudo (gap pré-existente, fora do
+    // escopo desta etapa — só a ORDEM de resolução é o que esta etapa resolve), então o
+    // escudo fica intacto e o dano (3 - defesa 3, mínimo 1) cai direto na vida.
+    expect(game.pending).toBeNull();
+    expect(varek.shield).toBe(5);
+    expect(varek.hp).toBe(hpBefore - 1);
+  });
+
+  it("sem ninguém pra responder, resolve na hora (comportamento de antes continua valendo)", () => {
+    const game = createGameV2(1);
+    const varek = game.teams.A.champions.find((c) => c.defId === "varek")!;
+    varek.pos = { ...game.boss.pos };
+    game.boss.deck = ["garra", ...game.boss.deck.filter((id) => id !== "garra")];
+    const hpBefore = varek.hp;
+
+    activateBossV2(game, "A"); // sem carta rápida na mão: ninguém responde
+    expect(game.pending).toBeNull();
+    expect(varek.hp).toBeLessThan(hpBefore); // dano já aconteceu
+  });
+
+  it("equipe adversária (que nem está no alcance) também pode responder antes do dano resolver — a ativação não tem 'dono'", () => {
+    const game = createGameV2(1);
+    const varek = game.teams.A.champions.find((c) => c.defId === "varek")!;
+    varek.pos = { ...game.boss.pos };
+    game.boss.deck = ["garra", ...game.boss.deck.filter((id) => id !== "garra")];
+    // Time A (equipe da vez, alvo da carta) sem carta rápida pagável na mão.
+    // Time B tem uma carta rápida de utilidade (mana pessoal pra Aurelia), sem nenhuma
+    // relação com o boss — só prova que QUALQUER equipe ganha a chance, não só o alvo.
+    game.teams.B.mana = 10;
+    const aurelia = game.teams.B.champions.find((c) => c.defId === "aurelia")!;
+    const card = { uid: "resp2", cardId: "aurelia_inspiracao", owner: aurelia.uid };
+    game.teams.B.hand.push(card);
+
+    activateBossV2(game, "A");
+    expect(game.pending).not.toBeNull();
+    expect(game.pending?.priority).toBe("B");
+
+    const target = enumerateTargetsV2(game, aurelia, { range: 3, target: "ally" })[0];
+    applyActionV2(game, "B", { type: "play", card: card.uid, rank: 1, target });
+    expect(game.pending).toBeNull(); // B respondeu, A não tem o que responder: resolve tudo
+  });
+
+  it("fase 'boss' no turno de verdade (startGameV2/beginTurn): fica esperando resposta e só entra na fase de compra depois de resolver", () => {
+    const game = createGameV2(1);
+    const varek = game.teams.A.champions.find((c) => c.defId === "varek")!;
+    varek.pos = { ...game.boss.pos };
+    game.boss.deck = ["garra", ...game.boss.deck.filter((id) => id !== "garra")];
+    game.teams.A.mana = 10;
+    const card = { uid: "resp3", cardId: "varek_escudo_reforcado", owner: varek.uid };
+    game.teams.A.hand.push(card);
+
+    startGameV2(game); // beginTurn da equipe A: returnDeadChampionsV2 + ativação do boss
+    expect(game.turn.phase).toBe("boss");
+    expect(game.pending?.priority).toBe("A");
+
+    applyActionV2(game, "A", { type: "play", card: card.uid, rank: 1, target: { uid: varek.uid } });
+    expect(game.pending).toBeNull();
+    expect(game.turn.phase).toBe("draw"); // resolveu e seguiu pro turno normal
   });
 });
 

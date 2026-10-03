@@ -202,13 +202,15 @@ export interface TeamStateV2 {
   resurrectUsed: boolean;
 }
 
-export type PhaseV2 = "draw" | "act" | "discard";
+/** "boss": janela de resposta à ativação do boss, entre o fim de returnDeadChampionsV2 e a fase de compra (ver turn.ts beginTurn/activateBossV2). */
+export type PhaseV2 = "boss" | "draw" | "act" | "discard";
 
-/** Item na pilha de respostas rápidas (ver turn.ts) — carta ou habilidade básica já validada e paga, aguardando resolução (ou resposta do adversário). */
+/** Item na pilha de respostas rápidas (ver turn.ts) — carta, habilidade básica ou ativação do boss já decidida, aguardando resolução (ou resposta do adversário). */
 export interface StackItemV2 {
-  kind: "card" | "basic";
+  kind: "card" | "basic" | "boss";
   team: TeamId;
-  owner: string;
+  /** uid do campeão que age — não existe pro boss (ver kind "boss"). */
+  owner?: string;
   cardId: string;
   rank: number;
   target: import("./targeting").TargetV2;
