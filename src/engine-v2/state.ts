@@ -275,6 +275,16 @@ export interface TeamStateV2 {
   resurrectUsed: boolean;
   /** Ids dos deuses de templo já reivindicados por esta equipe (ver temples.ts) — só metadado pra view/log, o efeito de verdade mora no status permanente de cada campeã. */
   blessings: string[];
+  /**
+   * Botão de ligar/desligar a própria janela de resposta rápida
+   * (regras-e-decisoes.md §6/§16, "Botão de ligar/desligar efeito rápido").
+   * `false` faz `canRespondV2` ignorar essa equipe ao decidir prioridade em
+   * `settlePriorityV2` (turn.ts) — a ação do adversário resolve direto, sem
+   * abrir janela pra ESTA equipe. Não desliga `fastPlaysV2` em si (usado por
+   * `legalActionsV2`/bots quando a equipe já tem prioridade por outro
+   * motivo), só a concessão de prioridade. Padrão: true (ligado).
+   */
+  fastWindowEnabled: boolean;
 }
 
 /**
@@ -445,6 +455,7 @@ export function createGameV2(seed: number, options: CreateGameV2Options = {}): G
       turnsTaken: 0,
       resurrectUsed: false,
       blessings: [],
+      fastWindowEnabled: true,
     };
   }
 

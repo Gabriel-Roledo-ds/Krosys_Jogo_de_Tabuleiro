@@ -146,6 +146,13 @@ export function sanitizeAction(raw: unknown): ActionV2 | null {
     }
     case "discard":
       return str(a.card) ? { type: "discard", card: a.card } : null;
+    case "sacrifice":
+      if (!str(a.champion)) return null;
+      if (a.target !== undefined && !str(a.target)) return null;
+      return { type: "sacrifice", champion: a.champion, target: a.target as string | undefined };
+    case "toggleFast":
+      if (typeof a.enabled !== "boolean") return null;
+      return { type: "toggleFast", enabled: a.enabled };
     case "pass":
     case "end":
       return { type: a.type };

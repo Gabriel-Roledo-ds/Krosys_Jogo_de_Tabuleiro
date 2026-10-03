@@ -44,6 +44,9 @@ let myComp: string[] = [];
 let sel: { kind: "card"; uid: string; rank?: number } | { kind: "basic"; champion: string } | null = null;
 let moving: string | null = null;
 let chooser: Target[] | null = null;
+// Seletor de aliado pro sacrifício do Varek (Último Bastião, único que exige
+// alvo — ver regras-e-decisoes.md §22 e hints.sacrificeAllyTargets em view-v2.ts).
+let sacrificeChooser: { champion: string; targets: string[] } | null = null;
 let name = localStorage.getItem("krosys:name") ?? "";
 
 function connect() {
@@ -74,6 +77,7 @@ function connect() {
         view = m.view;
         sel = null;
         chooser = null;
+        sacrificeChooser = null;
         renderGame();
         break;
       case "error":
@@ -243,9 +247,18 @@ function renderStatus() {
   else if (view.pending) msg = view.pending.priority === me ? "⚡ Você pode responder com uma carta rápida." : "Aguardando resposta do adversário…";
   else if (t.team === me) msg = ({ draw: "Sua vez: compre uma carta.", act: "Ação: mova cada campeão uma vez, use cartas e uma habilidade básica.", discard: "Mão cheia: descarte uma carta." } as any)[t.phase] ?? "";
   else msg = "Vez do adversário…";
-  $("status").innerHTML = `<b class="team${me}">Você: equipe ${me}</b> · Rodada ${view.round} · Turno da equipe <b class="team${t.team}">${t.team}</b>
+  // Botão de ligar/desligar a própria janela de resposta rápida
+  // (regras-e-decisoes.md §6/§16): meta-ação de interface, disponível a
+  // qualquer momento — exceto enquanto a janela já está aberta especificamente
+  // pra mim (não dá pra "voltar atrás" no meio da própria decisão).
+  const fastOn = view.teams[me!].fastWindowEnabled !== false;
+  const fastLocked = !!view.pending && view.pending.priority === me;
+  const fastBtn = view.winner ? "" : `<button id="fasttoggle" ${fastLocked ? "disabled" : ""} title="${fastLocked ? "Não dá para mudar com a janela de resposta já aberta pra você" : "Ligar ou desligar sua própria janela de resposta rápida"}">⚡ Resposta rápida: ${fastOn ? "ligada" : "desligada"}</button>`;
+  $("status").innerHTML = `<b class="team${me}">Você: equipe ${me}</b> · Rodada ${view.round} · Turno da equipe <b class="team${t.team}">${t.team}</b> ${fastBtn}
     <div id="msg">${esc(msg)}</div>
     <div>${t.phase === "act" ? `🎲 Dado do turno: <b>${t.die}</b> · ` : ""}Boss: ${view.boss.hp}/${view.boss.maxHp} PV${view.boss.aura ? " · aura: " + esc(bossCards[view.boss.aura.cardId]?.name ?? view.boss.aura.cardId) : ""}</div>`;
+  const fb = document.getElementById("fasttoggle");
+  if (fb) fb.onclick = () => act({ type: "toggleFast", enabled: !fastOn });
 }
 
 function renderTeams() {
@@ -262,12 +275,31 @@ function renderTeams() {
   document.querySelectorAll<HTMLElement>("#teams .clk").forEach((el) => (el.onclick = () => openModal(el.dataset.u!)));
 }
 
+// Sacrifícios de passiva disponíveis agora (regras-e-decisoes.md §22) — a
+// lista (hints.sacrifice) já vem filtrada pela fase certa (compra pra
+// Ignira/Dorin, ação pros outros 7) e só com quem ainda não usou o próprio
+// nesta rodada. O Varek (único com alvo) abre o sacrificeChooser em vez de
+// agir direto — ver hints.sacrificeAllyTargets.
+function sacrificeButtonsHtml(): string {
+  const ids: string[] = hints().sacrifice ?? [];
+  if (!ids.length) return "";
+  return `<div class="row2"><b>Sacrifícios de passiva disponíveis</b></div>` + ids.map((uid) => {
+    const c = unitByUid(uid);
+    const d = champs[c.defId];
+    return `<div class="row2"><button data-sac="${uid}">Sacrificar: ${esc(d.sacrifice.name)} (${esc(d.name)})</button><div class="sub">${esc(d.sacrifice.text)}</div></div>`;
+  }).join("");
+}
+
 function renderActions() {
   const A = $("actions");
   const h = hints();
   let html = "";
   if (view.winner) html = `<button onclick="location.reload()">Voltar ao início</button>`;
-  else if (chooser) {
+  else if (sacrificeChooser) {
+    const d = champs[unitByUid(sacrificeChooser.champion).defId];
+    html = `Proteger qual aliado? (${esc(d.sacrifice.name)})` + sacrificeChooser.targets.map((uid) =>
+      `<div><button data-sact="${uid}">${esc(unitName(unitByUid(uid)))}</button></div>`).join("") + `<div><button id="cancel">Cancelar</button></div>`;
+  } else if (chooser) {
     html = "Qual opção?" + chooser.map((t, i) => `<div><button data-i="${i}">${esc(describe(t))}</button></div>`).join("") + `<button id="cancel">Cancelar</button>`;
   } else if (sel && sel.kind === "card" && sel.rank === undefined) {
     const cardSel = sel;
@@ -290,6 +322,7 @@ function renderActions() {
       html = "Comprar do baralho de:" + view.teams[me!].champions.filter((c: any) => c.alive).map((c: any) =>
         `<div><button data-draw="${c.uid}" ${view.teams[me!].decks[c.uid]?.draw + view.teams[me!].decks[c.uid]?.discard === 0 ? "disabled" : ""}>${champs[c.defId].name} (${view.teams[me!].decks[c.uid]?.draw} no baralho)</button></div>`).join("");
       if (h.canSkipDraw) html += `<div><button id="skipdraw">Não comprar (mão cheia)</button></div>`;
+      html += sacrificeButtonsHtml(); // Ignira/Dorin só podem sacrificar aqui, na fase de compra (§22)
     } else if (ph === "act") {
       const mine = view.teams[me!].champions.filter((c: any) => c.alive);
       const rows = mine.map((c: any) => {
@@ -303,6 +336,7 @@ function renderActions() {
           ${h.basics?.[c.uid] ? `<button data-basic="${c.uid}">${esc(h.basics[c.uid].name)}</button>` : ""}</div></div>`;
       }).join("");
       html = `${rows}<div class="row"><button id="end">Encerrar turno</button></div><small>Cada campeão se move uma vez (até ${view.turn.die} casas). Cada campeão pode usar a habilidade básica uma vez por turno${view.turn.basicUsed.length ? ` (já usaram: ${view.turn.basicUsed.length})` : ""}. Clique num campeão ou monstro no mapa para ver detalhes.</small>`;
+      html += sacrificeButtonsHtml();
     } else if (ph === "discard") html = "Clique numa carta da mão para descartar.";
   } else html = "Aguarde…";
   A.innerHTML = html;
@@ -314,7 +348,14 @@ function renderActions() {
   A.querySelectorAll<HTMLElement>("[data-stay]").forEach((b) => (b.onclick = () => act({ type: "stay", champion: b.dataset.stay })));
   A.querySelectorAll<HTMLElement>("[data-basic]").forEach((b) => (b.onclick = () => { sel = { kind: "basic", champion: b.dataset.basic! }; renderGame(); }));
   A.querySelectorAll<HTMLElement>("[data-rank]").forEach((b) => (b.onclick = () => { if (sel && sel.kind === "card") { sel.rank = Number(b.dataset.rank); renderGame(); } }));
-  on("cancel", () => { sel = null; chooser = null; renderGame(); });
+  A.querySelectorAll<HTMLElement>("[data-sac]").forEach((b) => (b.onclick = () => {
+    const uid = b.dataset.sac!;
+    const allyTargets: string[] | undefined = hints().sacrificeAllyTargets?.[uid];
+    if (allyTargets?.length) { sacrificeChooser = { champion: uid, targets: allyTargets }; renderGame(); }
+    else act({ type: "sacrifice", champion: uid });
+  }));
+  A.querySelectorAll<HTMLElement>("[data-sact]").forEach((b) => (b.onclick = () => act({ type: "sacrifice", champion: sacrificeChooser!.champion, target: b.dataset.sact })));
+  on("cancel", () => { sel = null; chooser = null; sacrificeChooser = null; renderGame(); });
   on("pass", () => act({ type: "pass" }));
   on("end", () => act({ type: "end" }));
   on("skipdraw", () => act({ type: "skipDraw" }));

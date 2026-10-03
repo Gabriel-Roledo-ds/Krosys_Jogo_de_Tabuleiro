@@ -143,6 +143,88 @@ describe("pilha de respostas rápidas reordena a resolução (LIFO)", () => {
   });
 });
 
+describe("botão de ligar/desligar a própria janela de resposta rápida (§6/§16)", () => {
+  it("desligado pra B, a carta de A resolve direto, sem abrir pending pra B mesmo com carta rápida na mão", () => {
+    const game = createGameV2(1, { comp: { A: ["vextra", "niara", "varek"], B: ["borak", "dorin", "selene"] } });
+    game.turn.phase = "act";
+    game.teams.A.mana = 10;
+    game.teams.B.mana = 10;
+
+    const vextra = game.teams.A.champions.find((c) => c.defId === "vextra")!;
+    const borak = game.teams.B.champions.find((c) => c.defId === "borak")!;
+    const selene = game.teams.B.champions.find((c) => c.defId === "selene")!;
+    borak.pos = { q: vextra.pos.q + 2, r: vextra.pos.r };
+    selene.pos = { q: borak.pos.q + 1, r: borak.pos.r };
+    borak.defense = 0;
+
+    putCardInHand(game, "B", selene.uid, "selene_escudo_luz"); // rápida, alcançaria o Borak
+    applyActionV2(game, "B", { type: "toggleFast", enabled: false });
+
+    const damageCard = putCardInHand(game, "A", vextra.uid, "vextra_lamina_rapida");
+    const before = borak.hp;
+    applyActionV2(game, "A", { type: "play", card: damageCard.uid, rank: 1, target: { uid: borak.uid } });
+
+    // Sem o toggle, isso abriria pending com prioridade B (mesmo teste acima,
+    // "pilha de respostas rápidas reordena a resolução"). Desligado, resolve
+    // direto: pending fica null e o dano já caiu.
+    expect(game.pending).toBeNull();
+    expect(borak.hp).toBeLessThan(before);
+  });
+
+  it("não afeta a janela da OUTRA equipe nem o uso normal de carta rápida quando é a própria prioridade de quem desligou", () => {
+    const game = createGameV2(1, { comp: { A: ["vextra", "niara", "varek"], B: ["borak", "dorin", "selene"] } });
+    game.turn.phase = "act";
+    game.teams.A.mana = 10;
+    game.teams.B.mana = 10;
+    applyActionV2(game, "A", { type: "toggleFast", enabled: false }); // A desliga a PRÓPRIA janela
+
+    const vextra = game.teams.A.champions.find((c) => c.defId === "vextra")!;
+    const borak = game.teams.B.champions.find((c) => c.defId === "borak")!;
+    const selene = game.teams.B.champions.find((c) => c.defId === "selene")!;
+    borak.pos = { q: vextra.pos.q + 2, r: vextra.pos.r };
+    selene.pos = { q: borak.pos.q + 1, r: borak.pos.r };
+    borak.defense = 0;
+
+    const shieldCard = putCardInHand(game, "B", selene.uid, "selene_escudo_luz");
+    const damageCard = putCardInHand(game, "A", vextra.uid, "vextra_lamina_rapida");
+    const before = borak.hp;
+    applyActionV2(game, "A", { type: "play", card: damageCard.uid, rank: 1, target: { uid: borak.uid } });
+
+    // A janela abre pra B normalmente (o toggle de A não afeta B).
+    expect(game.pending?.priority).toBe("B");
+    applyActionV2(game, "B", { type: "play", card: shieldCard.uid, rank: 1, target: { uid: borak.uid } });
+    expect(game.pending).toBeNull();
+    expect(borak.hp).toBe(before); // escudo absorveu, igual ao teste sem toggle
+  });
+
+  it("não pode mudar o toggle enquanto a janela já está aberta pra si — pode mudar em qualquer outro momento", () => {
+    const game = createGameV2(1, { comp: { A: ["vextra", "niara", "varek"], B: ["borak", "dorin", "selene"] } });
+    game.turn.phase = "act";
+    game.teams.A.mana = 10;
+    game.teams.B.mana = 10;
+
+    // Fora do próprio turno (é a vez de A), B ainda pode alternar o próprio toggle.
+    game.turn.team = "A";
+    expect(() => applyActionV2(game, "B", { type: "toggleFast", enabled: false })).not.toThrow();
+    expect(game.teams.B.fastWindowEnabled).toBe(false);
+    applyActionV2(game, "B", { type: "toggleFast", enabled: true });
+    expect(game.teams.B.fastWindowEnabled).toBe(true);
+
+    const vextra = game.teams.A.champions.find((c) => c.defId === "vextra")!;
+    const borak = game.teams.B.champions.find((c) => c.defId === "borak")!;
+    const selene = game.teams.B.champions.find((c) => c.defId === "selene")!;
+    borak.pos = { q: vextra.pos.q + 2, r: vextra.pos.r };
+    selene.pos = { q: borak.pos.q + 1, r: borak.pos.r };
+    borak.defense = 0;
+    putCardInHand(game, "B", selene.uid, "selene_escudo_luz");
+    const damageCard = putCardInHand(game, "A", vextra.uid, "vextra_lamina_rapida");
+    applyActionV2(game, "A", { type: "play", card: damageCard.uid, rank: 1, target: { uid: borak.uid } });
+    expect(game.pending?.priority).toBe("B"); // a janela está aberta pra B agora
+
+    expect(() => applyActionV2(game, "B", { type: "toggleFast", enabled: false })).toThrow(IllegalActionV2);
+  });
+});
+
 describe("fim de turno: alternância A/B e rodada", () => {
   it("end na fase de ação passa o turno pra B; o fim do turno de B incrementa a rodada", () => {
     const game = createGameV2(1);

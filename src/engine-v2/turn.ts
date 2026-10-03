@@ -61,7 +61,8 @@ export type ActionV2 =
   | { type: "sacrifice"; champion: string; target?: string }
   | { type: "pass" }
   | { type: "discard"; card: string }
-  | { type: "end" };
+  | { type: "end" }
+  | { type: "toggleFast"; enabled: boolean };
 
 function fail(msg: string): never {
   throw new IllegalActionV2(msg);
@@ -197,8 +198,17 @@ export function fastPlaysV2(game: GameStateV2, team: TeamId, cap = 20): { card: 
   return out;
 }
 
-/** Alguém dessa equipe pode responder agora com uma carta rápida? */
-export const canRespondV2 = (game: GameStateV2, team: TeamId): boolean => fastPlaysV2(game, team, 1).length > 0;
+/**
+ * Alguém dessa equipe pode responder agora com uma carta rápida? Usado só por
+ * `settlePriorityV2` pra decidir a quem oferecer a janela — por isso também
+ * respeita o botão de ligar/desligar (`fastWindowEnabled`, §6/§16): desligado,
+ * a equipe nunca recebe a prioridade, mesmo tendo uma carta rápida jogável
+ * (ela continua podendo jogá-la depois, se vier a ter prioridade por outro
+ * motivo — isso só afeta a CONCESSÃO da janela, não `fastPlaysV2` em si, que
+ * `legalActionsV2`/bots seguem usando direto quando já é a vez deles).
+ */
+export const canRespondV2 = (game: GameStateV2, team: TeamId): boolean =>
+  game.teams[team].fastWindowEnabled !== false && fastPlaysV2(game, team, 1).length > 0;
 
 /**
  * Decide quem responde a seguir. Ativação do boss é especial: como não tem
@@ -299,6 +309,19 @@ function commitCardV2(game: GameStateV2, team: TeamId, cardUid: string, rankNumb
 /** Aplica a ação de uma equipe. Lança IllegalActionV2 se não for permitida. */
 export function applyActionV2(game: GameStateV2, team: TeamId, a: ActionV2): void {
   if (game.winner) fail("A partida já terminou");
+
+  // Botão de ligar/desligar a própria janela de resposta rápida
+  // (regras-e-decisoes.md §6/§16): meta-ação de interface, não um lance do
+  // turno — pode ser usada a qualquer momento (mesmo fora do próprio turno,
+  // mesmo com `game.pending` aberto pra OUTRA equipe), exceto enquanto a
+  // janela já está aberta especificamente pra quem está tentando mudar (pra
+  // não dar pra "voltar atrás" no meio da própria decisão de responder).
+  if (a.type === "toggleFast") {
+    if (game.pending && game.pending.priority === team) fail("não pode mudar agora: a janela de resposta já está aberta pra você");
+    game.teams[team].fastWindowEnabled = a.enabled;
+    logV2(game, `Equipe ${team} ${a.enabled ? "liga" : "desliga"} a própria janela de resposta rápida`);
+    return;
+  }
 
   // Janela de resposta: só a equipe com prioridade age (carta rápida ou passar).
   if (game.pending) {

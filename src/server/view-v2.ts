@@ -17,7 +17,7 @@ import { canPayCardV2 } from "../engine-v2/mana";
 import { movementBudgetV2, reachableMap } from "../engine-v2/movement";
 import { rankRangeV2, resurrectBlockedV2 } from "../engine-v2/cardPlay";
 import { cannotBasicV2, cannotCastV2 } from "../engine-v2/turn";
-import { canSacrificeV2 } from "../engine-v2/sacrifice";
+import { canSacrificeV2, sacrificeAllyTargetsV2 } from "../engine-v2/sacrifice";
 import { enumerateTargetsV2 } from "../engine-v2/targeting";
 import { statusAmount } from "../engine-v2/status";
 import { knownCellKeysV2, teamVisionViewV2 } from "../engine-v2/vision";
@@ -55,6 +55,7 @@ export function viewForV2(s: GameStateV2, me: TeamId | null): unknown {
       decks,
       resurrectUsed: t.resurrectUsed,
       nextCardBuff: t.nextCardBuff,
+      fastWindowEnabled: t.fastWindowEnabled,
     };
   }
 
@@ -122,13 +123,32 @@ export function viewForV2(s: GameStateV2, me: TeamId | null): unknown {
       hints.reach = reach;
       hints.basics = basics;
       hints.canStay = mine.champions.filter((c) => c.alive && t.main !== c.uid && !t.activated.includes(c.uid)).map((c) => c.uid);
-      // Sacrifício de passiva (regras-e-decisoes.md §22): lista quem pode
-      // declarar agora. O Varek (Último Bastião) também exige escolher um
-      // aliado — não listado aqui por simplicidade (ver sacrificeAllyTargetsV2
-      // em sacrifice.ts, usado por legalActionsV2 pros bots).
+    }
+    // Sacrifício de passiva (regras-e-decisoes.md §22): lista quem pode
+    // declarar agora. Fora do `if (myAct)` de propósito — Ignira e Dorin
+    // abrem mão da COMPRA (sacrificeSkipsDrawV2), então só podem declarar na
+    // fase "draw", não "act" (ver canSacrificeV2); calcular isso só dentro de
+    // `myAct` deixava esses dois sem nenhuma dica em nenhuma fase. O Varek
+    // (Último Bastião) exige escolher um aliado — canSacrificeV2 sem `target`
+    // sempre falha pra ele ("escolha o aliado a proteger"), então ele é
+    // checado separadamente contra a lista de alvos válidos
+    // (sacrificeAllyTargetsV2), e os alvos em si vão em
+    // hints.sacrificeAllyTargets pro cliente montar o seletor.
+    if (!s.pending && s.turn.team === me && (s.turn.phase === "act" || s.turn.phase === "draw")) {
+      const sacrificeAllyTargets: Record<string, string[]> = {};
       hints.sacrifice = mine.champions
-        .filter((c) => c.alive && getChampionDefV2(c.defId).sacrifice !== null && !canSacrificeV2(s, me, c.uid))
+        .filter((c) => {
+          if (!c.alive || getChampionDefV2(c.defId).sacrifice === null) return false;
+          if (c.defId === "varek") {
+            const targets = sacrificeAllyTargetsV2(s, c.uid).filter((uid) => !canSacrificeV2(s, me, c.uid, uid));
+            if (targets.length === 0) return false;
+            sacrificeAllyTargets[c.uid] = targets;
+            return true;
+          }
+          return !canSacrificeV2(s, me, c.uid);
+        })
         .map((c) => c.uid);
+      hints.sacrificeAllyTargets = sacrificeAllyTargets;
     }
     hints.canSkipDraw = !s.pending && s.turn.team === me && s.turn.phase === "draw" && nonMonsterHandSize(mine.hand) >= balance.hand.max_size;
     hints.mustDiscard = !s.pending && s.turn.team === me && s.turn.phase === "discard";

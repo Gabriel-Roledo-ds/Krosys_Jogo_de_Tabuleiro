@@ -12,7 +12,8 @@
 
 import { describe, it, expect } from "vitest";
 import { createGameV2, nextIdV2, type GameStateV2 } from "../src/engine-v2/state";
-import { applyActionV2, legalActionsV2 } from "../src/engine-v2/turn";
+import { applyActionV2, canRespondV2, legalActionsV2 } from "../src/engine-v2/turn";
+import { viewForV2 } from "../src/server/view-v2";
 import { canSacrificeV2, applySacrificeV2, sacrificeAllyTargetsV2 } from "../src/engine-v2/sacrifice";
 import {
   applyDamage,
@@ -168,6 +169,19 @@ describe("Fogo Selvagem (Ignira) — abre mão da compra, +1 raio/+1 rodada no c
     expect(g.radius).toBe(3);
     expect(g.remaining).toBe(3);
   });
+
+  // Achado desta sessão: `viewForV2` só calculava `hints.sacrifice` dentro do
+  // bloco `if (myAct)` (fase "act"), mas Ignira/Dorin só podem declarar o
+  // próprio sacrifício na fase "draw" (ver canSacrificeV2 acima) — então a
+  // dica nunca aparecia pra eles em NENHUMA fase, e o cliente (que nem tinha
+  // UI pra sacrifício ainda) não tinha como saber que era possível.
+  it("hints.sacrifice inclui Ignira já na fase de compra (viewForV2)", () => {
+    const game = setupAlt();
+    expect(game.turn.phase).toBe("draw");
+    const ignira = game.teams.A.champions.find((c) => c.defId === "ignira")!;
+    const v: any = viewForV2(game, "A");
+    expect(v.hints.sacrifice).toContain(ignira.uid);
+  });
 });
 
 describe("Em Sombras (Vextra) — abre mão de agir, invisível até o próximo turno, golpe furtivo garantido", () => {
@@ -296,6 +310,21 @@ describe("Último Bastião (Varek) — abre mão do movimento, redireciona dano 
     const targets = sacrificeAllyTargetsV2(game, varek.uid);
     expect(targets).toHaveLength(2);
     expect(targets).not.toContain(varek.uid);
+  });
+
+  // Achado desta sessão: calcular hints.sacrifice chamando canSacrificeV2
+  // SEM target pra todo campeão (como fazia antes) sempre falhava pro Varek
+  // ("escolha o aliado a proteger"), então ele nunca aparecia na lista —
+  // mesmo tendo aliados vivos disponíveis. viewForV2 agora trata o caso dele
+  // separado, testando os alvos de sacrificeAllyTargetsV2 um a um.
+  it("hints.sacrifice inclui o Varek (com aliados disponíveis) e hints.sacrificeAllyTargets lista os alvos", () => {
+    const game = setupDefault();
+    game.turn.phase = "act";
+    const varek = game.teams.A.champions.find((c) => c.defId === "varek")!;
+    const v: any = viewForV2(game, "A");
+    expect(v.hints.sacrifice).toContain(varek.uid);
+    expect(v.hints.sacrificeAllyTargets[varek.uid]).toHaveLength(2);
+    expect(v.hints.sacrificeAllyTargets[varek.uid]).not.toContain(varek.uid);
   });
 
   it("marca o movimento como gasto (sem virar 'main') e protege o aliado — dano do aliado vai pro Varek", () => {

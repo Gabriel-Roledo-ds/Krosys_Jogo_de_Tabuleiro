@@ -43,6 +43,29 @@ describe("servidor v2", () => {
     });
   });
 
+  // Achado desta sessão: o motor (turn.ts/sacrifice.ts) já suportava a ação
+  // "sacrifice" de ponta a ponta, mas sanitizeAction não tinha case pra ela —
+  // toda ação de sacrifício vinda da rede caía no `default: return null` e
+  // era descartada antes de chegar no motor (cliente nunca tinha UI pra isso
+  // também, ver board/main.ts). Mesma lacuna pro toggle de janela rápida.
+  it("aceita a ação de sacrifício e o toggle de janela rápida (antes caíam no default: null)", () => {
+    expect(sanitizeAction({ type: "sacrifice", champion: "A-niara" })).toEqual({
+      type: "sacrifice",
+      champion: "A-niara",
+      target: undefined,
+    });
+    expect(sanitizeAction({ type: "sacrifice", champion: "A-varek", target: "A-niara" })).toEqual({
+      type: "sacrifice",
+      champion: "A-varek",
+      target: "A-niara",
+    });
+    expect(sanitizeAction({ type: "sacrifice", target: "A-niara" })).toBeNull(); // falta champion
+    expect(sanitizeAction({ type: "sacrifice", champion: "A-niara", target: 5 })).toBeNull();
+    expect(sanitizeAction({ type: "toggleFast", enabled: false })).toEqual({ type: "toggleFast", enabled: false });
+    expect(sanitizeAction({ type: "toggleFast", enabled: "no" })).toBeNull();
+    expect(sanitizeAction({ type: "toggleFast" })).toBeNull();
+  });
+
   it("aceita só composições de 3 campeões diferentes e existentes do roster v2", () => {
     expect(validComp(["niara", "varek", "selene"])).toBe(true);
     expect(validComp(["niara", "niara", "selene"])).toBe(false);
