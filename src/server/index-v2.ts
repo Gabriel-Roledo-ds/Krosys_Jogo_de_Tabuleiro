@@ -12,6 +12,18 @@
 // intocado: nada neste arquivo é importado por src/server/index.ts nem
 // vice-versa. Uso: npm run build:client-v2 && npm run start:v2 (porta em
 // PORT_V2, padrão 3001).
+//
+// createServerV2() (03/10/2026) extrai a montagem do servidor (http + wss +
+// o protocolo de mensagens) pra uma função reutilizável, em vez de só código
+// de topo de arquivo que já escuta a porta ao ser importado — isso permitia
+// construir o servidor mas não testá-lo com um cliente WebSocket real (toda
+// importação já tentaria ocupar a porta fixa PORT_V2, travando testes em
+// paralelo e nunca fechando). A execução direta (`npm run start:v2`, via tsx)
+// continua idêntica: o guard no fim do arquivo (comparando import.meta.url
+// com o caminho do processo) chama createServerV2() com a porta de sempre só
+// quando este arquivo é o ponto de entrada, nunca quando é importado por um
+// teste. Ver tests/rejoin-v2.test.ts, que importa createServerV2 e abre dois
+// clientes `ws` de verdade numa porta efêmera (porta 0).
 
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
@@ -38,7 +50,6 @@ import {
 } from "./rooms-v2";
 
 const ROOT = join(fileURLToPath(new URL("../..", import.meta.url)), "dist", "client-v2");
-const PORT = Number(process.env.PORT_V2 ?? 3001);
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -49,7 +60,16 @@ const MIME: Record<string, string> = {
   ".ico": "image/x-icon",
 };
 
-const http = createServer(async (req, res) => {
+/**
+ * Monta o servidor v2 (HTTP estático + WebSocket em "/ws") e só escuta se
+ * `listen` não vier `false` (testes sobem o `http.Server` por fora, com
+ * `listen(0)`, pra pegar uma porta livre do próprio sistema operacional).
+ * Retorna o par `{ http, wss }`; quem chamou é responsável por fechar os dois
+ * ao terminar (`wss.close()` antes de `http.close()`, senão `wss` mantém o
+ * processo vivo).
+ */
+export function createServerV2(opts: { listen?: boolean; port?: number } = {}): { http: ReturnType<typeof createServer>; wss: WebSocketServer } {
+  const http = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://localhost");
   if (url.pathname === "/health") {
     res.writeHead(200, { "content-type": "application/json" });
@@ -190,6 +210,14 @@ wss.on("connection", (ws) => {
   });
 });
 
-setInterval(() => sweepRooms(), 10 * 60 * 1000).unref();
+const sweepTimer = setInterval(() => sweepRooms(), 10 * 60 * 1000);
+sweepTimer.unref();
 
-http.listen(PORT, () => console.log(`Krósys v2 no ar: http://localhost:${PORT}`));
+const port = opts.port ?? Number(process.env.PORT_V2 ?? 3001);
+if (opts.listen !== false) http.listen(port, () => console.log(`Krósys v2 no ar: http://localhost:${port}`));
+
+return { http, wss };
+}
+
+// Executado direto (`npm run start:v2`, via tsx) — nunca quando importado por um teste.
+if (import.meta.url === `file://${process.argv[1]}`) createServerV2();
