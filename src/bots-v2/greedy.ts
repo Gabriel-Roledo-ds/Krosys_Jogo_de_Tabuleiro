@@ -23,11 +23,22 @@ export function evaluateV2(s: GameStateV2, team: TeamId, aggression = 0.6): numb
   for (const c of s.teams[foe].champions) {
     v += (c.alive ? c.maxHp - c.hp : c.maxHp + 15) * aggression;
     v += statusesValue(c.statuses.filter((st) => st.negative));
+    // Achado (03/10/2026): sem isto, buff que a Aurelia põe NUM INIMIGO (não
+    // existe hoje, mas por simetria) e, mais importante, qualquer buff que o
+    // próprio inimigo já tenha não pesava nada — o bot não enxergava motivo
+    // pra correr atrás de quebrar um inimigo buffado antes que ele conecte.
+    v -= statusesValue(c.statuses.filter((st) => !st.negative));
   }
   for (const c of s.teams[team].champions) {
     v -= c.alive ? (c.maxHp - c.hp) * 1.0 : c.maxHp * 1.0 + 20;
     v += c.shield * 0.4;
     v -= statusesValue(c.statuses.filter((st) => st.negative));
+    // Achado (03/10/2026): buff em aliado (Fervor/Presteza/Égide/Hino de
+    // Guerra da Aurelia etc.) não valia NADA antes — o bot guloso (lookahead
+    // de 1 passo, só vê HP/mana/escudo na hora) nunca tinha motivo pra gastar
+    // mana num buff, então o kit inteiro da Aurelia (quase só isso) nunca era
+    // jogado numa simulação de 50 partidas (ver KANBAN.md item 40).
+    v += statusesValue(c.statuses.filter((st) => !st.negative));
   }
   v += s.boss.alive ? (s.boss.maxHp - s.boss.hp) * 1.2 : 150;
   // Peso de dano em monstro alto o bastante pra compensar a reação (contra-ataque) do
@@ -55,6 +66,7 @@ function statusValue(status: string, amount: number): number {
     case "mark":
       return 2;
     case "move_penalty":
+    case "movement_reduced":
       return amount * 0.5;
     case "immobilized":
     case "root":
@@ -67,6 +79,29 @@ function statusValue(status: string, amount: number): number {
       return 1.5;
     case "poison":
       return amount * 1.2;
+    // Buff/debuff de atributo (achado 03/10/2026, ver KANBAN.md item 40): mesmo
+    // peso nos dois sentidos — "damage_down"/"defense_down" num inimigo (Aurelia,
+    // Sylvane) valem o mesmo que "damage_buff"/"defense_buff" num aliado, porque é
+    // o mesmo tipo de vantagem olhando pra lados opostos. Sem isto, nenhuma carta
+    // de buff/debuff de atributo tinha valor nenhum pro bot guloso (Aurelia/Dorin
+    // nunca eram jogados numa simulação de 50 partidas). **Valor baixo e FIXO de
+    // propósito** (não escala com `amount`): um valor alto o bastante pra competir
+    // com o ganho de uma andada em direção ao alvo (`(gapNow-gap)*1.5` abaixo)
+    // fazia o bot preferir reaplicar buff pra sempre (a cada vez que a duração
+    // expirava, recastar "parecia" lucro de novo) em vez de terminar o combate —
+    // partida de seed 5 nunca convergia (1942 rodadas, sem vencedor) com valor
+    // escalado por `amount`. Baixo o bastante, só desempata entre duas opções
+    // já equivalentes, sem nunca vencer uma andada ou um ataque de verdade.
+    case "damage_buff":
+    case "damage_down":
+    case "defense_buff":
+    case "defense_down":
+      return 0.5;
+    case "movement_buff":
+      return 0.3;
+    case "block_ranged_attacks":
+    case "protective_dome":
+      return 0.5;
     default:
       return 0;
   }

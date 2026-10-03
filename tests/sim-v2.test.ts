@@ -7,6 +7,19 @@ import { createGameV2 } from "../src/engine-v2/state";
 import { applyActionV2, startGameV2, IllegalActionV2 } from "../src/engine-v2/turn";
 import { randomBotV2 } from "../src/bots-v2/random";
 import { createRng } from "../src/engine/rng";
+import { useRealData } from "./compact";
+
+// Achado (03/10/2026, ver KANBAN.md item 40): este arquivo nunca chamava
+// useRealData() (diferente de tests/sim.test.ts, que já chamava) — as
+// partidas aqui corriam com `balance.damage.champion_damage_multiplier = 1`
+// do tabuleiro compacto de testes (tests/compact.ts/setup.ts) em vez do
+// x1,5 real de data/balance.json. Com dano mais fraco, combate nunca era
+// letal o bastante pra compensar o bot guloso preferir ficar se buffando
+// (depois do ajuste de evaluateV2 em src/bots-v2/greedy.ts que passou a dar
+// valor a buff em aliado) — a partida da seed 4 nunca convergia (1963
+// rodadas, 8000 ações, sem vencedor). Com o multiplicador real, converge
+// normalmente (ver os números das partidas abaixo).
+useRealData();
 
 describe("partidas simuladas (roster v2)", () => {
   it("bot guloso contra bot guloso termina uma partida completa sem erro", () => {
