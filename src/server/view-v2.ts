@@ -17,7 +17,9 @@ import { canPayCardV2 } from "../engine-v2/mana";
 import { movementBudgetV2, reachableMap } from "../engine-v2/movement";
 import { rankRangeV2, resurrectBlockedV2 } from "../engine-v2/cardPlay";
 import { cannotBasicV2, cannotCastV2 } from "../engine-v2/turn";
+import { canSacrificeV2 } from "../engine-v2/sacrifice";
 import { enumerateTargetsV2 } from "../engine-v2/targeting";
+import { statusAmount } from "../engine-v2/status";
 import { knownCellKeysV2, teamVisionViewV2 } from "../engine-v2/vision";
 import { hexKey } from "../design/hexGrid";
 import { balance } from "../engine/data";
@@ -86,9 +88,13 @@ export function viewForV2(s: GameStateV2, me: TeamId | null): unknown {
       playable[c.uid] = okRanks.length > 0;
       if (owner && okRanks.length > 0) {
         targets[c.uid] = {};
+        // Toxina Concentrada do Thorne (sacrifício de passiva, regras-e-decisoes.md
+        // §22): -2 casas de alcance em toda carta do turno — refletido aqui pra
+        // dica não mostrar um alvo que a jogada de verdade (cardPlay.ts) rejeitaria.
+        const rangeBonus = -statusAmount(owner, "sacrifice_range_penalty");
         for (const rank of def.ranks) {
           if (!okRanks.includes(rank.rank)) continue;
-          targets[c.uid][rank.rank] = enumerateTargetsV2(s, owner, { range: rankRangeV2(rank), target: def.target }, 0, 300);
+          targets[c.uid][rank.rank] = enumerateTargetsV2(s, owner, { range: rankRangeV2(rank), target: def.target }, rangeBonus, 300);
         }
       }
     }
@@ -109,12 +115,20 @@ export function viewForV2(s: GameStateV2, me: TeamId | null): unknown {
         if (!t.basicUsed.includes(c.uid) && !cannotBasicV2(c)) {
           const bdef = getChampionDefV2(c.defId).basic;
           const target = basicTargetV2(bdef);
-          basics[c.uid] = { name: bdef.name, target, range: bdef.range, targets: enumerateTargetsV2(s, c, { range: bdef.range, target }, 0, 300) };
+          const rangeBonus = -statusAmount(c, "sacrifice_range_penalty");
+          basics[c.uid] = { name: bdef.name, target, range: bdef.range, targets: enumerateTargetsV2(s, c, { range: bdef.range, target }, rangeBonus, 300) };
         }
       }
       hints.reach = reach;
       hints.basics = basics;
       hints.canStay = mine.champions.filter((c) => c.alive && t.main !== c.uid && !t.activated.includes(c.uid)).map((c) => c.uid);
+      // Sacrifício de passiva (regras-e-decisoes.md §22): lista quem pode
+      // declarar agora. O Varek (Último Bastião) também exige escolher um
+      // aliado — não listado aqui por simplicidade (ver sacrificeAllyTargetsV2
+      // em sacrifice.ts, usado por legalActionsV2 pros bots).
+      hints.sacrifice = mine.champions
+        .filter((c) => c.alive && getChampionDefV2(c.defId).sacrifice !== null && !canSacrificeV2(s, me, c.uid))
+        .map((c) => c.uid);
     }
     hints.canSkipDraw = !s.pending && s.turn.team === me && s.turn.phase === "draw" && nonMonsterHandSize(mine.hand) >= balance.hand.max_size;
     hints.mustDiscard = !s.pending && s.turn.team === me && s.turn.phase === "discard";

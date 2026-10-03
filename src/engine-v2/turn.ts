@@ -24,11 +24,12 @@ import { balance, getBossCard, type BossCardDef } from "../engine/data";
 import { basicTargetV2, getCardDefV2, getCardRankV2, getChampionDefV2 } from "./data";
 import type { Hex } from "../design/hexGrid";
 import { hexKey, hexLine, sameHex } from "../design/hexGrid";
-import { removeStatus } from "./status";
+import { removeStatus, statusAmount } from "./status";
 import { discardCardV2, deckSizeV2, drawFromV2 } from "./deck";
 import { resolveDeathsV2, returnDeadChampionsV2 } from "./death";
 import { beginBossActivationV2, bossShouldActivateV2, minionsAttackAdjacentV2, resolveBossItemV2 } from "./boss";
 import { IllegalActionV2, rankRangeV2, resolveBasicEffectsV2, resolveCardEffectsV2, resurrectBlockedV2 } from "./cardPlay";
+import { applySacrificeV2, canSacrificeV2, sacrificeAllyTargetsV2, sacrificeSkipsDrawV2 } from "./sacrifice";
 
 export { IllegalActionV2 };
 import { canPayCardV2, gainTurnManaV2, spendCardManaV2 } from "./mana";
@@ -57,6 +58,7 @@ export type ActionV2 =
   | { type: "stay"; champion: string }
   | { type: "play"; card: string; rank: number; target: TargetV2 }
   | { type: "basic"; target: TargetV2; champion?: string }
+  | { type: "sacrifice"; champion: string; target?: string }
   | { type: "pass" }
   | { type: "discard"; card: string }
   | { type: "end" };
@@ -65,9 +67,14 @@ function fail(msg: string): never {
   throw new IllegalActionV2(msg);
 }
 
-/** Campeão silenciado ou atordoado (efeito que já vale, não o aplicado neste turno) não usa cartas — mesma convenção do MVP (src/engine/turn.ts). */
+/**
+ * Campeão silenciado ou atordoado (efeito que já vale, não o aplicado neste
+ * turno) não usa cartas — mesma convenção do MVP (src/engine/turn.ts). Em
+ * Sombras da Vextra (sacrifício de passiva, ver sacrifice.ts) bloqueia carta
+ * também, via o status "sacrificed_inactive" (ela abriu mão de agir no todo).
+ */
 export function cannotCastV2(c: ChampionStateV2): boolean {
-  return c.statuses.some((x) => (x.status === "silenced" || x.status === "stunned") && !x.fresh);
+  return c.statuses.some((x) => (x.status === "silenced" || x.status === "stunned" || x.status === "sacrificed_inactive") && !x.fresh);
 }
 export const cannotBasicV2 = (c: ChampionStateV2): boolean => c.statuses.some((x) => x.status === "stunned" && !x.fresh);
 
@@ -230,12 +237,15 @@ function resolveStackV2(game: GameStateV2): void {
       logV2(game, `${item.owner} não está em campo: a ação falha`);
       continue;
     }
+    // Fúria Desenfreada do Borak (sacrifício de passiva, §22): +3 de dano fixo
+    // em toda carta/básica do turno, somado ao bônus de sempre (buff_next_card).
+    const sacrificeBonus = statusAmount(owner, "sacrifice_bonus_damage");
     if (item.kind === "card") {
       const def = getCardDefV2(item.cardId);
       const rank = getCardRankV2(def, item.rank);
-      resolveCardEffectsV2(game, owner, def, rank, item.target, item.buff?.bonusDamage);
+      resolveCardEffectsV2(game, owner, def, rank, item.target, (item.buff?.bonusDamage ?? 0) + sacrificeBonus);
     } else {
-      resolveBasicEffectsV2(game, owner, getChampionDefV2(owner.defId).basic, item.target);
+      resolveBasicEffectsV2(game, owner, getChampionDefV2(owner.defId).basic, item.target, sacrificeBonus);
     }
   }
   game.pending = null;
@@ -266,7 +276,10 @@ function commitCardV2(game: GameStateV2, team: TeamId, cardUid: string, rankNumb
   if (cannotCastV2(owner)) fail("O campeão não pode usar cartas agora");
   const rank = getCardRankV2(def, rankNumber);
 
-  const err = validateTargetV2(game, owner, { range: rankRangeV2(rank), target: def.target }, t);
+  // Toxina Concentrada do Thorne (sacrifício de passiva, §22): -2 casas de
+  // alcance em toda carta do turno.
+  const rangeBonus = -statusAmount(owner, "sacrifice_range_penalty");
+  const err = validateTargetV2(game, owner, { range: rankRangeV2(rank), target: def.target }, t, rangeBonus);
   if (err) fail(err);
   if (!canPayCardV2(game, team, owner, rank.cost)) fail("Mana insuficiente");
   if (resurrectBlockedV2(game, team, rank.effects)) fail("Ressurgir já foi usado");
@@ -362,11 +375,24 @@ export function applyActionV2(game: GameStateV2, team: TeamId, a: ActionV2): voi
       if (t.basicUsed.includes(c.uid)) fail("Esse campeão já usou a habilidade básica neste turno");
       if (cannotBasicV2(c)) fail("O campeão está atordoado");
       const basic = getChampionDefV2(c.defId).basic;
-      const err = validateTargetV2(game, c, { range: basic.range, target: basicTargetV2(basic) }, a.target);
+      const rangeBonus = -statusAmount(c, "sacrifice_range_penalty");
+      const err = validateTargetV2(game, c, { range: basic.range, target: basicTargetV2(basic) }, a.target, rangeBonus);
       if (err) fail(err);
       t.basicUsed.push(c.uid);
       logV2(game, `${c.defId} (${c.team}) usa ${basic.name}`);
       pushItemV2(game, { kind: "basic", team, owner: c.uid, cardId: `basic:${c.defId}`, rank: 0, target: a.target });
+      return;
+    }
+    case "sacrifice": {
+      const err = canSacrificeV2(game, team, a.champion, a.target);
+      if (err) fail(err);
+      const c = getChampionV2(game, a.champion);
+      const needsDrawSkip = sacrificeSkipsDrawV2(c.defId);
+      applySacrificeV2(game, team, a.champion, a.target);
+      if (needsDrawSkip) {
+        gainTurnManaV2(game, team);
+        startAct(game);
+      }
       return;
     }
     case "discard": {
@@ -396,7 +422,10 @@ function finishTurn(game: GameStateV2): void {
   const t = game.turn;
   const tm = game.teams[t.team];
   for (const uid of t.activated) expireChampionTurnStatuses(getChampionV2(game, uid));
-  for (const c of tm.champions) c.untargetable = false;
+  for (const c of tm.champions) {
+    c.untargetable = false;
+    c.sacrificeUsedThisTurn = false;
+  }
   tm.turnsTaken += 1;
   tm.nextCardBuff = null;
   const next = otherTeam(t.team);
@@ -426,6 +455,7 @@ export function legalActionsV2(game: GameStateV2, team: TeamId): ActionV2[] {
     case "draw":
       for (const c of tm.champions) if (c.alive && deckSizeV2(game, c.uid) > 0) out.push({ type: "draw", champion: c.uid });
       if (nonMonsterHandSizeV2(tm.hand) >= balance.hand.max_size) out.push({ type: "skipDraw" });
+      for (const c of tm.champions) if (!canSacrificeV2(game, team, c.uid)) out.push({ type: "sacrifice", champion: c.uid });
       break;
     case "act": {
       for (const c of tm.champions) {
@@ -454,6 +484,17 @@ export function legalActionsV2(game: GameStateV2, team: TeamId): ActionV2[] {
           for (const target of enumerateTargetsV2(game, owner, { range: rankRangeV2(rank), target: def.target })) {
             out.push({ type: "play", card: card.uid, rank: rank.rank, target });
           }
+        }
+      }
+      for (const c of tm.champions) {
+        if (!c.alive) continue;
+        if (getChampionDefV2(c.defId).sacrifice === null) continue;
+        if (c.defId === "varek") {
+          for (const allyUid of sacrificeAllyTargetsV2(game, c.uid)) {
+            if (!canSacrificeV2(game, team, c.uid, allyUid)) out.push({ type: "sacrifice", champion: c.uid, target: allyUid });
+          }
+        } else if (!canSacrificeV2(game, team, c.uid)) {
+          out.push({ type: "sacrifice", champion: c.uid });
         }
       }
       out.push({ type: "end" });

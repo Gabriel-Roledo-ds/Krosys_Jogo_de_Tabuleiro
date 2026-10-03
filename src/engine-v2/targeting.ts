@@ -14,6 +14,7 @@
 import { hexAdjacent, hexDistance, hexesInRadius, HEX_DIRECTIONS, isHexInLine, sameHex, type Hex } from "../design/hexGrid";
 import { inHexBoard } from "../design/hexBoard";
 import { allChampionsV2, getChampionV2, type ChampionStateV2, type GameStateV2, type TeamId } from "./state";
+import { hasStatus } from "./status";
 import { hasLineOfSightV2, wallAtV2 } from "./world";
 import { BOSS_UID_V2, isMinionUidV2 } from "./boss";
 import { isMonsterUidV2 } from "./monsters";
@@ -37,6 +38,21 @@ export interface TargetV2 {
 
 const inRange = (s: GameStateV2, from: Hex, to: Hex, range: number): boolean =>
   inHexBoard(to, s.board) && hexDistance(from, to) <= range && hasLineOfSightV2(s, from, to);
+
+/**
+ * `true` se `u` não pode ser escolhido como alvo único de "enemy" — campeão
+ * recém-voltado da morte (`untargetable`, regras-e-decisoes.md §9, "no
+ * primeiro turno depois de voltar, o campeão não pode ser atingido") ou em
+ * Sombras (status "stealthed", sacrifício de passiva da Vextra — ver
+ * sacrifice.ts/§22). [Achado corrigido 03/10/2026]: `untargetable` já existia
+ * desde a morte/retorno (death.ts) mas nunca era checado aqui — um campeão
+ * recém-voltado podia ser alvo de carta/básica de verdade, violando a regra
+ * [DEFINIDO] da seção 9 (só valia pro alcance do BOSS, em boss.ts). Escopo
+ * desta checagem: só o alvo único "enemy" entre campeões (enemyAt/
+ * enemiesInRange) — área/random_enemies continuam sem filtrar por isso
+ * [PADRÃO, mesma simplificação já aceita pro stealth da Vextra].
+ */
+const isUnreachableEnemyChampion = (u: ChampionStateV2): boolean => u.untargetable || hasStatus(u, "stealthed");
 
 const isDirection = (d?: Hex): boolean => !!d && HEX_DIRECTIONS.some((v) => v.q === d.q && v.r === d.r);
 
@@ -81,6 +97,7 @@ export function validateTargetV2(s: GameStateV2, owner: ChampionStateV2, def: Ta
     if (!u) return "alvo inexistente";
     if (!u.alive) return "alvo não está em campo";
     if (u.team === owner.team) return "alvo não é inimigo";
+    if (isUnreachableEnemyChampion(u)) return "alvo não pode ser atingido agora";
     if (!inRange(s, owner.pos, u.pos, range)) return "fora de alcance";
     return null;
   };
@@ -177,7 +194,9 @@ export function validateTargetV2(s: GameStateV2, owner: ChampionStateV2, def: Ta
 /** Lista de inimigos vivos ao alcance — usada por random_enemies/two_enemies. */
 export function enemiesInRange(s: GameStateV2, owner: ChampionStateV2, def: TargetableV2, rangeBonus = 0): ChampionStateV2[] {
   const range = rangeOfV2(def, rangeBonus);
-  return allChampionsV2(s).filter((c) => c.alive && c.team !== owner.team && inRange(s, owner.pos, c.pos, range));
+  return allChampionsV2(s).filter(
+    (c) => c.alive && c.team !== owner.team && !isUnreachableEnemyChampion(c) && inRange(s, owner.pos, c.pos, range),
+  );
 }
 
 /** `true` se `pos` está ao alcance de `owner` e dentro do tabuleiro. */

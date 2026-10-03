@@ -32,7 +32,7 @@
 import { rngOf } from "../engine/rng";
 import type { Effect } from "../engine/data";
 import { hexDirectionTo, hexDistance } from "../design/hexGrid";
-import { applyEffectV2, type EffectContextV2 } from "./effects";
+import { applyEffectV2, CONTROL_STATUS_NAMES, type EffectContextV2 } from "./effects";
 import { dealDamageV2 } from "./damage";
 import { attackBossV2, attackMinionV2, BOSS_UID_V2, isMinionUidV2 } from "./boss";
 import { attackMonsterV2, findMonsterV2, isMonsterUidV2 } from "./monsters";
@@ -41,7 +41,8 @@ import { discardCardV2 } from "./deck";
 import { canPayCardV2, spendCardManaV2 } from "./mana";
 import { basicTargetV2, getCardDefV2, getCardRankV2, getChampionDefV2, type BasicDefV2, type CardDefV2, type CardRank } from "./data";
 import { getChampionV2, logV2, nextIdV2, type ChampionStateV2, type GameStateV2, type MonsterStateV2, type TeamId } from "./state";
-import { enemiesInRange, validateTargetV2, type TargetV2 } from "./targeting";
+import { championsInRadius, enemiesInRange, validateTargetV2, type TargetV2 } from "./targeting";
+import { statusAmount } from "./status";
 
 export class IllegalActionV2 extends Error {}
 
@@ -151,10 +152,44 @@ export function resolveCardTargetsV2(owner: ChampionStateV2, cardTarget: string,
 }
 
 /** Alvos reais de UM bloco de efeito: a maioria usa os alvos da carta; `random_targets` sorteia os seus próprios dentro do alcance do rank. */
-function resolveEffectTargetsV2(game: GameStateV2, owner: ChampionStateV2, effect: Effect, baseTargets: ChampionStateV2[], rank: CardRank): ChampionStateV2[] {
+/**
+ * [Achado corrigido 03/10/2026]: `apply_status_area` com `radius` (Névoa
+ * Cegante da Vextra, Véu de Miasma do Thorne, Santuário da Selene, Amarras/
+ * Rede/Prisão de Espinhos/Floresta Vingativa da Sylvane, Juízo Arcano da
+ * Aurelia — 7 cartas em 5 campeões) nunca expandia a área de verdade: como
+ * target "self"/"cell" só resolvem `targets = [owner]` (ver
+ * resolveCardTargetsV2), essas cartas só aplicavam o status em quem usou a
+ * carta, nunca em quem estava de fato na área (sem teste cobrindo nenhuma
+ * delas até agora). `applyDamage`/`applyVenomStacks` (effects.ts) já faziam
+ * essa expansão por área inline; aqui é a mesma ideia pro status genérico.
+ * [PADRÃO] "self" (área ao redor de quem usou a carta) exclui o próprio
+ * atacante, mesma convenção de `resolveAroundSelf`; "cell" (casa escolhida
+ * pelo jogador) não exclui ninguém, mesma convenção do `radius`+`targetCell`
+ * de `applyDamage` — "fogo amigo existe" (regras-e-decisoes.md §7).
+ *
+ * Floresta Desperta da Sylvane (sacrifício de passiva, §22) soma +1 (ou mais)
+ * casa de raio só quando o status aplicado é de CONTROLE — ela "abre mão da
+ * básica pra fazer cartas de controle alcançarem +1 casa de raio", não vale
+ * pra área de apoio (Santuário) nem pra debuff "comum" (Juízo Arcano).
+ */
+function resolveEffectTargetsV2(
+  game: GameStateV2,
+  owner: ChampionStateV2,
+  effect: Effect,
+  baseTargets: ChampionStateV2[],
+  rank: CardRank,
+  ctx?: EffectContextV2,
+): ChampionStateV2[] {
   if (typeof effect.random_targets === "number") {
     const pool = enemiesInRange(game, owner, { range: rankRangeV2(rank), target: "enemy" });
     return rngOf(game).shuffle(pool).slice(0, effect.random_targets);
+  }
+  if (effect.type === "apply_status_area" && effect.radius !== undefined) {
+    const isControlArea = CONTROL_STATUS_NAMES.has(effect.status);
+    const bonus = isControlArea ? (ctx?.bonusAreaRadius ?? 0) : 0;
+    const radius = effect.radius + bonus;
+    if (ctx?.targetCell) return championsInRadius(game, ctx.targetCell, radius);
+    return championsInRadius(game, owner.pos, radius, { excludeUid: owner.uid });
   }
   return baseTargets;
 }
@@ -240,6 +275,8 @@ export function resolveCardEffectsV2(game: GameStateV2, owner: ChampionStateV2, 
     attacker: owner,
     nextId: () => nextIdV2(game),
     bonusDamage,
+    bonusVenomStacks: statusAmount(owner, "sacrifice_venom_bonus"),
+    bonusAreaRadius: statusAmount(owner, "sacrifice_control_radius_bonus"),
     ...ctxExtra,
   };
   for (const effect of rank.effects) {
@@ -249,7 +286,7 @@ export function resolveCardEffectsV2(game: GameStateV2, owner: ChampionStateV2, 
       applyRandomDamageV2(game, owner, effect, rank, bonusDamage);
       continue;
     }
-    const effectTargets = resolveEffectTargetsV2(game, owner, effect, targets, rank);
+    const effectTargets = resolveEffectTargetsV2(game, owner, effect, targets, rank, ctx);
     applyEffectV2(ctx, effect, effectTargets);
   }
   logV2(game, `${owner.defId} (${owner.team}) usa ${def.name} (rank ${rank.rank})`);
@@ -311,7 +348,8 @@ export function playCardV2(game: GameStateV2, team: TeamId, cardUid: string, ran
   const def = getCardDefV2(cardInstance.cardId);
   const rank = getCardRankV2(def, rankNumber);
 
-  const err = validateTargetV2(game, owner, { range: rankRangeV2(rank), target: def.target }, t);
+  const rangeBonus = -statusAmount(owner, "sacrifice_range_penalty");
+  const err = validateTargetV2(game, owner, { range: rankRangeV2(rank), target: def.target }, t, rangeBonus);
   if (err) fail(err);
   if (!canPayCardV2(game, team, owner, rank.cost)) fail("Mana insuficiente");
   if (resurrectBlockedV2(game, team, rank.effects)) fail("Ressurgir já foi usado");
@@ -323,7 +361,7 @@ export function playCardV2(game: GameStateV2, team: TeamId, cardUid: string, ran
   discardCardV2(game, cardInstance);
   if (buff && !rank.effects.some((e) => e.type === "buff_next_card")) game.teams[team].nextCardBuff = null;
 
-  resolveCardEffectsV2(game, owner, def, rank, t, buff?.bonusDamage);
+  resolveCardEffectsV2(game, owner, def, rank, t, (buff?.bonusDamage ?? 0) + statusAmount(owner, "sacrifice_bonus_damage"));
   return { owner, card: def, rank };
 }
 
@@ -333,26 +371,26 @@ export interface PlayBasicResultV2 {
 }
 
 /** Mesma ideia de resolveCardEffectsV2, mas pra habilidade básica (sem rank/mana/descarte). */
-export function resolveBasicEffectsV2(game: GameStateV2, owner: ChampionStateV2, basic: BasicDefV2, t: TargetV2): void {
+export function resolveBasicEffectsV2(game: GameStateV2, owner: ChampionStateV2, basic: BasicDefV2, t: TargetV2, bonusDamage?: number): void {
   const target = basicTargetV2(basic);
   const { targets, ctxExtra, bossTarget, monsterTarget, minionTarget, templeTarget } = resolveCardTargetsV2(owner, target, t, game);
   if (bossTarget) {
-    applyCardEffectsToBossV2(game, owner, basic.effects);
+    applyCardEffectsToBossV2(game, owner, basic.effects, bonusDamage);
     logV2(game, `${owner.defId} (${owner.team}) usa a básica (${basic.name}) no Boss`);
     return;
   }
   if (monsterTarget) {
-    applyCardEffectsToMonsterV2(game, owner, findMonsterV2(game, monsterTarget), basic.effects);
+    applyCardEffectsToMonsterV2(game, owner, findMonsterV2(game, monsterTarget), basic.effects, bonusDamage);
     logV2(game, `${owner.defId} (${owner.team}) usa a básica (${basic.name}) num monstro`);
     return;
   }
   if (minionTarget) {
-    applyCardEffectsToMinionV2(game, owner, minionTarget, basic.effects);
+    applyCardEffectsToMinionV2(game, owner, minionTarget, basic.effects, bonusDamage);
     logV2(game, `${owner.defId} (${owner.team}) usa a básica (${basic.name}) num lacaio`);
     return;
   }
   if (templeTarget) {
-    applyCardEffectsToTempleV2(game, owner, templeTarget, basic.effects);
+    applyCardEffectsToTempleV2(game, owner, templeTarget, basic.effects, bonusDamage);
     logV2(game, `${owner.defId} (${owner.team}) usa a básica (${basic.name}) num guardião de templo`);
     return;
   }
@@ -360,6 +398,9 @@ export function resolveBasicEffectsV2(game: GameStateV2, owner: ChampionStateV2,
     game,
     attacker: owner,
     nextId: () => nextIdV2(game),
+    bonusDamage,
+    bonusVenomStacks: statusAmount(owner, "sacrifice_venom_bonus"),
+    bonusAreaRadius: statusAmount(owner, "sacrifice_control_radius_bonus"),
     ...ctxExtra,
   };
   for (const effect of basic.effects) applyEffectV2(ctx, effect, targets);
@@ -379,9 +420,10 @@ export function playBasicV2(game: GameStateV2, championUid: string, t: TargetV2)
   const def = getChampionDefV2(owner.defId);
   const basic = def.basic;
 
-  const err = validateTargetV2(game, owner, { range: basic.range, target: basicTargetV2(basic) }, t);
+  const rangeBonus = -statusAmount(owner, "sacrifice_range_penalty");
+  const err = validateTargetV2(game, owner, { range: basic.range, target: basicTargetV2(basic) }, t, rangeBonus);
   if (err) fail(err);
 
-  resolveBasicEffectsV2(game, owner, basic, t);
+  resolveBasicEffectsV2(game, owner, basic, t, statusAmount(owner, "sacrifice_bonus_damage"));
   return { owner, basic };
 }

@@ -14,7 +14,7 @@ import { addHex, hexDirectionTo, hexDistance, hexLine, hexNeighbors, HEX_DIRECTI
 import { inHexBoard } from "../design/hexBoard";
 import { allChampionsV2, logV2, type ChampionStateV2, type GameStateV2 } from "./state";
 import { dealDamageV2, type DamageOptsV2 } from "./damage";
-import { addStatus, heal, removeNegativeStatuses, removePositiveStatuses, removeStatus, statusAmount } from "./status";
+import { addStatus, hasStatus, heal, removeNegativeStatuses, removePositiveStatuses, removeStatus, statusAmount } from "./status";
 import { forcedMove, pullChampion, pushChampion, teleportChampion } from "./movement";
 import { championsInRadius } from "./targeting";
 import { wallAtV2 } from "./world";
@@ -98,6 +98,10 @@ export interface EffectContextV2 {
   hitChain?: Set<string>;
   /** Bônus de dano da carta (Passo das Sombras da Vextra, `buff_next_card`) — consumido pela camada de "jogar carta" (src/engine-v2/cardPlay.ts), somado a todo dano desta carta. */
   bonusDamage?: number;
+  /** Toxina Concentrada do Thorne (sacrifício de passiva, §22): pilhas extra de veneno em todo acerto de `apply_venom_stacks` do turno (ver applyVenomStacks). */
+  bonusVenomStacks?: number;
+  /** Floresta Desperta da Sylvane (sacrifício de passiva, §22): +1 (ou mais) casa de raio só pras cartas de ÁREA que aplicam um status de CONTROLE (ver cardPlay.ts resolveEffectTargetsV2). */
+  bonusAreaRadius?: number;
 }
 
 /** O mais próximo de `origin` (fora `exclude`) a até `maxDistance` casas, com desempate estável por uid. */
@@ -195,10 +199,18 @@ function resolveAllPoisonedEnemiesInRange(ctx: EffectContextV2): ChampionStateV2
  * lacaios do mapa dentro do raio também sofrem o dano (hitBossMonstersAndMinionsInAreaV2).
  */
 export function applyDamage(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): Record<string, number> {
+  // Em Sombras da Vextra (sacrifício de passiva, §22): garante um "Golpe
+  // Furtivo" no primeiro ataque depois de ficar invisível — bônus de dano
+  // fixo consumido (1 uso só) no primeiro bloco `damage` resolvido contra um
+  // campeão depois da invisibilidade (boss/monstro/lacaio/templo não contam —
+  // o sacrifício é lido como "contra outro campeão", mesma leitura do golpe
+  // furtivo original da classe).
+  const attacker = ctx.attacker;
+  const backstab = attacker ? statusAmount(attacker, "sacrifice_backstab_next_hit") : 0;
   const opts: DamageOptsV2 = {
     ignoreDefense: effect.ignore_defense,
     ignoreShield: effect.ignore_shield,
-    bonus: ctx.bonusDamage,
+    bonus: (ctx.bonusDamage ?? 0) + backstab,
   };
   const area = resolveDamageAreaV2(ctx, effect);
   const actualTargets = effect.around_self
@@ -217,6 +229,7 @@ export function applyDamage(ctx: EffectContextV2, effect: Effect, targets: Champ
       dealDamageV2(null, ctx.attacker, result.reflectToAttacker, { ignoreDefense: true, ignoreShield: true });
     }
   }
+  if (backstab > 0 && attacker && actualTargets.length > 0) removeStatus(attacker, "sacrifice_backstab_next_hit");
   if (actualTargets.length > 0) {
     ctx.lastTarget = actualTargets[actualTargets.length - 1];
     ctx.hitChain = new Set([...(ctx.hitChain ?? []), ...actualTargets.map((t) => t.uid)]);
@@ -239,13 +252,31 @@ function durationFromEffect(effect: Effect): { unit: "rounds" | "champion_turns"
 export function applyStatus(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
   const duration = durationFromEffect(effect);
   const negative = isNegativeStatus(effect.status);
+  const { unit, value, amount } = boostBuffIfSacrificed(ctx, negative, duration.unit, duration.value, effect.amount ?? effect.bonus_damage);
   for (const target of targets) {
-    addStatus(target, ctx.nextId(), effect.status, duration.unit, duration.value, {
-      amount: effect.amount ?? effect.bonus_damage,
-      negative,
-    });
+    addStatus(target, ctx.nextId(), effect.status, unit, value, { amount, negative });
     propagateLinkedControl(ctx, target, effect.status, duration);
   }
+}
+
+/**
+ * Canalização Total da Aurelia (sacrifício de passiva, §22): todo BUFF
+ * (status não-negativo) aplicado por ela no turno dura +1 rodada e vale +50%
+ * — usado por applyStatus/applyLinkBuff (debuffs continuam normais; a
+ * duração só ganha o bônus quando a unidade é "rounds", já que "+1 rodada"
+ * não tem equivalente claro em "champion_turns").
+ */
+function boostBuffIfSacrificed(
+  ctx: EffectContextV2,
+  negative: boolean,
+  unit: "rounds" | "champion_turns",
+  value: number,
+  amount: number | undefined,
+): { unit: "rounds" | "champion_turns"; value: number; amount: number | undefined } {
+  if (negative || !ctx.attacker || !hasStatus(ctx.attacker, "sacrifice_buff_boost")) return { unit, value, amount };
+  const boostedAmount = amount === undefined ? amount : Math.round(amount * 1.5);
+  const boostedValue = unit === "rounds" ? value + 1 : value;
+  return { unit, value: boostedValue, amount: boostedAmount };
 }
 
 /**
@@ -274,12 +305,11 @@ export function applyJumpToNearestEnemyOnTargetDeath(targets: ChampionStateV2[])
 export function applyLinkBuff(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
   if (!ctx.attacker) return;
   const duration = durationFromEffect(effect);
+  const negative = isNegativeStatus(effect.status);
+  const { unit, value, amount } = boostBuffIfSacrificed(ctx, negative, duration.unit, duration.value, effect.amount);
   const recipients = [ctx.attacker, ...targets];
   for (const recipient of recipients) {
-    addStatus(recipient, ctx.nextId(), effect.status, duration.unit, duration.value, {
-      amount: effect.amount,
-      negative: isNegativeStatus(effect.status),
-    });
+    addStatus(recipient, ctx.nextId(), effect.status, unit, value, { amount, negative });
   }
 }
 
@@ -305,6 +335,14 @@ function propagateLinkedHeal(ctx: EffectContextV2, source: ChampionStateV2, heal
 
 /** `heal`: cura, sem passar do hp máximo. Devolve a cura efetiva por alvo (propaga ao Elo de cura, se houver). */
 export function applyHeal(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): Record<string, number> {
+  // Prece Desesperada da Selene (sacrifício de passiva, §22): a PRÓXIMA cura
+  // direta do turno vale o dobro — consumido aqui (1 uso só), valendo pra
+  // todos os alvos desta MESMA resolução (uma carta pode curar vários de
+  // uma vez; "uma cura do turno" é lido como "uma resolução de `heal`", não
+  // "um alvo"). Não afeta heal_over_time (ver applyHealOverTime), só cura direta.
+  const attacker = ctx.attacker;
+  const doubled = !!attacker && hasStatus(attacker, "sacrifice_double_heal");
+  const mult = doubled ? 2 : 1;
   const out: Record<string, number> = {};
   for (const target of targets) {
     if (!target.alive) {
@@ -312,11 +350,12 @@ export function applyHeal(ctx: EffectContextV2, effect: Effect, targets: Champio
       continue;
     }
     const before = target.hp;
-    target.hp = Math.min(target.maxHp, target.hp + (effect.amount ?? 0));
+    target.hp = Math.min(target.maxHp, target.hp + (effect.amount ?? 0) * mult);
     const healed = target.hp - before;
     out[target.uid] = healed;
     propagateLinkedHeal(ctx, target, healed);
   }
+  if (doubled && attacker) removeStatus(attacker, "sacrifice_double_heal");
   return out;
 }
 
@@ -433,7 +472,7 @@ function safeTeleport(s: GameStateV2, target: ChampionStateV2, dest: Hex, maxDis
 
 /** `apply_venom_stacks`: acumula pilhas de veneno no alvo, até `max_stacks`. */
 export function applyVenomStacks(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
-  const gain = effect.amount ?? 1;
+  const gain = (effect.amount ?? 1) + (ctx.bonusVenomStacks ?? 0);
   const max = effect.max_stacks ?? Infinity;
   let actualTargets = targets;
   if (effect.all_enemies_in_range) actualTargets = resolveAllEnemiesInRange(ctx);
@@ -501,8 +540,15 @@ export function linkedPartnerOf(c: ChampionStateV2): string | null {
   return c.statuses.find((s) => s.status === "link_heal" || s.status === "link_control")?.partner ?? null;
 }
 
-/** Nomes de status que contam como "controle" pra propagação do Elo Natural — mesma lista de regras-e-decisoes.md §8 (imobilizado/silenciado/atordoado/lentidão) + provocado (Varek), que também impõe uma restrição de ação. */
-const CONTROL_STATUS_NAMES = new Set(["stun", "root", "silenced", "movement_reduced", "taunted"]);
+/**
+ * Nomes de status que contam como "controle" pra propagação do Elo Natural —
+ * mesma lista de regras-e-decisoes.md §8 (imobilizado/silenciado/atordoado/
+ * lentidão) + provocado (Varek), que também impõe uma restrição de ação.
+ * Exportado porque Floresta Desperta da Sylvane (sacrifício de passiva, §22)
+ * só dá bônus de raio pra cartas de ÁREA que aplicam um status desta lista —
+ * ver cardPlay.ts resolveEffectTargetsV2.
+ */
+export const CONTROL_STATUS_NAMES = new Set(["stun", "root", "silenced", "movement_reduced", "taunted"]);
 
 /**
  * Propaga um status de CONTROLE (não dano/cura) ao parceiro de Elo de
@@ -529,14 +575,19 @@ function propagateLinkedControl(ctx: EffectContextV2, source: ChampionStateV2, s
 export function applyGroundFire(ctx: EffectContextV2, effect: Effect): void {
   if (!ctx.attacker || !ctx.targetCell) return;
   const duration = durationFromEffect(effect);
+  // Fogo Selvagem da Ignira (sacrifício de passiva, §22): +1 casa de raio e
+  // +1 rodada de duração no chão em chamas criado no turno.
+  const wild = hasStatus(ctx.attacker, "sacrifice_fogo_selvagem");
+  const radius = (effect.radius ?? 0) + (wild ? 1 : 0);
+  const remaining = duration.value + (wild ? 1 : 0);
   ctx.game.ground = ctx.game.ground.filter((g) => !(g.kind === "fire" && sameHex(g.pos, ctx.targetCell!)));
   ctx.game.ground.push({
     id: ctx.nextId(),
     kind: "fire",
     pos: { ...ctx.targetCell },
-    radius: effect.radius ?? 0,
+    radius,
     team: ctx.attacker.team,
-    remaining: duration.value,
+    remaining,
     damagePerRound: effect.damage_per_round,
   });
 }
@@ -764,15 +815,24 @@ export function applyCreateStructure(ctx: EffectContextV2, effect: Effect): void
   if (!ctx.attacker || !ctx.targetCell) return;
   if (!isEmptyOfChampions(ctx.game, ctx.targetCell) || wallAtV2(ctx.game, ctx.targetCell)) return;
   const duration = effect.duration ? durationFromEffect(effect).value : null;
+  // Construção Acelerada do Dorin (sacrifício de passiva, §22): "dobro de
+  // estruturas" não tem como dobrar QUANTIDADE numa estrutura de casa única
+  // — dobra o hp dela em vez disso (ver applyCreateWall pro mesmo PADRÃO).
+  const hp = (effect.hp ?? 1) * doubleConstructMultiplier(ctx);
   ctx.game.structures.push({
     id: ctx.nextId(),
     pos: { ...ctx.targetCell },
-    hp: effect.hp ?? 1,
+    hp,
     team: ctx.attacker.team,
     damagePerRound: effect.damage_per_round ?? 0,
     range: effect.range ?? 0,
     remaining: duration,
   });
+}
+
+/** `2` se `ctx.attacker` tiver o sacrifício "Construção Acelerada" do Dorin ativo (ver sacrifice.ts/§22), senão `1`. */
+function doubleConstructMultiplier(ctx: EffectContextV2): number {
+  return ctx.attacker && hasStatus(ctx.attacker, "sacrifice_double_construct") ? 2 : 1;
 }
 
 /** Cria uma parede, sem duplicar se já houver uma ali (mesma regra de applyCreateWall). */
@@ -785,8 +845,11 @@ function pushWallIfFree(ctx: EffectContextV2, pos: Hex, hp: number, duration: nu
 export function applyCreateWallsLine(ctx: EffectContextV2, effect: Effect): void {
   if (!ctx.attacker || !ctx.targetCell || !ctx.moveDir) return;
   const duration = durationFromEffect(effect).value;
+  // Construção Acelerada do Dorin (sacrifício de passiva, §22): dobra a
+  // quantidade de paredes criadas pela carta.
+  const count = (effect.count ?? 1) * doubleConstructMultiplier(ctx);
   let pos = { ...ctx.targetCell };
-  for (let i = 0; i < (effect.count ?? 1); i++) {
+  for (let i = 0; i < count; i++) {
     if (!inHexBoard(pos, ctx.game.board)) break;
     pushWallIfFree(ctx, pos, effect.hp ?? balance.walls.normal_wall_hp, duration);
     pos = addHex(pos, ctx.moveDir);
@@ -814,7 +877,9 @@ export function applyCreateWallsShape(ctx: EffectContextV2, effect: Effect): voi
   if (dir.q === 0 && dir.r === 0) return;
   const duration = durationFromEffect(effect).value;
   const hp = effect.hp ?? balance.walls.normal_wall_hp;
-  const count = effect.count ?? 1;
+  // Construção Acelerada do Dorin (sacrifício de passiva, §22): dobra a
+  // quantidade de paredes da cunha.
+  const count = (effect.count ?? 1) * doubleConstructMultiplier(ctx);
   const cells: Hex[] = [];
   let pos = { ...ctx.targetCell };
   for (let i = 0; i < Math.min(3, count); i++) {
@@ -844,7 +909,9 @@ export function applyCreateWallsAroundTarget(ctx: EffectContextV2, effect: Effec
   if (!ctx.attacker || !ctx.targetCell) return;
   const duration = durationFromEffect(effect).value;
   const hp = effect.hp ?? balance.walls.normal_wall_hp;
-  const count = effect.count ?? 6;
+  // Construção Acelerada do Dorin (sacrifício de passiva, §22): dobra a
+  // quantidade de paredes do cerco (ainda limitada pelo anel 1+2 disponível).
+  const count = (effect.count ?? 6) * doubleConstructMultiplier(ctx);
   const ring1 = hexNeighbors(ctx.targetCell);
   const ring2 = ring1.flatMap((h) => hexNeighbors(h)).filter((h) => !sameHex(h, ctx.targetCell!) && !ring1.some((r) => sameHex(r, h)));
   const uniqueRing2: Hex[] = [];
@@ -940,10 +1007,13 @@ export function applyProtectiveDome(ctx: EffectContextV2, effect: Effect, target
 export function applyCreateWall(ctx: EffectContextV2, effect: Effect): void {
   if (!ctx.attacker || !ctx.targetCell) return;
   if (wallAtV2(ctx.game, ctx.targetCell)) return; // já tem parede ali — não duplica, não renova sozinha
+  // Construção Acelerada do Dorin (sacrifício de passiva, §22): dobra o hp
+  // da parede única (mesmo PADRÃO de applyCreateStructure).
+  const hp = (effect.hp ?? balance.walls.normal_wall_hp) * doubleConstructMultiplier(ctx);
   ctx.game.walls.push({
     id: ctx.nextId(),
     pos: { ...ctx.targetCell },
-    hp: effect.hp ?? balance.walls.normal_wall_hp,
+    hp,
     team: ctx.attacker.team,
     remaining: balance.walls.default_duration_rounds,
     blocksRangedAttacks: effect.blocks_ranged_attacks,

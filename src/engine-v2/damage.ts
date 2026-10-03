@@ -73,6 +73,13 @@ export interface DealDamageResultV2 {
  * aplica a devolução, pra não precisar de referência circular aqui.
  */
 export function dealDamageV2(attacker: ChampionStateV2 | null, target: ChampionStateV2, base: number, opts: DamageOptsV2 = {}): DealDamageResultV2 {
+  // Último Bastião (Varek, sacrifício de passiva — ver sacrifice.ts): todo
+  // dano que o aliado protegido sofreria vai pro próprio Varek, usando a
+  // defesa/escudo DELE, não os do aliado — redireciona o `target` inteiro
+  // antes de calcular qualquer coisa.
+  if (target.protectedBy && target.protectedBy.alive && target.protectedBy.uid !== target.uid) {
+    target = target.protectedBy;
+  }
   const final = computeDamageV2(attacker, target, base, opts);
   if (final <= 0) return { final: 0, absorbedByShield: 0, reflectToAttacker: 0 };
 

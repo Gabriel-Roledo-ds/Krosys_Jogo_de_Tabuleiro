@@ -85,6 +85,14 @@ export interface ChampionStateV2 {
   permanentDamageBonusPercent: number;
   /** Contagem de abates por grupo "zona:nível:stat:curva" (ver monsters.ts) — base pra recalcular o bônus permanente sem acumular versões antigas. */
   monsterStatGroups: Record<string, number>;
+  /**
+   * Último Bastião do Varek (sacrifício de passiva, ver sacrifice.ts): se
+   * definido, todo dano que ESTE campeão sofreria é redirecionado pra quem
+   * está aqui (defesa/escudo do protetor, não os próprios — ver damage.ts
+   * dealDamageV2). Limpo a cada tickRoundV2 (mesma granularidade "dura 1
+   * rodada" dos outros sacrifícios — ver regras-e-decisoes.md §22).
+   */
+  protectedBy?: ChampionStateV2 | null;
 }
 
 /** Monstro do mapa (roster v2, item 7 do KANBAN) — ver src/engine-v2/monsters.ts e src/design/{monsterPlacement,monsterReaction}.ts. */

@@ -23,6 +23,9 @@ import { heal } from "./status";
  */
 export function tickRoundV2(s: GameStateV2): void {
   for (const c of allChampionsV2(s)) {
+    // Último Bastião do Varek (sacrifice.ts): a proteção dura só 1 rodada,
+    // mesma granularidade dos outros bônus de sacrifício de passiva.
+    c.protectedBy = undefined;
     if (!c.alive) continue;
     for (const st of c.statuses) {
       if (st.unit !== "rounds" || st.status === "venom_stacks") continue;
