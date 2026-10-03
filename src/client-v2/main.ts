@@ -44,6 +44,9 @@ let myComp: string[] = [];
 let sel: { kind: "card"; uid: string; rank?: number } | { kind: "basic"; champion: string } | null = null;
 let moving: string | null = null;
 let chooser: Target[] | null = null;
+// Botão de mostrar/esconder o raio de revide das criaturas no mapa (voltou em
+// 03/10/2026, existia no MVP original — ver board.ts "raio de revide").
+let showMonsterRadii = true;
 // Seletor de aliado pro sacrifício do Varek (Último Bastião, único que exige
 // alvo — ver regras-e-decisoes.md §22 e hints.sacrificeAllyTargets em view-v2.ts).
 let sacrificeChooser: { champion: string; targets: string[] } | null = null;
@@ -218,7 +221,7 @@ function highlights(): Highlights {
   const reach = new Set<string>(), targets = new Set<string>();
   if (sel) for (const t of candidateTargets()) { const c = cellOf(t); if (c) targets.add(key(c.q, c.r)); }
   else if (myAct() && moving) for (const c of hints().reach?.[moving] ?? []) reach.add(key(c.pos.q, c.pos.r));
-  return { reach, targets, selected: sel ? null : moving };
+  return { reach, targets, selected: sel ? null : moving, showMonsterRadii };
 }
 
 function pickMoving() {
@@ -254,11 +257,14 @@ function renderStatus() {
   const fastOn = view.teams[me!].fastWindowEnabled !== false;
   const fastLocked = !!view.pending && view.pending.priority === me;
   const fastBtn = view.winner ? "" : `<button id="fasttoggle" ${fastLocked ? "disabled" : ""} title="${fastLocked ? "Não dá para mudar com a janela de resposta já aberta pra você" : "Ligar ou desligar sua própria janela de resposta rápida"}">⚡ Resposta rápida: ${fastOn ? "ligada" : "desligada"}</button>`;
-  $("status").innerHTML = `<b class="team${me}">Você: equipe ${me}</b> · Rodada ${view.round} · Turno da equipe <b class="team${t.team}">${t.team}</b> ${fastBtn}
+  const radiiBtn = `<button id="radiitoggle" title="Mostra/esconde até onde cada criatura consegue revidar um ataque">👁 Raio das criaturas: ${showMonsterRadii ? "visível" : "escondido"}</button>`;
+  $("status").innerHTML = `<b class="team${me}">Você: equipe ${me}</b> · Rodada ${view.round} · Turno da equipe <b class="team${t.team}">${t.team}</b> ${fastBtn} ${radiiBtn}
     <div id="msg">${esc(msg)}</div>
     <div>${t.phase === "act" ? `🎲 Dado do turno: <b>${t.die}</b> · ` : ""}Boss: ${view.boss.hp}/${view.boss.maxHp} PV${view.boss.aura ? " · aura: " + esc(bossCards[view.boss.aura.cardId]?.name ?? view.boss.aura.cardId) : ""}</div>`;
   const fb = document.getElementById("fasttoggle");
   if (fb) fb.onclick = () => act({ type: "toggleFast", enabled: !fastOn });
+  const rb = document.getElementById("radiitoggle");
+  if (rb) rb.onclick = () => { showMonsterRadii = !showMonsterRadii; board.render(view, highlights()); renderStatus(); };
 }
 
 function renderTeams() {

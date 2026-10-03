@@ -41,6 +41,7 @@ import {
   type CombatContext,
   type ReactionOption,
 } from "../design/monsterReaction";
+import { hexDistance } from "../design/hexGrid";
 import { getCardDefV2 } from "./data";
 import { pushChampion } from "./movement";
 import { addStatus } from "./status";
@@ -179,11 +180,26 @@ function applyReactionOptionV2(game: GameStateV2, monster: MonsterStateV2, attac
 }
 
 /**
- * Reação de um monstro vivo ao ser atacado por `attacker` — sempre dispara
- * (o único gatilho usado no motor é "attacked_by_champion", chamado só a
- * partir de attackMonsterV2, nunca por entrar no alcance/passar perto, ver
+ * Reação de um monstro vivo ao ser atacado por `attacker` (o único gatilho
+ * usado no motor é "attacked_by_champion", chamado só a partir de
+ * attackMonsterV2, nunca por entrar no alcance/passar perto, ver
  * claude/monstros-mapa.md "Gatilho"). Resolve ANTES do dano do atacante
  * aplicar, como uma resposta rápida da criatura.
+ *
+ * **Alcance de revide (achado corrigido 03/10/2026, pedido do dono do
+ * projeto):** até aqui a reação disparava sempre, não importava a distância
+ * de quem atacou — então não fazia diferença nenhuma um campeão de longo
+ * alcance atacar de longe ou um de corpo a corpo atacar colado: o revide
+ * sempre acertava. `ReactionOption.range` (número de casas, ou "self" pra
+ * opção que só afeta a própria criatura, nunca o atacante) já existia nos
+ * dados mas nunca era comparado com a distância de verdade no tabuleiro.
+ * Agora, se a opção escolhida tem alcance numérico e o atacante está mais
+ * longe do que isso, a criatura NÃO revida (sem dano, sem controle, sem
+ * empurrão) — é como se o ataque dela não alcançasse de volta. Opção "self"
+ * (autobuff da própria criatura) sempre dispara, já que nunca mirava no
+ * atacante mesmo. O raio desenhado no tabuleiro (botão de mostrar/esconder,
+ * ver cliente) é exatamente esse número — visualizar até onde a criatura
+ * revida, pra planejar ataque de longe com segurança.
  */
 export function reactMonsterV2(game: GameStateV2, monster: MonsterStateV2, attacker: ChampionStateV2): void {
   if (!monster.alive) return;
@@ -196,6 +212,12 @@ export function reactMonsterV2(game: GameStateV2, monster: MonsterStateV2, attac
   };
   const decision = decideReaction(type, "attacked_by_champion", ctx);
   if (!decision.reacted) return;
+
+  const range = decision.option.range;
+  if (typeof range === "number" && hexDistance(monster.pos, attacker.pos) > range) {
+    logV2(game, `${monster.typeId} não revida: ${attacker.defId} (${attacker.team}) atacou de fora do alcance de revide (${range})`);
+    return;
+  }
 
   const { options } = type.reaction;
   const isUtilityChoice = options.length > 1 && decision.option === options[1];

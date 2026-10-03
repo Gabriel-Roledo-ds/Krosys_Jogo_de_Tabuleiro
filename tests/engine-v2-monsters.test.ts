@@ -25,6 +25,16 @@ function findByType(game: GameStateV2, typeId: string): MonsterStateV2 {
   return m;
 }
 
+/**
+ * Coloca o atacante colado no monstro (distância 1) — dentro do alcance de
+ * revide de qualquer opção de reação dos dados (1 a 3 casas), pra testar o
+ * efeito da reação em si sem o novo gate de alcance (ver "alcance de revide"
+ * abaixo) interferir nesses testes que não são sobre distância.
+ */
+function moveAdjacent(attacker: { pos: { q: number; r: number } }, monster: MonsterStateV2): void {
+  attacker.pos = { q: monster.pos.q + 1, r: monster.pos.r };
+}
+
 describe("posicionamento / solidez", () => {
   it("a casa de um monstro vivo é sólida; some depois de morto", () => {
     const game = createGameV2(1);
@@ -90,6 +100,7 @@ describe("reação ao ataque — postura decide a opção, dispara ANTES do dano
     const attacker = game.teams.A.champions[0];
     const startHp = attacker.hp;
     const m = findByType(game, "javali_bravo"); // Chifrada: dano 3, empurra 1
+    moveAdjacent(attacker, m);
     expect(() => reactMonsterV2(game, m, attacker)).not.toThrow();
     const expectedDamage = Math.max(balance.damage.minimum_damage_if_base_at_least_1, 3 - attacker.defense);
     expect(attacker.hp).toBe(startHp - expectedDamage);
@@ -100,6 +111,7 @@ describe("reação ao ataque — postura decide a opção, dispara ANTES do dano
     const game = createGameV2(1);
     const attacker = game.teams.A.champions[0];
     const m = findByType(game, "colosso_rachado"); // Punho Rachado (dano 5) ou Casca Dura (autobuff, sem efeito modelado)
+    moveAdjacent(attacker, m);
     const hpAfterFirst = attacker.hp;
     reactMonsterV2(game, m, attacker); // 1ª vez: Casca Dura (utilitária) — autobuff ignorado, sem dano
     expect(attacker.hp).toBe(hpAfterFirst);
@@ -114,6 +126,7 @@ describe("reação ao ataque — postura decide a opção, dispara ANTES do dano
     const game = createGameV2(1);
     const attacker = game.teams.A.champions[0];
     const m = findByType(game, "escaravelho_blindado"); // Carapaça: dano 1 + reflete 1 (ignora defesa)
+    moveAdjacent(attacker, m);
     const expectedDamage = Math.max(balance.damage.minimum_damage_if_base_at_least_1, 1 - attacker.defense) + 1;
     const startHp = attacker.hp;
     reactMonsterV2(game, m, attacker);
@@ -124,6 +137,7 @@ describe("reação ao ataque — postura decide a opção, dispara ANTES do dano
     const game = createGameV2(1);
     const attacker = game.teams.A.champions[0];
     const m = findByType(game, "enxame_vespas");
+    moveAdjacent(attacker, m);
     reactMonsterV2(game, m, attacker);
     expect(attacker.statuses.some((s) => s.status === "poison")).toBe(true);
   });
@@ -132,6 +146,7 @@ describe("reação ao ataque — postura decide a opção, dispara ANTES do dano
     const game = createGameV2(1);
     const attacker = game.teams.A.champions[0];
     const m = findByType(game, "basilisco_pedra");
+    moveAdjacent(attacker, m);
     const startHp = attacker.hp;
     reactMonsterV2(game, m, attacker);
     expect(attacker.hp).toBeLessThan(startHp); // Mordida Pétrea causa dano
@@ -142,7 +157,42 @@ describe("reação ao ataque — postura decide a opção, dispara ANTES do dano
     const game = createGameV2(1);
     const attacker = game.teams.A.champions[0];
     const m = findByType(game, "tita_ancestral"); // mini-turno: Esmagar (dano) ou Erguer Muralha (create_wall)
+    moveAdjacent(attacker, m);
     expect(() => reactMonsterV2(game, m, attacker)).not.toThrow();
+  });
+
+  it("alcance de revide (03/10/2026, pedido do dono do projeto): atacante fora do alcance da opção escolhida não sofre nada", () => {
+    const game = createGameV2(1);
+    const attacker = game.teams.A.champions[0];
+    const m = findByType(game, "javali_bravo"); // Chifrada: dano 3, alcance 1 (corpo a corpo)
+    attacker.pos = { q: m.pos.q + 5, r: m.pos.r }; // bem longe, fora do alcance 1
+    const startHp = attacker.hp;
+    reactMonsterV2(game, m, attacker);
+    expect(attacker.hp).toBe(startHp); // sem revide: fora de alcance
+    expect(attacker.statuses.length).toBe(0);
+    // mas o estado da reação não avança — não conta como "já atacada" nesse combate
+    expect(m.attackedBeforeThisCombat).toBe(false);
+  });
+
+  it("alcance de revide: dentro do alcance (até o limite exato da opção) ainda revida", () => {
+    const game = createGameV2(1);
+    const attacker = game.teams.A.champions[0];
+    const m = findByType(game, "basilisco_pedra"); // Mordida Pétrea: alcance 2 (checar data/monsters_map.json)
+    const type = (m as unknown as { typeId: string }).typeId;
+    expect(type).toBe("basilisco_pedra");
+    moveAdjacent(attacker, m); // distância 1, dentro de qualquer alcance >= 1
+    const startHp = attacker.hp;
+    reactMonsterV2(game, m, attacker);
+    expect(attacker.hp).toBeLessThan(startHp);
+  });
+
+  it("opção 'self' (autobuff) dispara mesmo com o atacante bem longe, já que nunca mira nele", () => {
+    const game = createGameV2(1);
+    const attacker = game.teams.A.champions[0];
+    const m = findByType(game, "colosso_rachado"); // 1ª vez: Casca Dura (opção "self")
+    attacker.pos = { q: m.pos.q + 10, r: m.pos.r }; // bem longe
+    expect(() => reactMonsterV2(game, m, attacker)).not.toThrow();
+    expect(m.attackedBeforeThisCombat).toBe(true); // a reação "self" conta como ocorrida
   });
 });
 

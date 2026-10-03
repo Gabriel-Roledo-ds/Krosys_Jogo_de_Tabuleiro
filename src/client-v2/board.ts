@@ -15,7 +15,24 @@ const SIZE = 18; // raio do hexágono em pixels
 const SQRT3 = Math.sqrt(3);
 const COLORS = { A: 0x4aa3ff, B: 0xff6b5a };
 const LEVEL_COLOR: Record<number, number> = { 1: 0x9bd14a, 2: 0xe0b040, 3: 0xd0603a };
-const monsterTypes = (monstersMapData as any).types as Record<string, { name: string; level: number; zone: string }>;
+const monsterTypes = (monstersMapData as any).types as Record<
+  string,
+  { name: string; level: number; zone: string; reaction: { options: { range: number | string }[] } }
+>;
+
+/**
+ * Alcance de revide da criatura, pro desenho do raio no tabuleiro (03/10/2026,
+ * pedido do dono do projeto — ver "alcance de revide" em engine-v2/monsters.ts).
+ * Convenção dos dados (monsterReaction.ts): a 1ª opção listada é sempre a de
+ * dano/agressiva, então `options[0].range` é o alcance que de fato ameaça
+ * quem atacou (a 2ª opção, quando existe, costuma ser autobuff "self" ou fuga,
+ * nenhuma delas mira no atacante). Hoje nenhum `options[0]` é "self" nos dados
+ * (conferido: todos numéricos, 1 a 3) — se algum dia existir, cai no `?? 1`.
+ */
+function monsterReactionRange(typeId: string): number {
+  const r = monsterTypes[typeId]?.reaction?.options?.[0]?.range;
+  return typeof r === "number" ? r : 1;
+}
 // Cor do guardião de templo antes de reivindicado — mística, nem A nem B, pra
 // não confundir com o dono de uma equipe (regras-e-decisoes.md §21).
 const TEMPLE_UNCLAIMED_COLOR = 0xd4af37;
@@ -97,6 +114,12 @@ export interface Highlights {
   reach: Set<string>;
   targets: Set<string>;
   selected: string | null;
+  /**
+   * Botão de ligar/desligar o raio de revide das criaturas no mapa (voltou em
+   * 03/10/2026 — existia no MVP original como checkbox "mostrar raios no
+   * mapa", nunca tinha sido portado pro cliente v2). Padrão: ligado.
+   */
+  showMonsterRadii?: boolean;
 }
 
 export interface BoardApi {
@@ -105,7 +128,7 @@ export interface BoardApi {
 
 export function createBoard(parent: HTMLElement, onCell: (q: number, r: number) => void): BoardApi {
   let view: any = null;
-  let hl: Highlights = { reach: new Set(), targets: new Set(), selected: null };
+  let hl: Highlights = { reach: new Set(), targets: new Set(), selected: null, showMonsterRadii: true };
   let gfx: Phaser.GameObjects.Graphics;
   let labels: Phaser.GameObjects.Text[] = [];
   let scene: Phaser.Scene;
@@ -224,10 +247,20 @@ export function createBoard(parent: HTMLElement, onCell: (q: number, r: number) 
       }
     if (!view) return;
 
-    // Alcance do boss (mesma ideia do losango do MVP: só o boss tem raio marcado
-    // aqui — os monstros v2 não têm um "raio de passiva" simples como o MVP,
-    // a reação deles é por ataque recebido, não por entrar numa zona).
+    // Alcance do boss, sempre visível (não depende do botão de raio de criatura).
     if (view.boss.alive) zone(view.boss.pos, view.boss.range, 0xff3fa4, 0.08);
+
+    // Raio de revide das criaturas (03/10/2026, botão de volta — ver
+    // Highlights.showMonsterRadii): mostra até onde cada criatura viva
+    // consegue bater de volta (engine-v2/monsters.ts, "alcance de revide").
+    // Atacar de fora desse raio não sofre contra-ataque — o raio é o que
+    // diferencia valer a pena atacar de longe ou não.
+    if (hl.showMonsterRadii) {
+      for (const m of view.monsters as any[]) {
+        if (!m.alive) continue;
+        zone(m.pos, monsterReactionRange(m.typeId), LEVEL_COLOR[m.level] ?? 0x9bd14a, 0.12);
+      }
+    }
 
     for (let q = 0; q < board.q_size; q++)
       for (let r = 0; r < board.r_size; r++) {
