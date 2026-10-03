@@ -110,6 +110,12 @@ export function resolveCardTargetsV2(owner: ChampionStateV2, cardTarget: string,
     case "dead_ally":
       if (t.uid) targets = [getChampionV2(game, t.uid)];
       break;
+    case "two_enemies":
+      // Elo Natural da Sylvane (ver targeting.ts/effects.ts applyLink) — os
+      // dois campeões escolhidos pelo jogador, NÃO quem usou a carta; o
+      // vínculo liga eles entre si.
+      if (t.uid && t.uid2) targets = [getChampionV2(game, t.uid), getChampionV2(game, t.uid2)];
+      break;
     case "random_enemies":
       // Sem alvo escolhido pelo jogador — cada bloco com `random_targets: N`
       // sorteia os próprios alvos (ver resolveEffectTargetsV2).

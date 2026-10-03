@@ -220,7 +220,7 @@ function durationFromEffect(effect: Effect): { unit: "rounds" | "champion_turns"
   return { unit: "rounds", value: 1 };
 }
 
-/** `apply_status` / `apply_status_area`: aplica o mesmo status num ou mais alvos. */
+/** `apply_status` / `apply_status_area`: aplica o mesmo status num ou mais alvos (propaga ao Elo de controle, se o alvo tiver um e o status for de controle — ver propagateLinkedControl). */
 export function applyStatus(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
   const duration = durationFromEffect(effect);
   const negative = isNegativeStatus(effect.status);
@@ -229,6 +229,7 @@ export function applyStatus(ctx: EffectContextV2, effect: Effect, targets: Champ
       amount: effect.amount,
       negative,
     });
+    propagateLinkedControl(ctx, target, effect.status, duration);
   }
 }
 
@@ -388,23 +389,37 @@ export function applyDetonateVenomStacks(ctx: EffectContextV2, effect: Effect, t
 }
 
 /**
- * `link`: cria o vínculo (Elo) entre quem usou a carta e o alvo. Guardado
- * como status "link_heal" (Corrente de Vida da Selene — propaga cura, ver
- * propagateLinkedHeal) ou "link_control" (Elo Natural da Sylvane — propagação
- * de controle ainda não implementada, ver KANBAN.md), conforme qual
- * `share_*_percent` a carta trouxer.
+ * `link`: cria o vínculo (Elo) entre dois campeões. Guardado como status
+ * "link_heal" (Corrente de Vida da Selene — propaga cura, ver
+ * propagateLinkedHeal) ou "link_control" (Elo Natural da Sylvane — propaga
+ * controle, ver propagateLinkedControl), conforme qual `share_*_percent` a
+ * carta trouxer.
  *
- * Nota de design em aberto: no texto original, o Elo Natural da Sylvane liga
- * dois INIMIGOS entre si ("compartilha entre inimigos"), não o próprio
- * campeão a um inimigo — mas a carta hoje só tem um `target: "enemy"" (um
- * alvo só). Até a camada de "jogar uma carta" existir e resolver isso,
- * applyLink liga sempre quem usou a carta a cada alvo recebido.
+ * **Ambiguidade de alvo resolvida (02/10/2026) [PADRÃO]:** no texto original,
+ * a Corrente de Vida da Selene liga QUEM USOU A CARTA a um aliado (`target:
+ * "ally"`, 1 alvo só) — esse caso (`link_heal`) continua ligando
+ * `ctx.attacker` a cada alvo recebido, como sempre foi. Já o Elo Natural da
+ * Sylvane liga dois INIMIGOS entre si ("compartilha entre inimigos"), sem
+ * envolver a própria Sylvane — igual ao "Elo" do MVP original
+ * (src/engine/effects.ts, mesmo nome de carta/target "two_enemies"). Pra
+ * cobrir isso, `sylvane_elo_natural` passou a ter `target: "two_enemies"`
+ * (targeting.ts/cardPlay.ts, novo), e aqui `link_control` ignora
+ * `ctx.attacker` e liga os DOIS alvos resolvidos entre si (`targets[0]` com
+ * `targets[1]`) — exige exatamente 2 alvos, garantido por quem resolve
+ * "two_enemies".
  */
 export function applyLink(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
-  if (!ctx.attacker) return;
   const duration = durationFromEffect(effect);
   const kind = effect.share_heal_percent !== undefined ? "link_heal" : "link_control";
   const amount = effect.share_heal_percent ?? effect.share_control_percent ?? effect.amount;
+  if (kind === "link_control") {
+    const [a, b] = targets;
+    if (!a || !b) return;
+    addStatus(a, ctx.nextId(), kind, duration.unit, duration.value, { amount, partner: b.uid });
+    addStatus(b, ctx.nextId(), kind, duration.unit, duration.value, { amount, partner: a.uid });
+    return;
+  }
+  if (!ctx.attacker) return;
   for (const target of targets) {
     addStatus(ctx.attacker, ctx.nextId(), kind, duration.unit, duration.value, { amount, partner: target.uid });
     addStatus(target, ctx.nextId(), kind, duration.unit, duration.value, { amount, partner: ctx.attacker.uid });
@@ -414,6 +429,26 @@ export function applyLink(ctx: EffectContextV2, effect: Effect, targets: Champio
 /** uid do parceiro de Elo ativo (cura ou controle) de um campeão, se houver. */
 export function linkedPartnerOf(c: ChampionStateV2): string | null {
   return c.statuses.find((s) => s.status === "link_heal" || s.status === "link_control")?.partner ?? null;
+}
+
+/** Nomes de status que contam como "controle" pra propagação do Elo Natural — mesma lista de regras-e-decisoes.md §8 (imobilizado/silenciado/atordoado/lentidão) + provocado (Varek), que também impõe uma restrição de ação. */
+const CONTROL_STATUS_NAMES = new Set(["stun", "root", "silenced", "movement_reduced", "taunted"]);
+
+/**
+ * Propaga um status de CONTROLE (não dano/cura) ao parceiro de Elo de
+ * controle (Elo Natural da Sylvane), se houver, com a duração reduzida pela
+ * porcentagem do vínculo (`share_control_percent` — 50%/75%, arredondado,
+ * mínimo 1). Não repropaga a partir do parceiro (mesma convenção de
+ * propagateLinkedHeal) — evita ida-e-volta infinita entre os dois lados.
+ */
+function propagateLinkedControl(ctx: EffectContextV2, source: ChampionStateV2, status: string, duration: { unit: "rounds" | "champion_turns"; value: number }): void {
+  if (!CONTROL_STATUS_NAMES.has(status)) return;
+  const link = source.statuses.find((s) => s.status === "link_control" && s.partner);
+  if (!link || link.amount === undefined) return;
+  const partner = allChampionsV2(ctx.game).find((c) => c.uid === link.partner);
+  if (!partner || !partner.alive) return;
+  const sharedValue = Math.max(1, Math.round((duration.value * link.amount) / 100));
+  addStatus(partner, ctx.nextId(), status, duration.unit, sharedValue, { negative: true });
 }
 
 /**

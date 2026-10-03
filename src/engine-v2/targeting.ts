@@ -27,6 +27,8 @@ export const rangeOfV2 = (def: TargetableV2, bonus = 0): number => (def.range ==
 
 export interface TargetV2 {
   uid?: string;
+  /** Segundo alvo-campeão — só usado por "two_enemies" (Elo Natural da Sylvane, ver effects.ts applyLink). */
+  uid2?: string;
   pos?: Hex;
   pos2?: Hex;
   dir?: Hex;
@@ -101,6 +103,23 @@ export function validateTargetV2(s: GameStateV2, owner: ChampionStateV2, def: Ta
     }
     case "enemy":
       return enemyAt(t.uid);
+    case "two_enemies": {
+      // Elo Natural da Sylvane (regras-e-decisoes.md §19/claude/formato-dados.md
+      // "link" + share_control_percent) liga DOIS inimigos entre si, não o
+      // próprio campeão a um inimigo — igual ao "Elo" do MVP original
+      // (src/engine/targeting.ts, mesmo nome de target). Só campeão de verdade
+      // entra aqui (não boss/monstro/lacaio): o vínculo mora em
+      // ChampionStateV2.statuses, que só campeão tem.
+      const enemyChampionAt = (uid?: string): string | null => {
+        const u = findChampion(s, uid);
+        if (!u) return "alvo inválido";
+        if (!u.alive) return "alvo não está em campo";
+        if (u.team === owner.team) return "alvo não é inimigo";
+        if (!inRange(s, owner.pos, u.pos, range)) return "fora de alcance";
+        return null;
+      };
+      return enemyChampionAt(t.uid) ?? enemyChampionAt(t.uid2) ?? (t.uid === t.uid2 ? "os dois alvos precisam ser diferentes" : null);
+    }
     case "ally":
       return championAt(t.uid, true, true);
     case "champion":
@@ -214,6 +233,15 @@ export function enumerateTargetsV2(s: GameStateV2, owner: ChampionStateV2, def: 
         if (m.alive && inRange(s, owner.pos, m.pos, range)) push({ uid: m.uid });
       }
       break;
+    case "two_enemies": {
+      const enemies = enemiesInRange(s, owner, def, rangeBonus);
+      for (const a of enemies) {
+        for (const b of enemies) {
+          if (a.uid < b.uid) push({ uid: a.uid, uid2: b.uid });
+        }
+      }
+      break;
+    }
     case "ally":
     case "champion":
       for (const c of allChampionsV2(s)) {
