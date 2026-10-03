@@ -19,6 +19,8 @@ import { forcedMove, pullChampion, pushChampion, teleportChampion } from "./move
 import { championsInRadius } from "./targeting";
 import { wallAtV2 } from "./world";
 import { reviveChampionV2 } from "./death";
+import { attackBossV2, attackMinionV2 } from "./boss";
+import { attackMonsterV2 } from "./monsters";
 
 /** Nenhum campeão vivo (de qualquer equipe) na casa. */
 function isEmptyOfChampions(game: GameStateV2, h: Hex): boolean {
@@ -111,6 +113,47 @@ function resolveAroundSelf(ctx: EffectContextV2, effect: Effect): ChampionStateV
   return championsInRadius(ctx.game, ctx.attacker.pos, radius, { excludeUid: ctx.attacker.uid });
 }
 
+/**
+ * Centro e raio de uma área de `damage`, se o efeito for mesmo uma área:
+ * `around_self` (ao redor de quem usou a carta) ou `radius` com uma casa
+ * escolhida pelo jogador (`ctx.targetCell`, cartas de alvo "cell" como Bola
+ * de Fogo/Chuva de Aço/Golpe do Fim do Mundo). Devolve null pra dano de alvo
+ * único (sem radius nem around_self) — não é área, não deve acertar boss/
+ * monstro/lacaio por aqui (isso já é resolvido em cardPlay.ts pro alvo único).
+ */
+function resolveDamageAreaV2(ctx: EffectContextV2, effect: Effect): { origin: Hex; radius: number } | null {
+  const radius = effect.radius ?? effect.area_radius;
+  if (radius === undefined) return null;
+  if (effect.around_self) return ctx.attacker ? { origin: ctx.attacker.pos, radius } : null;
+  if (ctx.targetCell) return { origin: ctx.targetCell, radius };
+  return null;
+}
+
+/**
+ * Dano de área também acerta o boss e os monstros/lacaios do mapa dentro do
+ * raio, não só campeões (achado de escopo, 02/10/2026 — KANBAN "dano em área/
+ * aleatório contra boss e monstro"). Usa as mesmas funções dedicadas de
+ * cardPlay.ts (attackBossV2/attackMonsterV2/attackMinionV2) em vez do
+ * pipeline genérico de dano entre campeões — mesma convenção do resto do
+ * motor v2 (boss/monstro/lacaio nunca passam por dealDamageV2 direto).
+ * attackMonsterV2 já dispara a reação da criatura antes do dano, igual a um
+ * ataque de alvo único — a área não é tratada como exceção a essa regra.
+ */
+function hitBossMonstersAndMinionsInAreaV2(ctx: EffectContextV2, area: { origin: Hex; radius: number }, effect: Effect): void {
+  if (!ctx.attacker) return;
+  const amount = (effect.amount ?? 0) + (ctx.bonusDamage ?? 0);
+  const opts = { ignoreDefense: effect.ignore_defense };
+  if (ctx.game.boss.alive && hexDistance(area.origin, ctx.game.boss.pos) <= area.radius) {
+    attackBossV2(ctx.game, ctx.attacker, amount, opts);
+  }
+  for (const m of ctx.game.monsters) {
+    if (m.alive && hexDistance(area.origin, m.pos) <= area.radius) attackMonsterV2(ctx.game, ctx.attacker, m, amount, opts);
+  }
+  for (const m of ctx.game.minions) {
+    if (m.alive && hexDistance(area.origin, m.pos) <= area.radius) attackMinionV2(ctx.game, ctx.attacker, m.uid, amount);
+  }
+}
+
 /** Todo inimigo vivo a até `ctx.rangeForAll` casas de quem usou a carta. */
 function resolveAllEnemiesInRange(ctx: EffectContextV2): ChampionStateV2[] {
   if (!ctx.attacker || ctx.rangeForAll === undefined) return [];
@@ -128,7 +171,13 @@ function resolveAllPoisonedEnemiesInRange(ctx: EffectContextV2): ChampionStateV2
  * `damage`: causa dano a cada alvo. Devolve o resultado por alvo (uid -> dano
  * final). Com `around_self` (Nova de Fogo, Golpe do Titã), ignora `targets` e
  * acerta todo mundo (aliado incluso — fogo amigo existe) ao redor de quem usou
- * a carta, raio `effect.radius`.
+ * a carta, raio `effect.radius`. Com `radius` e uma casa escolhida pelo
+ * jogador (`ctx.targetCell`, cartas de alvo "cell" como Bola de Fogo/Chuva de
+ * Aço/Golpe do Fim do Mundo — achado corrigido 02/10/2026), idem mas ao redor
+ * dessa casa, não de quem usou a carta: antes disso `targets` (sempre
+ * `[owner]` pra alvo "cell", ver cardPlay.ts) acabava sendo o único acertado,
+ * ignorando a área de verdade. Em qualquer um dos dois casos, boss/monstros/
+ * lacaios do mapa dentro do raio também sofrem o dano (hitBossMonstersAndMinionsInAreaV2).
  */
 export function applyDamage(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): Record<string, number> {
   const opts: DamageOptsV2 = {
@@ -136,7 +185,13 @@ export function applyDamage(ctx: EffectContextV2, effect: Effect, targets: Champ
     ignoreShield: effect.ignore_shield,
     bonus: ctx.bonusDamage,
   };
-  const actualTargets = effect.around_self ? resolveAroundSelf(ctx, effect) : targets;
+  const area = resolveDamageAreaV2(ctx, effect);
+  const actualTargets = effect.around_self
+    ? resolveAroundSelf(ctx, effect)
+    : area
+      ? championsInRadius(ctx.game, area.origin, area.radius)
+      : targets;
+  if (area) hitBossMonstersAndMinionsInAreaV2(ctx, area, effect);
   const out: Record<string, number> = {};
   for (const target of actualTargets) {
     const result = dealDamageV2(ctx.attacker, target, effect.amount ?? 0, opts);

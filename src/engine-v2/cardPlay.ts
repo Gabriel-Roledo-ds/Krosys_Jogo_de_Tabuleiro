@@ -34,8 +34,9 @@
 
 import { rngOf } from "../engine/rng";
 import type { Effect } from "../engine/data";
-import { hexDirectionTo } from "../design/hexGrid";
+import { hexDirectionTo, hexDistance } from "../design/hexGrid";
 import { applyEffectV2, type EffectContextV2 } from "./effects";
+import { dealDamageV2 } from "./damage";
 import { attackBossV2, attackMinionV2, BOSS_UID_V2, isMinionUidV2 } from "./boss";
 import { attackMonsterV2, findMonsterV2, isMonsterUidV2 } from "./monsters";
 import { discardCardV2 } from "./deck";
@@ -148,6 +149,39 @@ function resolveEffectTargetsV2(game: GameStateV2, owner: ChampionStateV2, effec
   return baseTargets;
 }
 
+/**
+ * Candidato ao sorteio de `random_targets` (Chuva de Faíscas/Balas): campeão
+ * inimigo, o boss ou um monstro/lacaio do mapa, todos ao alcance do rank.
+ * Achado de escopo (02/10/2026, KANBAN "dano em área/aleatório contra boss e
+ * monstro"): antes disso o sorteio só considerava campeões — boss e monstros
+ * nunca entravam na roleta mesmo estando ao alcance.
+ */
+type RandomDamageCandidateV2 = { kind: "champion"; champion: ChampionStateV2 } | { kind: "boss" } | { kind: "monster"; monster: MonsterStateV2 } | { kind: "minion"; uid: string };
+
+function randomDamageCandidatesV2(game: GameStateV2, owner: ChampionStateV2, rank: CardRank): RandomDamageCandidateV2[] {
+  const range = rankRangeV2(rank);
+  const numRange = typeof range === "number" ? range : 0;
+  const out: RandomDamageCandidateV2[] = enemiesInRange(game, owner, { range, target: "enemy" }).map((c) => ({ kind: "champion", champion: c }));
+  if (game.boss.alive && hexDistance(owner.pos, game.boss.pos) <= numRange) out.push({ kind: "boss" });
+  for (const m of game.monsters) if (m.alive && hexDistance(owner.pos, m.pos) <= numRange) out.push({ kind: "monster", monster: m });
+  for (const m of game.minions) if (m.alive && hexDistance(owner.pos, m.pos) <= numRange) out.push({ kind: "minion", uid: m.uid });
+  return out;
+}
+
+/** Aplica um bloco `damage` com `random_targets` sobre o sorteio combinado acima (champion/boss/monster/minion). */
+function applyRandomDamageV2(game: GameStateV2, owner: ChampionStateV2, effect: Effect, rank: CardRank, bonusDamage?: number): void {
+  const candidates = randomDamageCandidatesV2(game, owner, rank);
+  const picked = rngOf(game).shuffle(candidates).slice(0, effect.random_targets as number);
+  const amount = (effect.amount ?? 0) + (bonusDamage ?? 0);
+  const opts = { ignoreDefense: effect.ignore_defense };
+  for (const c of picked) {
+    if (c.kind === "champion") dealDamageV2(owner, c.champion, amount, opts);
+    else if (c.kind === "boss") attackBossV2(game, owner, amount, opts);
+    else if (c.kind === "monster") attackMonsterV2(game, owner, c.monster, amount, opts);
+    else attackMinionV2(game, owner, c.uid, amount);
+  }
+}
+
 export interface PlayCardResultV2 {
   owner: ChampionStateV2;
   card: CardDefV2;
@@ -187,6 +221,12 @@ export function resolveCardEffectsV2(game: GameStateV2, owner: ChampionStateV2, 
     ...ctxExtra,
   };
   for (const effect of rank.effects) {
+    if (def.target === "random_enemies" && effect.type === "damage" && typeof effect.random_targets === "number") {
+      // Sorteio combinado (champion/boss/monster/lacaio) em vez do pipeline genérico de
+      // effects.ts, que só conhece ChampionStateV2 — ver randomDamageCandidatesV2 acima.
+      applyRandomDamageV2(game, owner, effect, rank, bonusDamage);
+      continue;
+    }
     const effectTargets = resolveEffectTargetsV2(game, owner, effect, targets, rank);
     applyEffectV2(ctx, effect, effectTargets);
   }

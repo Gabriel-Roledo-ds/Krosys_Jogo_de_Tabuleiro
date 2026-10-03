@@ -90,12 +90,35 @@ describe("playCardV2 — Chuva de Balas (random_enemies)", () => {
       c.pos = { q: niara.pos.q + i + 1, r: niara.pos.r };
       c.defense = 0;
     });
+    // Boss e monstros do mapa também entram no sorteio agora (ver
+    // randomDamageCandidatesV2 em cardPlay.ts) — afastados daqui pra fora do
+    // alcance (6) pra manter este teste focado só nos 3 campeões inimigos.
+    game.boss.pos = { q: niara.pos.q - 20, r: niara.pos.r };
+    for (const m of game.monsters) m.pos = { q: niara.pos.q - 20, r: niara.pos.r };
     game.teams.A.mana = 10;
     const card = putCardInHand(game, "A", niara.uid, "niara_chuva_balas");
 
     playCardV2(game, "A", card.uid, 2, {});
 
     for (const c of enemies) expect(c.hp).toBe(c.maxHp - 3);
+  });
+
+  it("boss e monstro dentro do alcance também entram no sorteio (achado de escopo, 02/10/2026)", () => {
+    const game = createGameV2(1);
+    const niara = game.teams.A.champions.find((c) => c.defId === "niara")!;
+    // Só o boss ao alcance (1 campeão inimigo bem longe, fora do alcance 6) —
+    // com random_targets 3 e só 1 candidato possível (o boss), o boss tem que
+    // ser o alvo.
+    niara.pos = { ...game.boss.pos, q: game.boss.pos.q - 1 };
+    for (const c of game.teams.B.champions) c.pos = { q: niara.pos.q - 20, r: niara.pos.r };
+    for (const m of game.monsters) m.pos = { q: niara.pos.q - 20, r: niara.pos.r };
+    game.teams.A.mana = 10;
+    const card = putCardInHand(game, "A", niara.uid, "niara_chuva_balas");
+    const hpBefore = game.boss.hp;
+
+    playCardV2(game, "A", card.uid, 2, {});
+
+    expect(game.boss.hp).toBeLessThan(hpBefore);
   });
 });
 

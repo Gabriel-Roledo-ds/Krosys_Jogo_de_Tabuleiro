@@ -89,10 +89,16 @@ export function validateTargetV2(s: GameStateV2, owner: ChampionStateV2, def: Ta
   switch (def.target) {
     case "self":
       return null;
-    case "random_enemies":
-      return allChampionsV2(s).some((c) => c.alive && c.team !== owner.team && inRange(s, owner.pos, c.pos, range))
-        ? null
-        : "nenhum inimigo ao alcance";
+    case "random_enemies": {
+      // Boss e monstros/lacaios do mapa também entram no sorteio (ver
+      // randomDamageCandidatesV2 em cardPlay.ts) — a carta é jogável se
+      // qualquer um dos dois tipos estiver ao alcance, não só campeão.
+      const champOk = allChampionsV2(s).some((c) => c.alive && c.team !== owner.team && inRange(s, owner.pos, c.pos, range));
+      const bossOk = s.boss.alive && inRange(s, owner.pos, s.boss.pos, range);
+      const monsterOk = s.monsters.some((m) => m.alive && inRange(s, owner.pos, m.pos, range));
+      const minionOk = s.minions.some((m) => m.alive && inRange(s, owner.pos, m.pos, range));
+      return champOk || bossOk || monsterOk || minionOk ? null : "nenhum inimigo ao alcance";
+    }
     case "enemy":
       return enemyAt(t.uid);
     case "ally":
