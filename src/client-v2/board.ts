@@ -129,6 +129,23 @@ export function createBoard(parent: HTMLElement, onCell: (q: number, r: number) 
     gfx.fillStyle(hp / max > 0.4 ? 0x57d16f : 0xe0504a, 1).fillRect(cx - w / 2 + 1, cy + SIZE * 0.55 + 1, Math.max(0, Math.round(((w - 2) * hp) / max)), 3);
   }
 
+  /** Triângulo apontando pra cima, centrado em (cx,cy) — ícone de perigo/gatilho instantâneo (armadilha, mola, marca etc.), pra distinguir de área contínua (círculo). */
+  function triangle(cx: number, cy: number, r: number, fill: number, alpha: number, strokeColor?: number) {
+    const pts: [number, number][] = [0, 1, 2].map((i) => {
+      const deg = -90 + 120 * i;
+      const rad = (Math.PI / 180) * deg;
+      return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+    });
+    gfx.fillStyle(fill, alpha);
+    gfx.beginPath();
+    gfx.moveTo(pts[0][0], pts[0][1]);
+    gfx.lineTo(pts[1][0], pts[1][1]);
+    gfx.lineTo(pts[2][0], pts[2][1]);
+    gfx.closePath();
+    gfx.fillPath();
+    if (strokeColor !== undefined) gfx.lineStyle(1.5, strokeColor, 1).strokePath();
+  }
+
   function zone(center: Hex, radius: number, color: number, alpha: number) {
     for (let dq = -radius; dq <= radius; dq++) {
       const rMin = Math.max(-radius, -dq - radius);
@@ -190,16 +207,65 @@ export function createBoard(parent: HTMLElement, onCell: (q: number, r: number) 
         if (hl.targets.has(k)) hexPoly({ q, r }, 0xffd23f, 0.4, 0xffd23f, 1);
       }
 
+    // Efeitos de chão (hazards.ts/tick.ts): área contínua (dano/veneno/lentidão por
+    // rodada, ou terreno que só encarece movimento) desenhada como círculo; gatilho
+    // de uma vez (armadilha/mola/marca/muro de chamas) como triângulo — a FORMA
+    // já diferencia "fica aqui e dói com o tempo" de "pisa e dispara uma vez",
+    // sem precisar de 8 ícones desenhados à mão (ainda não há arte própria por
+    // tipo — ver claude/estetica-visual.md).
+    const AREA_GROUND: Record<string, number> = { fire: 0xff7a1a, venom: 0x7a3fb0, venom_terrain: 0x5a2a80, slow: 0x3fa0d0 };
+    const TRIGGER_GROUND: Record<string, number> = { trap: 0xc0304a, spring: 0x3fd0c0, fire_wall: 0xff3f1a, mark: 0xffd23f };
     for (const g of view.ground as any[]) {
       const { x, y } = toCanvas(g.pos);
-      const c = g.kind === "venom" ? 0x7a3fb0 : 0xff7a1a;
-      gfx.fillStyle(c, 0.55).fillCircle(x, y, SIZE * 0.55);
+      if (g.kind in AREA_GROUND) {
+        gfx.fillStyle(AREA_GROUND[g.kind], 0.55).fillCircle(x, y, SIZE * 0.55);
+      } else {
+        const c = TRIGGER_GROUND[g.kind] ?? 0x999999;
+        triangle(x, y, SIZE * 0.5, c, 0.75, 0x000000);
+      }
     }
     for (const wl of view.walls as any[]) {
       const { x, y } = toCanvas(wl.pos);
       gfx.fillStyle(0x7d7d8c, 1).fillCircle(x, y, SIZE * 0.7);
-      gfx.lineStyle(1, 0x3a3a48, 1).strokeCircle(x, y, SIZE * 0.7);
+      // Pilar ★★★ do Dorin (blocksRangedAttacks): anel extra pra marcar que
+      // também bloqueia ataque à distância, não só movimento (regras-e-decisoes.md §7).
+      gfx.lineStyle(wl.blocksRangedAttacks ? 3 : 1, wl.blocksRangedAttacks ? 0xffd23f : 0x3a3a48, 1).strokeCircle(x, y, SIZE * 0.7);
       label(x, y, String(wl.hp), "#fff", 11);
+    }
+    // Torre de Vigia (Dorin, create_structure — regras-e-decisoes.md §10): forma de
+    // torre (base + ameia triangular), cor da equipe dona, com o alcance de dano
+    // por rodada marcado como anel fraco (mesma convenção do raio do boss acima).
+    for (const st of (view.structures ?? []) as any[]) {
+      const { x, y } = toCanvas(st.pos);
+      zone(st.pos, st.range, COLORS[st.team as "A" | "B"], 0.06);
+      gfx.fillStyle(0x4a4038, 1).fillRect(x - SIZE * 0.45, y - SIZE * 0.1, SIZE * 0.9, SIZE * 0.75);
+      triangle(x, y - SIZE * 0.35, SIZE * 0.55, COLORS[st.team as "A" | "B"], 1, 0x000000);
+      label(x, y + SIZE * 0.3, "TOR", "#fff", 8);
+    }
+    // Portal (Dorin): par de anéis roxos giratórios (estático aqui) ligados por
+    // uma linha pontilhada — a MESMA cor nas duas pontas deixa claro que são um
+    // par, sem precisar de rótulo repetido.
+    for (const p of (view.portals ?? []) as any[]) {
+      const pa = toCanvas(p.a);
+      const pb = toCanvas(p.b);
+      gfx.lineStyle(1, 0xb060ff, 0.35);
+      gfx.beginPath();
+      gfx.moveTo(pa.x, pa.y);
+      gfx.lineTo(pb.x, pb.y);
+      gfx.strokePath();
+      for (const pt of [pa, pb]) {
+        gfx.lineStyle(2, 0xb060ff, 1).strokeCircle(pt.x, pt.y, SIZE * 0.5);
+        gfx.lineStyle(1, 0xe0c0ff, 0.6).strokeCircle(pt.x, pt.y, SIZE * 0.3);
+      }
+    }
+    // Explosão retardada (Ignira, delayed_damage): círculo de alerta pulsante
+    // (estático — sem loop de frame ainda) com a contagem regressiva no centro,
+    // e a área que vai ser atingida marcada fraca por baixo.
+    for (const d of (view.delayedDamages ?? []) as any[]) {
+      const { x, y } = toCanvas(d.pos);
+      if (d.radius > 0) zone(d.pos, d.radius, 0xff3f1a, 0.1);
+      gfx.lineStyle(2, 0xff3f1a, 0.9).strokeCircle(x, y, SIZE * 0.4);
+      label(x, y, String(d.roundsLeft), "#ff9a6a", 12);
     }
 
     const b = view.boss;
