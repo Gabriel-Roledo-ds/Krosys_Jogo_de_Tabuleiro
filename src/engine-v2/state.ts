@@ -324,6 +324,8 @@ export interface GameStateV2 {
   monsters: MonsterStateV2[];
   /** Lacaios invocados pelo boss ("Prole") — ver MinionStateV2. */
   minions: MinionStateV2[];
+  /** Neblina de guerra: toda casa que algum campeão vivo da equipe já viu em qualquer momento da partida (chave "q,r") — ver vision.ts. Nunca esquece. */
+  exploredByTeam: Record<TeamId, string[]>;
 }
 
 export function newTurnV2(team: TeamId, phase: PhaseV2): TurnStateV2 {
@@ -466,6 +468,7 @@ export function createGameV2(seed: number, options: CreateGameV2Options = {}): G
     bountyTeam: null,
     monsters,
     minions: [],
+    exploredByTeam: { A: [], B: [] },
   };
 }
 

@@ -267,5 +267,9 @@
   "resurrect": {
     "placement": "adjacent_to_caster",
     "keeps_hand": true
+  },
+  "vision_v2": {
+    "default_radius": 4,
+    "_notes": "Raio de visao por campeao no tabuleiro hexagonal (roster v2) — regras-e-decisoes.md secao 20. So parede bloqueia (mesma regra de linha de visao de carta, glossario.md), campeao/monstro/estrutura nao bloqueiam. [DEFINIDO 03/10/2026, ajustavel aqui sem mexer em codigo]"
   }
 }

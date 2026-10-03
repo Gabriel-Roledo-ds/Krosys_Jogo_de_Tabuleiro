@@ -35,6 +35,7 @@ import { canPayCardV2, gainTurnManaV2, spendCardManaV2 } from "./mana";
 import { movementBudgetV2, reachableMap, rollMovementDie } from "./movement";
 import { expireChampionTurnStatuses, tickRoundV2 } from "./tick";
 import { onLandV2 } from "./hazards";
+import { updateVisionMemoryV2 } from "./vision";
 import {
   getChampionV2,
   logV2,
@@ -103,6 +104,7 @@ function nonMonsterHandSizeV2(hand: CardInstanceV2[]): number {
 
 /** Começa a partida: primeiro turno da equipe A. */
 export function startGameV2(game: GameStateV2): void {
+  updateVisionMemoryV2(game); // já nasce com a área de largada de cada equipe explorada (vision.ts)
   beginTurn(game);
 }
 
@@ -347,6 +349,7 @@ export function applyActionV2(game: GameStateV2, team: TeamId, a: ActionV2): voi
       onLandV2(game, c, { voluntary: true, from });
       minionsAttackAdjacentV2(game, c);
       resolveDeathsV2(game, team);
+      updateVisionMemoryV2(game); // novo campo de visão depois do movimento (vision.ts)
       return;
     }
     case "play":

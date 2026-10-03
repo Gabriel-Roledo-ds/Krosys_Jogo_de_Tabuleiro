@@ -18,6 +18,8 @@ import { movementBudgetV2, reachableMap } from "../engine-v2/movement";
 import { rankRangeV2, resurrectBlockedV2 } from "../engine-v2/cardPlay";
 import { cannotBasicV2, cannotCastV2 } from "../engine-v2/turn";
 import { enumerateTargetsV2 } from "../engine-v2/targeting";
+import { knownCellKeysV2, teamVisionViewV2 } from "../engine-v2/vision";
+import { hexKey } from "../design/hexGrid";
 import { balance } from "../engine/data";
 
 export type AwaitingV2 =
@@ -119,6 +121,18 @@ export function viewForV2(s: GameStateV2, me: TeamId | null): unknown {
     hints.handLimit = balance.hand.max_size;
   }
 
+  // Neblina de guerra (regras-e-decisoes.md §20, vision.ts): o que a equipe de
+  // quem está vendo já viu (agora ou antes) decide o que do MAPA (monstro,
+  // parede, chão, estrutura, portal, dano retardado) aparece pra ela — cada um
+  // é estático ou some sozinho quando destruído/expira, então "já visto"
+  // continua confiável sem precisar revalidar a cada turno. O boss e os
+  // campeões (dos dois times) NÃO são filtrados por visão: o boss é um marco
+  // central sempre "conhecido" (decisão [PADRÃO]) e esconder posição/vida de
+  // campeão inimigo é uma mudança maior de UX (modo battle royale) que fica
+  // pendente de confirmação do dono do projeto — ver KANBAN.md item 39.
+  const known = me ? knownCellKeysV2(s, me) : null;
+  const inKnown = (h: { pos: { q: number; r: number } }) => !known || known.has(hexKey(h.pos));
+
   return {
     board: s.board,
     round: s.round,
@@ -141,11 +155,15 @@ export function viewForV2(s: GameStateV2, me: TeamId | null): unknown {
       stack: s.pending.stack,
     },
     teams,
-    monsters: s.monsters,
-    minions: s.minions,
+    monsters: s.monsters.filter(inKnown),
+    minions: s.minions.filter(inKnown),
     boss: { ...s.boss, deck: s.boss.deck.length, discard: s.boss.discard },
-    walls: s.walls,
-    ground: s.ground,
+    walls: s.walls.filter(inKnown),
+    structures: s.structures.filter(inKnown),
+    portals: known ? s.portals.filter((p) => known.has(hexKey(p.a)) || known.has(hexKey(p.b))) : s.portals,
+    delayedDamages: s.delayedDamages.filter(inKnown),
+    ground: s.ground.filter(inKnown),
+    vision: me ? teamVisionViewV2(s, me) : null,
     log: s.log.slice(-150),
     hints,
     foe,
