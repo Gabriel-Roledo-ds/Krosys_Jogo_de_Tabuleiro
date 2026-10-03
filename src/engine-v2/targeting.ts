@@ -17,6 +17,7 @@ import { allChampionsV2, getChampionV2, type ChampionStateV2, type GameStateV2, 
 import { hasLineOfSightV2, wallAtV2 } from "./world";
 import { BOSS_UID_V2, isMinionUidV2 } from "./boss";
 import { isMonsterUidV2 } from "./monsters";
+import { isTempleUidV2 } from "./temples";
 
 export interface TargetableV2 {
   range: number | "self";
@@ -70,6 +71,12 @@ export function validateTargetV2(s: GameStateV2, owner: ChampionStateV2, def: Ta
       if (!inRange(s, owner.pos, m.pos, range)) return "fora de alcance";
       return null;
     }
+    if (isTempleUidV2(uid)) {
+      const t = s.temples.find((x) => x.uid === uid);
+      if (!t || !t.alive) return "guardião de templo não está em campo";
+      if (!inRange(s, owner.pos, t.pos, range)) return "fora de alcance";
+      return null;
+    }
     const u = findChampion(s, uid);
     if (!u) return "alvo inexistente";
     if (!u.alive) return "alvo não está em campo";
@@ -92,14 +99,15 @@ export function validateTargetV2(s: GameStateV2, owner: ChampionStateV2, def: Ta
     case "self":
       return null;
     case "random_enemies": {
-      // Boss e monstros/lacaios do mapa também entram no sorteio (ver
-      // randomDamageCandidatesV2 em cardPlay.ts) — a carta é jogável se
-      // qualquer um dos dois tipos estiver ao alcance, não só campeão.
+      // Boss, monstros/lacaios do mapa e guardiões de templo também entram no
+      // sorteio (ver randomDamageCandidatesV2 em cardPlay.ts) — a carta é
+      // jogável se qualquer um desses tipos estiver ao alcance, não só campeão.
       const champOk = allChampionsV2(s).some((c) => c.alive && c.team !== owner.team && inRange(s, owner.pos, c.pos, range));
       const bossOk = s.boss.alive && inRange(s, owner.pos, s.boss.pos, range);
       const monsterOk = s.monsters.some((m) => m.alive && inRange(s, owner.pos, m.pos, range));
       const minionOk = s.minions.some((m) => m.alive && inRange(s, owner.pos, m.pos, range));
-      return champOk || bossOk || monsterOk || minionOk ? null : "nenhum inimigo ao alcance";
+      const templeOk = s.temples.some((t) => t.alive && inRange(s, owner.pos, t.pos, range));
+      return champOk || bossOk || monsterOk || minionOk || templeOk ? null : "nenhum inimigo ao alcance";
     }
     case "enemy":
       return enemyAt(t.uid);
@@ -234,6 +242,9 @@ export function enumerateTargetsV2(s: GameStateV2, owner: ChampionStateV2, def: 
       }
       for (const m of s.minions) {
         if (m.alive && inRange(s, owner.pos, m.pos, range)) push({ uid: m.uid });
+      }
+      for (const t of s.temples) {
+        if (t.alive && inRange(s, owner.pos, t.pos, range)) push({ uid: t.uid });
       }
       break;
     case "two_enemies": {

@@ -36,6 +36,7 @@ import { applyEffectV2, type EffectContextV2 } from "./effects";
 import { dealDamageV2 } from "./damage";
 import { attackBossV2, attackMinionV2, BOSS_UID_V2, isMinionUidV2 } from "./boss";
 import { attackMonsterV2, findMonsterV2, isMonsterUidV2 } from "./monsters";
+import { attackTempleV2, findTempleV2, isTempleUidV2 } from "./temples";
 import { discardCardV2 } from "./deck";
 import { canPayCardV2, spendCardManaV2 } from "./mana";
 import { basicTargetV2, getCardDefV2, getCardRankV2, getChampionDefV2, type BasicDefV2, type CardDefV2, type CardRank } from "./data";
@@ -69,6 +70,8 @@ export interface TargetResolutionV2 {
   monsterTarget?: string;
   /** uid do lacaio, se o alvo escolhido foi um lacaio do boss (ver boss.ts, summon_minion). */
   minionTarget?: string;
+  /** uid do templo, se o alvo escolhido foi um guardião de templo (ver temples.ts). */
+  templeTarget?: string;
 }
 
 /**
@@ -99,6 +102,7 @@ export function resolveCardTargetsV2(owner: ChampionStateV2, cardTarget: string,
       if (t.uid === BOSS_UID_V2) return { targets: [], ctxExtra, bossTarget: true };
       if (t.uid && isMonsterUidV2(t.uid)) return { targets: [], ctxExtra, monsterTarget: t.uid };
       if (t.uid && isMinionUidV2(t.uid)) return { targets: [], ctxExtra, minionTarget: t.uid };
+      if (t.uid && isTempleUidV2(t.uid)) return { targets: [], ctxExtra, templeTarget: t.uid };
       if (t.uid) targets = [getChampionV2(game, t.uid)];
       break;
     case "ally":
@@ -162,7 +166,12 @@ function resolveEffectTargetsV2(game: GameStateV2, owner: ChampionStateV2, effec
  * monstro"): antes disso o sorteio só considerava campeões — boss e monstros
  * nunca entravam na roleta mesmo estando ao alcance.
  */
-type RandomDamageCandidateV2 = { kind: "champion"; champion: ChampionStateV2 } | { kind: "boss" } | { kind: "monster"; monster: MonsterStateV2 } | { kind: "minion"; uid: string };
+type RandomDamageCandidateV2 =
+  | { kind: "champion"; champion: ChampionStateV2 }
+  | { kind: "boss" }
+  | { kind: "monster"; monster: MonsterStateV2 }
+  | { kind: "minion"; uid: string }
+  | { kind: "temple"; uid: string };
 
 function randomDamageCandidatesV2(game: GameStateV2, owner: ChampionStateV2, rank: CardRank): RandomDamageCandidateV2[] {
   const range = rankRangeV2(rank);
@@ -171,10 +180,11 @@ function randomDamageCandidatesV2(game: GameStateV2, owner: ChampionStateV2, ran
   if (game.boss.alive && hexDistance(owner.pos, game.boss.pos) <= numRange) out.push({ kind: "boss" });
   for (const m of game.monsters) if (m.alive && hexDistance(owner.pos, m.pos) <= numRange) out.push({ kind: "monster", monster: m });
   for (const m of game.minions) if (m.alive && hexDistance(owner.pos, m.pos) <= numRange) out.push({ kind: "minion", uid: m.uid });
+  for (const te of game.temples) if (te.alive && hexDistance(owner.pos, te.pos) <= numRange) out.push({ kind: "temple", uid: te.uid });
   return out;
 }
 
-/** Aplica um bloco `damage` com `random_targets` sobre o sorteio combinado acima (champion/boss/monster/minion). */
+/** Aplica um bloco `damage` com `random_targets` sobre o sorteio combinado acima (champion/boss/monster/minion/temple). */
 function applyRandomDamageV2(game: GameStateV2, owner: ChampionStateV2, effect: Effect, rank: CardRank, bonusDamage?: number): void {
   const candidates = randomDamageCandidatesV2(game, owner, rank);
   const picked = rngOf(game).shuffle(candidates).slice(0, effect.random_targets as number);
@@ -184,7 +194,8 @@ function applyRandomDamageV2(game: GameStateV2, owner: ChampionStateV2, effect: 
     if (c.kind === "champion") dealDamageV2(owner, c.champion, amount, opts);
     else if (c.kind === "boss") attackBossV2(game, owner, amount, opts);
     else if (c.kind === "monster") attackMonsterV2(game, owner, c.monster, amount, opts);
-    else attackMinionV2(game, owner, c.uid, amount);
+    else if (c.kind === "minion") attackMinionV2(game, owner, c.uid, amount);
+    else attackTempleV2(game, owner, findTempleV2(game, c.uid), amount, opts);
   }
 }
 
@@ -203,7 +214,7 @@ export interface PlayCardResultV2 {
  * no ato de jogar; em turn.ts, no ato de EMPILHAR, não no de resolver).
  */
 export function resolveCardEffectsV2(game: GameStateV2, owner: ChampionStateV2, def: CardDefV2, rank: CardRank, t: TargetV2, bonusDamage?: number): void {
-  const { targets, ctxExtra, bossTarget, monsterTarget, minionTarget } = resolveCardTargetsV2(owner, def.target, t, game);
+  const { targets, ctxExtra, bossTarget, monsterTarget, minionTarget, templeTarget } = resolveCardTargetsV2(owner, def.target, t, game);
   if (bossTarget) {
     applyCardEffectsToBossV2(game, owner, rank.effects, bonusDamage);
     logV2(game, `${owner.defId} (${owner.team}) usa ${def.name} (rank ${rank.rank}) no Boss`);
@@ -217,6 +228,11 @@ export function resolveCardEffectsV2(game: GameStateV2, owner: ChampionStateV2, 
   if (minionTarget) {
     applyCardEffectsToMinionV2(game, owner, minionTarget, rank.effects, bonusDamage);
     logV2(game, `${owner.defId} (${owner.team}) usa ${def.name} (rank ${rank.rank}) num lacaio`);
+    return;
+  }
+  if (templeTarget) {
+    applyCardEffectsToTempleV2(game, owner, templeTarget, rank.effects, bonusDamage);
+    logV2(game, `${owner.defId} (${owner.team}) usa ${def.name} (rank ${rank.rank}) num guardião de templo`);
     return;
   }
   const ctx: EffectContextV2 = {
@@ -268,6 +284,14 @@ function applyCardEffectsToMinionV2(game: GameStateV2, owner: ChampionStateV2, m
   }
 }
 
+/** Mesma ideia, mas contra o guardião de um templo de bênção (ver temples.ts). */
+function applyCardEffectsToTempleV2(game: GameStateV2, owner: ChampionStateV2, templeUid: string, effects: Effect[], bonusDamage?: number): void {
+  for (const effect of effects) {
+    if (effect.type !== "damage") continue;
+    attackTempleV2(game, owner, findTempleV2(game, templeUid), (effect.amount ?? 0) + (bonusDamage ?? 0), { ignoreDefense: effect.ignore_defense });
+  }
+}
+
 /**
  * Executa uma carta já escolhida pelo jogador (carta + rank + alvo): valida
  * o alvo contra o alcance do rank, cobra a mana de equipe, consome e limpa o
@@ -311,7 +335,7 @@ export interface PlayBasicResultV2 {
 /** Mesma ideia de resolveCardEffectsV2, mas pra habilidade básica (sem rank/mana/descarte). */
 export function resolveBasicEffectsV2(game: GameStateV2, owner: ChampionStateV2, basic: BasicDefV2, t: TargetV2): void {
   const target = basicTargetV2(basic);
-  const { targets, ctxExtra, bossTarget, monsterTarget, minionTarget } = resolveCardTargetsV2(owner, target, t, game);
+  const { targets, ctxExtra, bossTarget, monsterTarget, minionTarget, templeTarget } = resolveCardTargetsV2(owner, target, t, game);
   if (bossTarget) {
     applyCardEffectsToBossV2(game, owner, basic.effects);
     logV2(game, `${owner.defId} (${owner.team}) usa a básica (${basic.name}) no Boss`);
@@ -325,6 +349,11 @@ export function resolveBasicEffectsV2(game: GameStateV2, owner: ChampionStateV2,
   if (minionTarget) {
     applyCardEffectsToMinionV2(game, owner, minionTarget, basic.effects);
     logV2(game, `${owner.defId} (${owner.team}) usa a básica (${basic.name}) num lacaio`);
+    return;
+  }
+  if (templeTarget) {
+    applyCardEffectsToTempleV2(game, owner, templeTarget, basic.effects);
+    logV2(game, `${owner.defId} (${owner.team}) usa a básica (${basic.name}) num guardião de templo`);
     return;
   }
   const ctx: EffectContextV2 = {

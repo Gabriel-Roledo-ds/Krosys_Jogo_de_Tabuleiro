@@ -14,7 +14,7 @@ import { addHex, hexDirectionTo, hexDistance, hexKey, hexNeighbors, sameHex, typ
 import { inHexBoard } from "../design/hexBoard";
 import { allChampionsV2, type ChampionStateV2, type GameStateV2 } from "./state";
 import { hasStatus, statusAmount } from "./status";
-import { isBossCellV2, isMinionCellV2, isMonsterCellV2, isStructureCellV2, wallAtV2 } from "./world";
+import { isBossCellV2, isMinionCellV2, isMonsterCellV2, isStructureCellV2, isTempleCellV2, wallAtV2 } from "./world";
 
 /** Joga o dado de movimento (d6 por padrão, mesma regra do MVP). */
 export function rollMovementDie(s: GameStateV2): number {
@@ -36,7 +36,7 @@ function isOccupiedByAliveChampion(s: GameStateV2, h: Hex, excludeUid: string): 
   return allChampionsV2(s).some((c) => c.alive && c.uid !== excludeUid && c.pos.q === h.q && c.pos.r === h.r);
 }
 
-/** Casa sólida (campeão vivo, parede, o boss, um monstro vivo ou um lacaio vivo) — não pode ser atravessada nem ocupada. */
+/** Casa sólida (campeão vivo, parede, o boss, um monstro vivo, um lacaio vivo ou um guardião de templo vivo) — não pode ser atravessada nem ocupada. */
 function isSolid(s: GameStateV2, h: Hex, excludeUid: string): boolean {
   return (
     isOccupiedByAliveChampion(s, h, excludeUid) ||
@@ -44,7 +44,8 @@ function isSolid(s: GameStateV2, h: Hex, excludeUid: string): boolean {
     isStructureCellV2(s, h) ||
     isBossCellV2(s, h) ||
     isMonsterCellV2(s, h) ||
-    isMinionCellV2(s, h)
+    isMinionCellV2(s, h) ||
+    isTempleCellV2(s, h)
   );
 }
 

@@ -34,6 +34,8 @@ export interface AddStatusOptions {
   /** Status "fire_trail_active" (ver turn.ts/effects.ts applyFireTrail). */
   trailDurationRounds?: number;
   trailInstantBonus?: number;
+  /** Nunca perde `remaining`/expira em tick.ts — só usado pela bênção de templo (ver temples.ts). */
+  permanent?: boolean;
 }
 
 /** Adiciona um status com duração; não funde com um já existente (pode haver vários). */
@@ -57,6 +59,7 @@ export function addStatus(
     jumpOnDeath: opts.jumpOnDeath,
     trailDurationRounds: opts.trailDurationRounds,
     trailInstantBonus: opts.trailInstantBonus,
+    permanent: opts.permanent,
   };
   c.statuses.push(entry);
   return entry;

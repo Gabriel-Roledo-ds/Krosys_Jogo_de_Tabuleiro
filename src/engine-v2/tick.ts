@@ -27,9 +27,13 @@ export function tickRoundV2(s: GameStateV2): void {
     for (const st of c.statuses) {
       if (st.unit !== "rounds" || st.status === "venom_stacks") continue;
       if (st.status === "heal_over_time") heal(c, st.amount ?? 0);
+      // Bênção de templo (ver temples.ts): `permanent` nunca perde duração nem
+      // é removido, mesmo sendo "rounds" — já recebeu o `heal_over_time` acima
+      // normalmente, só pula o decremento/remoção abaixo.
+      if (st.permanent) continue;
       st.remaining -= 1;
     }
-    c.statuses = c.statuses.filter((st) => st.status === "venom_stacks" || st.unit !== "rounds" || st.remaining > 0);
+    c.statuses = c.statuses.filter((st) => st.permanent || st.status === "venom_stacks" || st.unit !== "rounds" || st.remaining > 0);
   }
 
   const ctx: EffectContextV2 = { game: s, attacker: null, nextId: () => s.nextId++ };

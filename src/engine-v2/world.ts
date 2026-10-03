@@ -23,7 +23,11 @@ export const isMonsterCellV2 = (s: GameStateV2, p: Hex): boolean => monsterAtV2(
 export const minionAtV2 = (s: GameStateV2, p: Hex) => s.minions.find((m) => m.alive && sameHex(m.pos, p)) ?? null;
 export const isMinionCellV2 = (s: GameStateV2, p: Hex): boolean => minionAtV2(s, p) !== null;
 
-/** Casa livre: dentro do tabuleiro, sem campeão vivo, parede, boss, monstro nem lacaio. */
+/** A casa de um guardião de templo vivo também é sólida — ver temples.ts. */
+export const templeAtV2 = (s: GameStateV2, p: Hex) => s.temples.find((t) => t.alive && sameHex(t.pos, p)) ?? null;
+export const isTempleCellV2 = (s: GameStateV2, p: Hex): boolean => templeAtV2(s, p) !== null;
+
+/** Casa livre: dentro do tabuleiro, sem campeão vivo, parede, boss, monstro, lacaio nem guardião de templo. */
 export function isFreeCellV2(s: GameStateV2, p: Hex): boolean {
   return (
     inHexBoard(p, s.board) &&
@@ -32,7 +36,8 @@ export function isFreeCellV2(s: GameStateV2, p: Hex): boolean {
     !isStructureCellV2(s, p) &&
     !isBossCellV2(s, p) &&
     !isMonsterCellV2(s, p) &&
-    !isMinionCellV2(s, p)
+    !isMinionCellV2(s, p) &&
+    !isTempleCellV2(s, p)
   );
 }
 

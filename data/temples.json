@@ -1,0 +1,25 @@
+{
+  "_status": "Motor v2 já lê este arquivo direto (src/engine-v2/state.ts, createGameV2) — ver regras-e-decisoes.md secao 21 pro design completo.",
+  "_notes": "Cada um dos 2 cantos obtusos reservados em data/hex_board.json#corner_pockets guarda um templo com um guardião e UM deus fixo (sem escolha do jogador em tempo real — ver regras-e-decisoes.md secao 21 pro porquê dessa simplificação). Números calibrados pra 'forte demais pra enfrentar sozinho desde o início da partida': guardian.hp 35/defesa 4 é mais resistente que qualquer monstro de nível 3 do mapa (hp 18-26) mas mais fraco que o boss (hp 40); o contra-ataque (5 de dano, ignora defesa, só dispara se o guardião sobreviver ao golpe) sozinho já consome boa parte do HP de qualquer campeão base (12-22) numa troca prolongada, forçando as 3 campeãs de uma equipe a dividir o risco.",
+  "guardian": {
+    "hp": 35,
+    "defense": 4,
+    "counter_damage": 5
+  },
+  "gods_by_corner": {
+    "canto_norte": {
+      "id": "furia",
+      "name": "Deus da Fúria",
+      "status": "damage_buff",
+      "amount": 2,
+      "flavor": "Todo golpe da equipe carrega um pouco da fúria do deus — dano permanente a mais em cada ataque, pro resto da partida."
+    },
+    "canto_sul": {
+      "id": "vida",
+      "name": "Deusa da Vida",
+      "status": "heal_over_time",
+      "amount": 2,
+      "flavor": "A equipe regenera um pouco de vida a cada rodada, pro resto da partida."
+    }
+  }
+}

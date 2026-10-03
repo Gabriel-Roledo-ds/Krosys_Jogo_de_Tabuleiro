@@ -21,6 +21,7 @@ import { wallAtV2 } from "./world";
 import { reviveChampionV2 } from "./death";
 import { attackBossV2, attackMinionV2 } from "./boss";
 import { attackMonsterV2 } from "./monsters";
+import { attackTempleV2 } from "./temples";
 import { onLandV2 } from "./hazards";
 
 /** Nenhum campeão vivo (de qualquer equipe) na casa. */
@@ -140,14 +141,15 @@ function resolveDamageAreaV2(ctx: EffectContextV2, effect: Effect): { origin: He
 }
 
 /**
- * Dano de área também acerta o boss e os monstros/lacaios do mapa dentro do
- * raio, não só campeões (achado de escopo, 02/10/2026 — KANBAN "dano em área/
- * aleatório contra boss e monstro"). Usa as mesmas funções dedicadas de
- * cardPlay.ts (attackBossV2/attackMonsterV2/attackMinionV2) em vez do
- * pipeline genérico de dano entre campeões — mesma convenção do resto do
- * motor v2 (boss/monstro/lacaio nunca passam por dealDamageV2 direto).
- * attackMonsterV2 já dispara a reação da criatura antes do dano, igual a um
- * ataque de alvo único — a área não é tratada como exceção a essa regra.
+ * Dano de área também acerta o boss, os monstros/lacaios do mapa e os
+ * guardiões de templo dentro do raio, não só campeões (achado de escopo,
+ * 02/10/2026 — KANBAN "dano em área/aleatório contra boss e monstro";
+ * guardião de templo somado em 03/10/2026, item 43). Usa as mesmas funções
+ * dedicadas (attackBossV2/attackMonsterV2/attackMinionV2/attackTempleV2) em
+ * vez do pipeline genérico de dano entre campeões — mesma convenção do resto
+ * do motor v2 (nenhum deles passa por dealDamageV2 direto). attackMonsterV2 já
+ * dispara a reação da criatura antes do dano, igual a um ataque de alvo
+ * único — a área não é tratada como exceção a essa regra.
  */
 function hitBossMonstersAndMinionsInAreaV2(ctx: EffectContextV2, area: { origin: Hex; radius: number }, effect: Effect): void {
   if (!ctx.attacker) return;
@@ -161,6 +163,9 @@ function hitBossMonstersAndMinionsInAreaV2(ctx: EffectContextV2, area: { origin:
   }
   for (const m of ctx.game.minions) {
     if (m.alive && hexDistance(area.origin, m.pos) <= area.radius) attackMinionV2(ctx.game, ctx.attacker, m.uid, amount);
+  }
+  for (const te of ctx.game.temples) {
+    if (te.alive && hexDistance(area.origin, te.pos) <= area.radius) attackTempleV2(ctx.game, ctx.attacker, te, amount, opts);
   }
 }
 

@@ -9,6 +9,7 @@ import { getMonsterType, type Posture } from "../design/monsterReaction";
 import { rngOf, type RngHolder } from "../engine/rng";
 import { balance, bossDef } from "../engine/data";
 import { deckCardIdsV2, getChampionDefV2 } from "./data";
+import { buildTemplesV2 } from "./temples-data";
 
 export type TeamId = "A" | "B";
 export const TEAM_IDS: TeamId[] = ["A", "B"];
@@ -42,6 +43,8 @@ export interface StatusV2 {
   trailDurationRounds?: number;
   /** Status "fire_trail_active": dano extra de uma vez a quem entra na casa, além do dano por rodada (rank 3). */
   trailInstantBonus?: number;
+  /** Nunca perde `remaining`/expira em tick.ts, mesmo com `unit: "rounds"` — só usado pela bênção de templo (ver temples.ts). */
+  permanent?: boolean;
 }
 
 export interface ChampionStateV2 {
@@ -262,6 +265,31 @@ export interface TeamStateV2 {
   turnsTaken: number;
   /** Ressurgir (Selene) só pode ser usado uma vez por partida, por equipe. */
   resurrectUsed: boolean;
+  /** Ids dos deuses de templo já reivindicados por esta equipe (ver temples.ts) — só metadado pra view/log, o efeito de verdade mora no status permanente de cada campeã. */
+  blessings: string[];
+}
+
+/**
+ * Templo de bênção no canto obtuso do mapa (regras-e-decisoes.md §21, item 43
+ * do KANBAN). Guardado por uma criatura única e forte desde o início da
+ * partida; quem a derrotar reivindica o templo pra sua equipe e ganha, pra
+ * sempre, o deus FIXO daquele canto (sem escolha em tempo real — ver §21 pro
+ * porquê). `uid` segue o padrão "temple-<nome do canto>" (mesma convenção de
+ * monstro/boss/lacaio — ver targeting.ts/cardPlay.ts).
+ */
+export interface TempleStateV2 {
+  uid: string;
+  name: string;
+  pos: Hex;
+  hp: number;
+  maxHp: number;
+  defense: number;
+  /** Contra-ataque do guardião a cada golpe recebido que não o mate (ignora defesa) — ver temples.ts. */
+  counterDamage: number;
+  alive: boolean;
+  claimedBy: TeamId | null;
+  godId: string;
+  godName: string;
 }
 
 /** "boss": janela de resposta à ativação do boss, entre o fim de returnDeadChampionsV2 e a fase de compra (ver turn.ts beginTurn/activateBossV2). */
@@ -326,6 +354,8 @@ export interface GameStateV2 {
   minions: MinionStateV2[];
   /** Neblina de guerra: toda casa que algum campeão vivo da equipe já viu em qualquer momento da partida (chave "q,r") — ver vision.ts. Nunca esquece. */
   exploredByTeam: Record<TeamId, string[]>;
+  /** Templos de bênção nos 2 cantos obtusos (ver TempleStateV2/temples.ts) — tratados como marco fixo do mapa, nunca escondidos pela neblina (mesma convenção do boss). */
+  temples: TempleStateV2[];
 }
 
 export function newTurnV2(team: TeamId, phase: PhaseV2): TurnStateV2 {
@@ -406,6 +436,7 @@ export function createGameV2(seed: number, options: CreateGameV2Options = {}): G
       nextCardBuff: null,
       turnsTaken: 0,
       resurrectUsed: false,
+      blessings: [],
     };
   }
 
@@ -469,6 +500,7 @@ export function createGameV2(seed: number, options: CreateGameV2Options = {}): G
     monsters,
     minions: [],
     exploredByTeam: { A: [], B: [] },
+    temples: buildTemplesV2(),
   };
 }
 

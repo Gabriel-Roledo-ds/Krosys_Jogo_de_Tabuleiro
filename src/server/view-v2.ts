@@ -158,6 +158,7 @@ export function viewForV2(s: GameStateV2, me: TeamId | null): unknown {
     monsters: s.monsters.filter(inKnown),
     minions: s.minions.filter(inKnown),
     boss: { ...s.boss, deck: s.boss.deck.length, discard: s.boss.discard },
+    temples: s.temples,
     walls: s.walls.filter(inKnown),
     structures: s.structures.filter(inKnown),
     portals: known ? s.portals.filter((p) => known.has(hexKey(p.a)) || known.has(hexKey(p.b))) : s.portals,
