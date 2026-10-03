@@ -124,7 +124,25 @@ export interface Highlights {
 
 export interface BoardApi {
   render(view: any, hl: Highlights): void;
+  /** Controles de câmera (03/10/2026) — botões no painel, além de roda do mouse/arrastar no mapa. */
+  zoomIn(): void;
+  zoomOut(): void;
+  resetView(): void;
 }
+
+// Janela fixa da câmera (03/10/2026, pedido do dono do projeto, junto com o
+// pedido de dobrar o tabuleiro: "pra não ficar muito pequeno, implemente uma
+// câmera que possa dar zoom e ser controlada pelo jogador"). Antes, o jogo
+// Phaser nascia do tamanho do MAPA inteiro (boardWidth/boardHeight) e só
+// dependia do CSS (Scale.FIT) pra encolher isso no espaço disponível — um
+// mapa maior virava só um desenho menor, sem jeito de aproximar. Agora o
+// "mundo" do Phaser (onde os hexágonos são desenhados) continua do tamanho
+// real do mapa, mas o JOGO (viewport visível) é uma janela de tamanho fixo
+// — a câmera (scene.cameras.main) é quem decide que pedaço do mundo mostrar,
+// com zoom e posição ajustáveis pelo jogador (roda do mouse + arrastar).
+const VIEWPORT_W = 960;
+const VIEWPORT_H = 680;
+const MAX_ZOOM = 2.5;
 
 export function createBoard(parent: HTMLElement, onCell: (q: number, r: number) => void): BoardApi {
   let view: any = null;
@@ -132,12 +150,15 @@ export function createBoard(parent: HTMLElement, onCell: (q: number, r: number) 
   let gfx: Phaser.GameObjects.Graphics;
   let labels: Phaser.GameObjects.Text[] = [];
   let scene: Phaser.Scene;
+  let cam: Phaser.Cameras.Scene2D.Camera;
+  let minZoom = 1;
+  let fitZoom = 1;
 
   new Phaser.Game({
     type: Phaser.CANVAS,
     parent,
-    width: boardWidth,
-    height: boardHeight,
+    width: VIEWPORT_W,
+    height: VIEWPORT_H,
     backgroundColor: "#0d0a16",
     pixelArt: true,
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
@@ -145,14 +166,67 @@ export function createBoard(parent: HTMLElement, onCell: (q: number, r: number) 
       create(this: Phaser.Scene) {
         scene = this;
         gfx = this.add.graphics();
-        this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
-          const h = pixelToHex(p.worldX, p.worldY);
-          if (h.q >= 0 && h.r >= 0 && h.q < board.q_size && h.r < board.r_size) onCell(h.q, h.r);
+        cam = this.cameras.main;
+        cam.setBounds(0, 0, boardWidth, boardHeight);
+        fitZoom = Math.min(VIEWPORT_W / boardWidth, VIEWPORT_H / boardHeight, 1);
+        minZoom = fitZoom * 0.6; // ainda dá pra afastar um pouco além do "caber tudo"
+        cam.setZoom(fitZoom);
+        cam.centerOn(boardWidth / 2, boardHeight / 2);
+
+        // Zoom com a roda do mouse, centrado no ponteiro (dá pra aproximar
+        // exatamente onde o jogador está olhando, não só no centro).
+        this.input.on("wheel", (p: Phaser.Input.Pointer, _go: unknown, _dx: number, dy: number) => {
+          const next = Phaser.Math.Clamp(cam.zoom - dy * 0.0012, minZoom, MAX_ZOOM);
+          if (next === cam.zoom) return;
+          const before = cam.getWorldPoint(p.x, p.y);
+          cam.setZoom(next);
+          const after = cam.getWorldPoint(p.x, p.y);
+          cam.scrollX += before.x - after.x;
+          cam.scrollY += before.y - after.y;
         });
+
+        // Arrastar pra mover a câmera — só conta como arrasto (não clique na
+        // casa) se o ponteiro andou mais que um pouco entre o down e o up,
+        // senão todo clique normal viraria um "arrasto de 1px" sem querer.
+        let dragFrom: { x: number; y: number; scrollX: number; scrollY: number } | null = null;
+        let dragged = false;
+        this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
+          dragFrom = { x: p.x, y: p.y, scrollX: cam.scrollX, scrollY: cam.scrollY };
+          dragged = false;
+        });
+        this.input.on("pointermove", (p: Phaser.Input.Pointer) => {
+          if (!p.isDown || !dragFrom) return;
+          const dx = p.x - dragFrom.x, dy = p.y - dragFrom.y;
+          if (!dragged && Math.hypot(dx, dy) < 5) return;
+          dragged = true;
+          cam.scrollX = dragFrom.scrollX - dx / cam.zoom;
+          cam.scrollY = dragFrom.scrollY - dy / cam.zoom;
+        });
+        this.input.on("pointerup", (p: Phaser.Input.Pointer) => {
+          if (!dragged) {
+            const h = pixelToHex(p.worldX, p.worldY);
+            if (h.q >= 0 && h.r >= 0 && h.q < board.q_size && h.r < board.r_size) onCell(h.q, h.r);
+          }
+          dragFrom = null;
+          dragged = false;
+        });
+
         draw();
       },
     },
   });
+
+  /** Reseta a câmera pra enquadrar o mapa inteiro de novo (botão "centralizar"). */
+  function resetView(): void {
+    if (!cam) return;
+    cam.setZoom(fitZoom);
+    cam.centerOn(boardWidth / 2, boardHeight / 2);
+  }
+
+  function zoomBy(factor: number): void {
+    if (!cam) return;
+    cam.setZoom(Phaser.Math.Clamp(cam.zoom * factor, minZoom, MAX_ZOOM));
+  }
 
   function label(x: number, y: number, text: string, color = "#fff", size = 11) {
     const t = scene.add.text(x, y, text, { fontFamily: "Courier New", fontSize: `${size}px`, color, fontStyle: "bold", stroke: "#000", strokeThickness: 3 }).setOrigin(0.5);
@@ -402,5 +476,8 @@ export function createBoard(parent: HTMLElement, onCell: (q: number, r: number) 
       hl = h;
       if (scene) draw();
     },
+    zoomIn() { zoomBy(1.25); },
+    zoomOut() { zoomBy(0.8); },
+    resetView,
   };
 }

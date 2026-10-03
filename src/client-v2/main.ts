@@ -153,6 +153,10 @@ const champName = (u: any) => champs[u.defId]?.name ?? "?";
 const unitName = (u: any) => (u.defId ? `${champName(u)} (${u.team})` : u.uid === "boss" ? "Boss" : u.typeId ? `${monsterTypes[u.typeId]?.name ?? u.typeId} (${u.uid.slice(0, 3)})` : "Lacaio do Boss");
 
 const board = createBoard($("board"), (q, r) => onCell(q, r));
+// Botões de zoom/centralizar (03/10/2026) — câmera controlável, além de roda do mouse/arrastar direto no mapa.
+$("zoomin").onclick = () => board.zoomIn();
+$("zoomout").onclick = () => board.zoomOut();
+$("zoomreset").onclick = () => board.resetView();
 
 function allUnits(): any[] {
   const u: any[] = [];
