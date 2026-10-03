@@ -13,7 +13,7 @@
 
 import { getCardDefV2, getChampionDefV2, basicTargetV2 } from "../engine-v2/data";
 import { getChampionV2, type GameStateV2, type TeamId } from "../engine-v2/state";
-import { canPayV2 } from "../engine-v2/mana";
+import { canPayCardV2 } from "../engine-v2/mana";
 import { movementBudgetV2, reachableMap } from "../engine-v2/movement";
 import { rankRangeV2, resurrectBlockedV2 } from "../engine-v2/cardPlay";
 import { cannotBasicV2, cannotCastV2 } from "../engine-v2/turn";
@@ -75,7 +75,7 @@ export function viewForV2(s: GameStateV2, me: TeamId | null): unknown {
       const canPlayNow = (inWindow && def.fast) || myAct;
       if (owner && owner.alive && canPlayNow && !cannotCastV2(owner)) {
         for (const rank of def.ranks) {
-          if (!canPayV2(s, me, rank.cost)) continue;
+          if (!canPayCardV2(s, me, owner, rank.cost)) continue;
           if (resurrectBlockedV2(s, me, rank.effects)) continue;
           okRanks.push(rank.rank);
         }

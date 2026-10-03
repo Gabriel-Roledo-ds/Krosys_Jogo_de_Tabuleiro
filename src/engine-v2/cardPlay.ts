@@ -40,7 +40,7 @@ import { dealDamageV2 } from "./damage";
 import { attackBossV2, attackMinionV2, BOSS_UID_V2, isMinionUidV2 } from "./boss";
 import { attackMonsterV2, findMonsterV2, isMonsterUidV2 } from "./monsters";
 import { discardCardV2 } from "./deck";
-import { canPayV2, spendManaV2 } from "./mana";
+import { canPayCardV2, spendCardManaV2 } from "./mana";
 import { basicTargetV2, getCardDefV2, getCardRankV2, getChampionDefV2, type BasicDefV2, type CardDefV2, type CardRank } from "./data";
 import { getChampionV2, logV2, nextIdV2, type ChampionStateV2, type GameStateV2, type MonsterStateV2, type TeamId } from "./state";
 import { enemiesInRange, validateTargetV2, type TargetV2 } from "./targeting";
@@ -283,12 +283,12 @@ export function playCardV2(game: GameStateV2, team: TeamId, cardUid: string, ran
 
   const err = validateTargetV2(game, owner, { range: rankRangeV2(rank), target: def.target }, t);
   if (err) fail(err);
-  if (!canPayV2(game, team, rank.cost)) fail("Mana insuficiente");
+  if (!canPayCardV2(game, team, owner, rank.cost)) fail("Mana insuficiente");
   if (resurrectBlockedV2(game, team, rank.effects)) fail("Ressurgir já foi usado");
 
   const buff = game.teams[team].nextCardBuff ?? undefined;
 
-  spendManaV2(game, team, rank.cost);
+  spendCardManaV2(game, team, owner, rank.cost);
   game.teams[team].hand = hand.filter((c) => c.uid !== cardUid);
   discardCardV2(game, cardInstance);
   if (buff && !rank.effects.some((e) => e.type === "buff_next_card")) game.teams[team].nextCardBuff = null;

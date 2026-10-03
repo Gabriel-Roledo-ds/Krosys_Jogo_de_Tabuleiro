@@ -29,7 +29,7 @@ import { beginBossActivationV2, bossShouldActivateV2, minionsAttackAdjacentV2, r
 import { IllegalActionV2, rankRangeV2, resolveBasicEffectsV2, resolveCardEffectsV2, resurrectBlockedV2 } from "./cardPlay";
 
 export { IllegalActionV2 };
-import { canPayV2, gainTurnManaV2, spendManaV2 } from "./mana";
+import { canPayCardV2, gainTurnManaV2, spendCardManaV2 } from "./mana";
 import { movementBudgetV2, reachableMap, rollMovementDie } from "./movement";
 import { expireChampionTurnStatuses, tickRoundV2 } from "./tick";
 import {
@@ -148,7 +148,7 @@ export function fastPlaysV2(game: GameStateV2, team: TeamId, cap = 20): { card: 
     if (!owner.alive || cannotCastV2(owner)) continue;
     for (const rank of def.ranks) {
       if (out.length >= cap) break;
-      if (!canPayV2(game, team, rank.cost)) continue;
+      if (!canPayCardV2(game, team, owner, rank.cost)) continue;
       for (const target of enumerateTargetsV2(game, owner, { range: rankRangeV2(rank), target: def.target })) {
         if (out.length >= cap) break;
         out.push({ card, rank: rank.rank, target });
@@ -236,11 +236,11 @@ function commitCardV2(game: GameStateV2, team: TeamId, cardUid: string, rankNumb
 
   const err = validateTargetV2(game, owner, { range: rankRangeV2(rank), target: def.target }, t);
   if (err) fail(err);
-  if (!canPayV2(game, team, rank.cost)) fail("Mana insuficiente");
+  if (!canPayCardV2(game, team, owner, rank.cost)) fail("Mana insuficiente");
   if (resurrectBlockedV2(game, team, rank.effects)) fail("Ressurgir já foi usado");
 
   const buff = game.teams[team].nextCardBuff ?? undefined;
-  spendManaV2(game, team, rank.cost);
+  spendCardManaV2(game, team, owner, rank.cost);
   game.teams[team].hand = hand.filter((c) => c.uid !== cardUid);
   discardCardV2(game, cardInstance);
   if (buff && !rank.effects.some((e) => e.type === "buff_next_card")) game.teams[team].nextCardBuff = null;
@@ -413,7 +413,7 @@ export function legalActionsV2(game: GameStateV2, team: TeamId): ActionV2[] {
         const owner = getChampionV2(game, card.owner);
         if (!owner.alive || cannotCastV2(owner)) continue;
         for (const rank of def.ranks) {
-          if (!canPayV2(game, team, rank.cost)) continue;
+          if (!canPayCardV2(game, team, owner, rank.cost)) continue;
           if (resurrectBlockedV2(game, team, rank.effects)) continue;
           for (const target of enumerateTargetsV2(game, owner, { range: rankRangeV2(rank), target: def.target })) {
             out.push({ type: "play", card: card.uid, rank: rank.rank, target });
