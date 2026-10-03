@@ -10,12 +10,12 @@
 
 import { balance } from "../engine/data";
 import { rngOf } from "../engine/rng";
-import type { Hex } from "../design/hexGrid";
+import { hexDistance, type Hex } from "../design/hexGrid";
 import { inHexBoard, startAreaCells } from "../design/hexBoard";
 import { dealDamageV2 } from "./damage";
-import { hasStatus, removeStatus, statusAmount } from "./status";
+import { addStatus, hasStatus, removeStatus, statusAmount } from "./status";
 import { championsInRadius } from "./targeting";
-import { allChampionsV2, logV2, type ChampionStateV2, type GameStateV2, type TeamId } from "./state";
+import { allChampionsV2, logV2, nextIdV2, type ChampionStateV2, type GameStateV2, type TeamId } from "./state";
 
 const startCellsForTeam = (s: GameStateV2, team: TeamId): Hex[] => startAreaCells(team === "A" ? "equipe_a" : "equipe_b", s.board);
 
@@ -67,6 +67,29 @@ export function killChampionV2(s: GameStateV2, c: ChampionStateV2): void {
     }
     return;
   }
+  // Marca do Predador ★★★ da Niara (jump_to_nearest_enemy_on_target_death,
+  // ver effects.ts applyJumpToNearestEnemyOnTargetDeath): o status "mark"
+  // marcado com jumpOnDeath salta pro inimigo vivo mais próximo do campeão
+  // que está morrendo agora, ANTES de limpar os status dele mais abaixo —
+  // "inimigo" aqui é do ponto de vista de quem lançou a marca originalmente
+  // (a Niara/seu time): a marca sempre persegue o MESMO time de quem está
+  // morrendo (quem morreu era um inimigo da Niara, e o próximo alvo também
+  // precisa ser), nunca salta pro lado da própria Niara.
+  const jumpingMark = c.statuses.find((st) => st.status === "mark" && st.jumpOnDeath);
+  if (jumpingMark) {
+    const nearest = allChampionsV2(s)
+      .filter((u) => u.alive && u.team === c.team && u.uid !== c.uid)
+      .sort((a, b) => hexDistance(a.pos, c.pos) - hexDistance(b.pos, c.pos) || a.uid.localeCompare(b.uid))[0];
+    if (nearest) {
+      addStatus(nearest, nextIdV2(s), "mark", jumpingMark.unit, jumpingMark.remaining, {
+        amount: jumpingMark.amount,
+        negative: jumpingMark.negative,
+        jumpOnDeath: true,
+      });
+      logV2(s, `Marca do Predador salta de ${c.defId} (morto) pra ${nearest.defId} (${nearest.team})`);
+    }
+  }
+
   logV2(s, `${c.defId} (${c.team}) morreu`);
   c.alive = false;
   c.deaths += 1;

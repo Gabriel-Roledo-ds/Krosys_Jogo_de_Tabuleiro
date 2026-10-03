@@ -29,6 +29,8 @@ export interface AddStatusOptions {
   partner?: string;
   /** Raio da explosão — só usado por "death_ward" (ver death.ts). */
   radius?: number;
+  /** Status "mark" que salta pro inimigo mais próximo se o marcado morrer (ver death.ts). */
+  jumpOnDeath?: boolean;
 }
 
 /** Adiciona um status com duração; não funde com um já existente (pode haver vários). */
@@ -49,6 +51,7 @@ export function addStatus(
     negative: opts.negative ?? false,
     partner: opts.partner,
     radius: opts.radius,
+    jumpOnDeath: opts.jumpOnDeath,
   };
   c.statuses.push(entry);
   return entry;

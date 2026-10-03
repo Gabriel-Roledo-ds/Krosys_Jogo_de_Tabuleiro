@@ -32,6 +32,7 @@ export { IllegalActionV2 };
 import { canPayCardV2, gainTurnManaV2, spendCardManaV2 } from "./mana";
 import { movementBudgetV2, reachableMap, rollMovementDie } from "./movement";
 import { expireChampionTurnStatuses, tickRoundV2 } from "./tick";
+import { onLandV2 } from "./hazards";
 import {
   getChampionV2,
   logV2,
@@ -310,8 +311,10 @@ export function applyActionV2(game: GameStateV2, team: TeamId, a: ActionV2): voi
       if (!hit) fail("Movimento inválido");
       if (!isActive) activate(game, c);
       t.movementLeft -= hit.cost;
+      const from = { ...c.pos };
       c.pos = { ...a.to };
       logV2(game, `${c.defId} (${c.team}) anda até (${a.to.q},${a.to.r})`);
+      onLandV2(game, c, { voluntary: true, from });
       minionsAttackAdjacentV2(game, c);
       resolveDeathsV2(game, team);
       return;

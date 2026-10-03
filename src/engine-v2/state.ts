@@ -36,6 +36,8 @@ export interface StatusV2 {
   fresh?: boolean;
   /** Raio da explosão — só usado pelo status "death_ward" (Fênix Momentânea da Ignira, ver death.ts). */
   radius?: number;
+  /** Status "mark" que salta pro inimigo mais próximo se o marcado morrer (Marca do Predador ★★★ da Niara, ver death.ts). */
+  jumpOnDeath?: boolean;
 }
 
 export interface ChampionStateV2 {
@@ -98,14 +100,19 @@ export interface MonsterStateV2 {
 }
 
 /**
- * Efeito persistente no chão (fogo, veneno) — não pertence a nenhum campeão,
- * fica na casa até expirar. Ver tick.ts (dano/veneno por rodada) e
- * effects.ts (ground_fire/venom_zone criam essas entradas).
+ * Efeito persistente no chão (fogo, veneno, armadilha, mola, muro de chamas,
+ * terreno venenoso, marca de área) — não pertence a nenhum campeão, fica na
+ * casa até expirar ou (armadilha/mola) até disparar uma vez. Dois jeitos de
+ * agir: "fire"/"venom" causam dano/veneno por RODADA a quem estiver dentro
+ * (ver tick.ts); os outros disparam ao alguém TERMINAR o movimento na área
+ * (ver hazards.ts/onLandV2) — mesma convenção do MVP original
+ * (src/engine/hazards.ts).
  */
 export interface GroundEffectV2 {
   id: number;
-  kind: "fire" | "venom";
+  kind: "fire" | "venom" | "trap" | "spring" | "fire_wall" | "venom_terrain" | "mark";
   pos: Hex;
+  /** Pra "trap"/"spring": sempre 0 (só a própria casa). Demais: raio de verdade. */
   radius: number;
   team: TeamId;
   remaining: number;
@@ -113,6 +120,18 @@ export interface GroundEffectV2 {
   damagePerRound?: number;
   /** "venom": pilhas de veneno por rodada a quem estiver na área. */
   stacksPerRound?: number;
+  /** "trap"/"fire_wall": dano de uma vez a quem termina o movimento na casa. */
+  damageOnEnter?: number;
+  /** "trap" (Armadilha ★★★ do Dorin): penalidade de movimento aplicada ao disparar (status "move_penalty"). */
+  slowAmount?: number;
+  /** "spring": distância do lançamento (a direção é "continua pra frente" — ver hazards.ts/onLandV2). */
+  distance?: number;
+  /** "venom_terrain": pilhas de veneno aplicadas ao entrar (não por rodada). */
+  stacksOnEnter?: number;
+  /** "mark" (mark_ground_area, Chuva de Aço da Niara): fração do dano original retriggada a quem entra. */
+  retriggerFraction?: number;
+  /** "mark": o dano original da carta que criou a marca (base pro retrigger acima). */
+  storedDamage?: number;
 }
 
 /**

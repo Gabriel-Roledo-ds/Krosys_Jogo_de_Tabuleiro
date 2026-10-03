@@ -21,14 +21,15 @@ import { wallAtV2 } from "./world";
 import { reviveChampionV2 } from "./death";
 import { attackBossV2, attackMinionV2 } from "./boss";
 import { attackMonsterV2 } from "./monsters";
+import { onLandV2 } from "./hazards";
 
 /** Nenhum campeão vivo (de qualquer equipe) na casa. */
 function isEmptyOfChampions(game: GameStateV2, h: Hex): boolean {
   return !allChampionsV2(game).some((c) => c.alive && sameHex(c.pos, h));
 }
 
-/** Status sem duração natural — persiste até ser consumido/removido (pilhas de veneno). */
-const PERSISTENT_REMAINING = 999;
+/** Status/efeito de chão sem duração natural — persiste até ser consumido/removido (pilhas de veneno, armadilha, mola). */
+export const PERSISTENT_REMAINING = 999;
 
 /** Status cujo nome já é negativo por convenção (ver claude/formato-dados.md). */
 const NEGATIVE_STATUS_NAMES = new Set([
@@ -220,16 +221,51 @@ function durationFromEffect(effect: Effect): { unit: "rounds" | "champion_turns"
   return { unit: "rounds", value: 1 };
 }
 
-/** `apply_status` / `apply_status_area`: aplica o mesmo status num ou mais alvos (propaga ao Elo de controle, se o alvo tiver um e o status for de controle — ver propagateLinkedControl). */
+/** `apply_status` / `apply_status_area`: aplica o mesmo status num ou mais alvos (propaga ao Elo de controle, se o alvo tiver um e o status for de controle — ver propagateLinkedControl). O status "mark" (Marca do Predador da Niara) usa `bonus_damage` em vez de `amount` nos dados — aceito como alternativa. */
 export function applyStatus(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
   const duration = durationFromEffect(effect);
   const negative = isNegativeStatus(effect.status);
   for (const target of targets) {
     addStatus(target, ctx.nextId(), effect.status, duration.unit, duration.value, {
-      amount: effect.amount,
+      amount: effect.amount ?? effect.bonus_damage,
       negative,
     });
     propagateLinkedControl(ctx, target, effect.status, duration);
+  }
+}
+
+/**
+ * `jump_to_nearest_enemy_on_target_death` (Marca do Predador ★★★ da Niara):
+ * marca o status "mark" que a MESMA carta aplicou no(s) mesmo(s) alvo(s) (já
+ * resolvido antes deste bloco, já que os efeitos de um rank rodam em
+ * sequência sobre os mesmos alvos — ver cardPlay.ts) com `jumpOnDeath: true`.
+ * A consequência de verdade (achar o inimigo mais próximo e mover o status
+ * pra ele) mora em death.ts (killChampionV2), no momento em que o campeão
+ * marcado morre de fato.
+ */
+export function applyJumpToNearestEnemyOnTargetDeath(targets: ChampionStateV2[]): void {
+  for (const target of targets) {
+    const mark = target.statuses.find((s) => s.status === "mark");
+    if (mark) mark.jumpOnDeath = true;
+  }
+}
+
+/**
+ * `link_buff` (Pacto Arcano da Aurelia): aplica o MESMO status/buff tanto em
+ * quem usou a carta quanto no aliado escolhido, de uma vez — diferente de
+ * `link` (applyLink), não cria um vínculo persistente que propaga depois;
+ * os dois lados só recebem o buff na hora, cada um com sua própria duração
+ * independente (perder o buff de um lado não afeta o outro).
+ */
+export function applyLinkBuff(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
+  if (!ctx.attacker) return;
+  const duration = durationFromEffect(effect);
+  const recipients = [ctx.attacker, ...targets];
+  for (const recipient of recipients) {
+    addStatus(recipient, ctx.nextId(), effect.status, duration.unit, duration.value, {
+      amount: effect.amount,
+      negative: isNegativeStatus(effect.status),
+    });
   }
 }
 
@@ -307,17 +343,25 @@ export function applyPersonalMana(effect: Effect, targets: ChampionStateV2[], si
   }
 }
 
-/** `push`: afasta cada alvo do atacante (ou de quem usou a carta) por `distance` casas. */
+/** `push`: afasta cada alvo do atacante (ou de quem usou a carta) por `distance` casas (dispara efeitos de casa na chegada — ver hazards.ts). */
 export function applyPush(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
   if (!ctx.attacker) return;
   const actualTargets = effect.area_radius !== undefined ? resolveAroundSelf(ctx, effect) : targets;
-  for (const target of actualTargets) pushChampion(ctx.game, target, ctx.attacker.pos, effect.distance ?? 0);
+  for (const target of actualTargets) {
+    const from = { ...target.pos };
+    pushChampion(ctx.game, target, ctx.attacker.pos, effect.distance ?? 0);
+    onLandV2(ctx.game, target, { voluntary: false, from });
+  }
 }
 
-/** `pull`: aproxima cada alvo de quem usou a carta por `distance` casas. */
+/** `pull`: aproxima cada alvo de quem usou a carta por `distance` casas (dispara efeitos de casa na chegada — ver hazards.ts). */
 export function applyPull(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
   if (!ctx.attacker) return;
-  for (const target of targets) pullChampion(ctx.game, target, ctx.attacker.pos, effect.distance ?? 0);
+  for (const target of targets) {
+    const from = { ...target.pos };
+    pullChampion(ctx.game, target, ctx.attacker.pos, effect.distance ?? 0);
+    onLandV2(ctx.game, target, { voluntary: false, from });
+  }
 }
 
 /**
@@ -325,19 +369,26 @@ export function applyPull(ctx: EffectContextV2, effect: Effect, targets: Champio
  * (cartas de target "direction", ex. Dança das Lâminas da Vextra), avança em
  * linha naquela direção, parando antes de obstáculo. Com `ctx.moveDest`
  * (target "self", ex. Recuo Calculado da Niara), salta pra qualquer casa
- * livre a até `effect.distance` de distância.
+ * livre a até `effect.distance` de distância. Dispara efeitos de casa na
+ * chegada (ver hazards.ts) como qualquer outro deslocamento forçado.
  */
 export function applyMoveSelf(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
   for (const target of targets) {
+    const from = { ...target.pos };
     if (ctx.moveDir) forcedMove(ctx.game, target, ctx.moveDir, effect.distance ?? 0);
     else if (ctx.moveDest) safeTeleport(ctx.game, target, ctx.moveDest, effect.distance ?? 0);
+    onLandV2(ctx.game, target, { voluntary: false, from });
   }
 }
 
-/** `teleport_self`: salta pra uma casa escolhida (target "cell"), já validada em alcance por quem chamou. */
+/** `teleport_self`: salta pra uma casa escolhida (target "cell"), já validada em alcance por quem chamou (dispara efeitos de casa na chegada — ver hazards.ts). */
 export function applyTeleportSelf(ctx: EffectContextV2, _effect: Effect, targets: ChampionStateV2[]): void {
   if (!ctx.moveDest) return;
-  for (const target of targets) safeTeleport(ctx.game, target, ctx.moveDest, Infinity);
+  for (const target of targets) {
+    const from = { ...target.pos };
+    safeTeleport(ctx.game, target, ctx.moveDest, Infinity);
+    onLandV2(ctx.game, target, { voluntary: false, from });
+  }
 }
 
 /**
@@ -488,6 +539,141 @@ export function applyVenomZone(ctx: EffectContextV2, effect: Effect): void {
     remaining: duration.value,
     stacksPerRound: effect.stacks_per_round,
   });
+}
+
+/**
+ * `hidden_trap` (Armadilha do Dorin): cria uma armadilha de 1 disparo na
+ * casa escolhida — dano na hora + penalidade de movimento (★★★) a quem
+ * terminar o movimento ali. Some ao disparar (ver hazards.ts/onLandV2), sem
+ * duração natural (`PERSISTENT_REMAINING`, como pilhas de veneno).
+ */
+export function applyHiddenTrap(ctx: EffectContextV2, effect: Effect): void {
+  if (!ctx.attacker || !ctx.targetCell) return;
+  ctx.game.ground.push({
+    id: ctx.nextId(),
+    kind: "trap",
+    pos: { ...ctx.targetCell },
+    radius: 0,
+    team: ctx.attacker.team,
+    remaining: PERSISTENT_REMAINING,
+    damageOnEnter: effect.damage,
+    slowAmount: effect.slow_amount,
+  });
+}
+
+/**
+ * `spring` (Mola do Dorin): cria uma mola na casa escolhida — lança quem
+ * terminar o movimento ali por `distance` casas na direção de quem veio (ver
+ * hazards.ts/onLandV2). Também sem duração natural, até ser disparada
+ * (diferente do MVP, que guarda a mola numa lista própria — aqui reaproveita
+ * `game.ground`, mais simples por não precisar de outro array/tipo de estado).
+ */
+export function applySpring(ctx: EffectContextV2, effect: Effect): void {
+  if (!ctx.attacker || !ctx.targetCell) return;
+  ctx.game.ground.push({
+    id: ctx.nextId(),
+    kind: "spring",
+    pos: { ...ctx.targetCell },
+    radius: 0,
+    team: ctx.attacker.team,
+    remaining: PERSISTENT_REMAINING,
+    distance: effect.distance,
+  });
+}
+
+/**
+ * `fire_wall` (Muro de Chamas da Ignira): linha de `length` casas na direção
+ * escolhida (`ctx.moveDir`, target "direction"), cada uma causando
+ * `damage_on_enter` a quem terminar o movimento nela (não por rodada — ver
+ * hazards.ts/onLandV2), durando `duration` rodadas. Para ao sair do tabuleiro
+ * ou bater numa parede (mesma regra de `forcedMove`/linha, mas aqui é
+ * geometria de criação, não movimento — usa `hexNeighbors` em sequência na
+ * direção dada).
+ */
+export function applyFireWall(ctx: EffectContextV2, effect: Effect): void {
+  if (!ctx.attacker || !ctx.moveDir) return;
+  const duration = durationFromEffect(effect);
+  const length = effect.length ?? 1;
+  let pos = ctx.attacker.pos;
+  for (let i = 0; i < length; i++) {
+    pos = addHex(pos, ctx.moveDir);
+    if (!inHexBoard(pos, ctx.game.board) || wallAtV2(ctx.game, pos)) break;
+    ctx.game.ground.push({
+      id: ctx.nextId(),
+      kind: "fire_wall",
+      pos: { ...pos },
+      radius: 0,
+      team: ctx.attacker.team,
+      remaining: duration.value,
+      damageOnEnter: effect.damage_on_enter,
+    });
+  }
+}
+
+/**
+ * `venom_terrain` (Fossa de Ácido do Thorne): área persistente que aplica
+ * `stacks_on_enter` pilhas de veneno a quem termina o movimento dentro
+ * (diferente de `venom_zone`, que aplica por RODADA a quem está dentro, não
+ * só ao entrar — ver hazards.ts/onLandV2).
+ */
+export function applyVenomTerrain(ctx: EffectContextV2, effect: Effect): void {
+  if (!ctx.attacker || !ctx.targetCell) return;
+  const duration = durationFromEffect(effect);
+  ctx.game.ground.push({
+    id: ctx.nextId(),
+    kind: "venom_terrain",
+    pos: { ...ctx.targetCell },
+    radius: effect.radius ?? 0,
+    team: ctx.attacker.team,
+    remaining: duration.value,
+    stacksOnEnter: effect.stacks_on_enter,
+  });
+}
+
+/**
+ * `mark_ground_area` (Chuva de Aço ★★★ da Niara): marca a área onde a carta
+ * explodiu — quem entrar nela enquanto durar sofre `retrigger_damage_fraction`
+ * do dano original de novo (ver hazards.ts/onLandV2). `ctx.bonusDamage` já
+ * foi somado ao dano original antes de chegar aqui (mesma ordem de
+ * `applyDamage`), então o valor guardado já reflete qualquer buff da carta.
+ */
+export function applyMarkGroundArea(ctx: EffectContextV2, effect: Effect): void {
+  if (!ctx.attacker || !ctx.targetCell) return;
+  const duration = durationFromEffect(effect);
+  ctx.game.ground.push({
+    id: ctx.nextId(),
+    kind: "mark",
+    pos: { ...ctx.targetCell },
+    radius: effect.radius ?? 0,
+    team: ctx.attacker.team,
+    remaining: duration.value,
+    retriggerFraction: effect.retrigger_damage_fraction,
+    storedDamage: (effect.amount ?? 0) + (ctx.bonusDamage ?? 0),
+  });
+}
+
+/**
+ * `detonate_nearby_ground_fire` (Combustão Total ★★★ da Ignira): detona a
+ * área de `ground_fire` mais próxima do alvo (dentro do próprio raio dela),
+ * aplicando de uma vez o dano de TODAS as rodadas restantes (`damagePerRound
+ * * remaining`) a quem estiver dentro agora, e remove a área — "detona
+ * antecipadamente", ela não volta a causar dano depois disso.
+ */
+export function applyDetonateNearbyGroundFire(ctx: EffectContextV2, _effect: Effect, targets: ChampionStateV2[]): void {
+  const target = targets[0];
+  if (!target) return;
+  const fires = ctx.game.ground
+    .filter((g) => g.kind === "fire" && hexDistance(g.pos, target.pos) <= g.radius)
+    .sort((a, b) => hexDistance(a.pos, target.pos) - hexDistance(b.pos, target.pos));
+  const fire = fires[0];
+  if (!fire) return;
+  const totalDamage = (fire.damagePerRound ?? 0) * fire.remaining;
+  if (totalDamage > 0) {
+    for (const c of allChampionsV2(ctx.game).filter((c) => c.alive && hexDistance(c.pos, fire.pos) <= fire.radius)) {
+      dealDamageV2(ctx.attacker, c, totalDamage, { dot: true });
+    }
+  }
+  ctx.game.ground = ctx.game.ground.filter((g) => g.id !== fire.id);
 }
 
 /** `reflect_absorbed_damage`: enquanto tiver escudo, reflete `percent`% do dano absorvido (Vingança do Escudo). */
@@ -763,6 +949,14 @@ const DISPATCH: Record<string, (ctx: EffectContextV2, effect: Effect, targets: C
   buff_next_card: (ctx, effect) => applyBuffNextCard(ctx, effect),
   resurrect: (ctx, effect, targets) => applyResurrect(ctx, effect, targets),
   death_ward: (ctx, effect, targets) => applyDeathWard(ctx, effect, targets),
+  jump_to_nearest_enemy_on_target_death: (_ctx, _effect, targets) => applyJumpToNearestEnemyOnTargetDeath(targets),
+  link_buff: (ctx, effect, targets) => applyLinkBuff(ctx, effect, targets),
+  hidden_trap: (ctx, effect) => applyHiddenTrap(ctx, effect),
+  spring: (ctx, effect) => applySpring(ctx, effect),
+  fire_wall: (ctx, effect) => applyFireWall(ctx, effect),
+  venom_terrain: (ctx, effect) => applyVenomTerrain(ctx, effect),
+  mark_ground_area: (ctx, effect) => applyMarkGroundArea(ctx, effect),
+  detonate_nearby_ground_fire: (ctx, effect, targets) => applyDetonateNearbyGroundFire(ctx, effect, targets),
 };
 
 /** Tipos de efeito que já têm execução real no motor v2 (os outros ainda só existem como dado). */
