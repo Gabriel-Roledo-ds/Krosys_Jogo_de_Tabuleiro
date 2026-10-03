@@ -3,12 +3,11 @@
 // motor novo: status de campeão com duração em "rounds"/"champion_turns", as
 // áreas de chão (ground_fire, venom_zone — ver applyGroundFire/applyVenomZone
 // em effects.ts), paredes com duração (as permanentes, remaining=null, não
-// expiram) e lacaios do boss com roundsLeft (summon_minion com duration, ver
-// boss.ts). venom_terrain (aplica ao entrar, não por rodada), fire_trail
-// (rastro do próprio movimento), estruturas/armadilhas/portais/molas e
-// create_structure/delayed_damage ainda não entram aqui — precisam de gancho
-// no movimento ou numa fila de atraso que não existe no motor novo ainda (ver
-// KANBAN.md).
+// expiram), Torre de Vigia (create_structure, dano por rodada em inimigos no
+// alcance), dano com atraso (delayed_damage, explode quando roundsLeft chega
+// a 0) e lacaios do boss com roundsLeft (summon_minion com duration, ver
+// boss.ts). venom_terrain e o bônus do Rastro de Fogo aplicam ao ENTRAR na
+// casa, não por rodada — ver hazards.ts.
 
 import { hexDistance } from "../design/hexGrid";
 import { allChampionsV2, logV2, type ChampionStateV2, type GameStateV2 } from "./state";
@@ -47,6 +46,33 @@ export function tickRoundV2(s: GameStateV2): void {
 
   for (const w of s.walls) if (w.remaining !== null) w.remaining -= 1;
   s.walls = s.walls.filter((w) => w.remaining === null || w.remaining > 0);
+
+  // Torre de Vigia (create_structure, Dorin): dano por rodada a todo inimigo
+  // vivo dentro do alcance — igual ao MVP (src/engine/tick.ts).
+  for (const st of s.structures) {
+    for (const c of allChampionsV2(s)) {
+      if (c.alive && c.team !== st.team && hexDistance(st.pos, c.pos) <= st.range) {
+        dealDamageV2(null, c, st.damagePerRound, { dot: true });
+      }
+    }
+  }
+  for (const st of s.structures) if (st.remaining !== null) st.remaining -= 1;
+  s.structures = s.structures.filter((st) => st.remaining === null || st.remaining > 0);
+
+  for (const p of s.portals) if (p.remaining !== null) p.remaining -= 1;
+  s.portals = s.portals.filter((p) => p.remaining === null || p.remaining > 0);
+
+  // Explosão Retardada ★ a ★★★ da Ignira (delayed_damage): marca a casa na
+  // hora e, `delay_rounds` rodadas depois, acerta quem estiver na área nesse
+  // momento (não necessariamente o alvo original, que pode ter se movido).
+  for (const d of s.delayedDamages) d.roundsLeft -= 1;
+  for (const d of s.delayedDamages.filter((d) => d.roundsLeft <= 0)) {
+    logV2(s, "Explosão Retardada detona");
+    for (const c of allChampionsV2(s)) {
+      if (c.alive && hexDistance(d.pos, c.pos) <= d.radius) dealDamageV2(null, c, d.amount, { dot: true });
+    }
+  }
+  s.delayedDamages = s.delayedDamages.filter((d) => d.roundsLeft > 0);
 
   // Lacaio com roundsLeft (summon_minion com duration em "rounds", ver boss.ts)
   // expira sozinho ao chegar a 0 — a Prole do boss não define duration, então

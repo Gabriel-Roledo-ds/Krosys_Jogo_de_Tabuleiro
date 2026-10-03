@@ -13,9 +13,6 @@
 // habilidade básica no roster v2").
 //
 // Fora de escopo aqui (ver KANBAN.md pra cada um):
-// - "wall"/"two_cells" com efeitos ainda não implementados (create_walls_line,
-//   create_portal_pair) — a carta valida o alvo mas applyEffectV2 lança erro
-//   claro ao tentar aplicar, igual qualquer outro tipo não implementado.
 // - silêncio/atordoamento bloqueando cartas e básicas: o motor v2 ainda não
 //   tem esses status de controle ligados aqui (fica pra quando a fase de
 //   turno/pilha de respostas existir de verdade, junto com silenced/stunned).
@@ -122,6 +119,11 @@ export function resolveCardTargetsV2(owner: ChampionStateV2, cardTarget: string,
       targets = [];
       break;
     case "direction":
+      // move_self/damage_all_adjacent_during_move (Dança das Lâminas da
+      // Vextra) usam a lista de alvos pra saber quem se move — os demais
+      // efeitos de "direction" (move_in_line, damage_first_in_path, fire_wall)
+      // ignoram `targets` e leem `ctx.attacker`/`ctx.moveDir` direto.
+      targets = [owner];
       if (t.dir) ctxExtra.moveDir = t.dir;
       break;
     case "line":
@@ -134,11 +136,9 @@ export function resolveCardTargetsV2(owner: ChampionStateV2, cardTarget: string,
       if (t.pos) ctxExtra.targetCell = t.pos;
       break;
     case "two_cells":
-      // `create_portal_pair` (único consumidor hoje) ainda não está
-      // implementado em effects.ts — guardamos só a primeira casa; a segunda
-      // (`t.pos2`) não tem campo próprio em EffectContextV2 ainda (gap
-      // documentado em KANBAN.md, resolver junto quando portais entrarem).
+      // `create_portal_pair` (Portal do Dorin, ver effects.ts applyCreatePortalPair).
       if (t.pos) ctxExtra.targetCell = t.pos;
+      if (t.pos2) ctxExtra.targetCell2 = t.pos2;
       break;
     default:
       break;

@@ -1,10 +1,12 @@
 // Efeitos de casa no motor hexagonal (roster v2) — igual a src/engine/hazards.ts
-// (onLand), mas só pro que já existe no motor novo: armadilha (hidden_trap),
-// mola (spring), muro de chamas (fire_wall), terreno venenoso (venom_terrain)
-// e marca de área (mark_ground_area) — todos guardados em `game.ground`
-// (ver state.ts/effects.ts). Portal (create_portal_pair) e Vigia/zonas de
-// monstro-passiva (equivalentes MVP) ainda não existem no motor v2 — ver
-// KANBAN.md.
+// (onLand), mas só pro que já existe no motor novo: portal (create_portal_pair),
+// armadilha (hidden_trap), mola (spring), muro de chamas (fire_wall), terreno
+// venenoso (venom_terrain), marca de área (mark_ground_area) e o bônus
+// instantâneo do Rastro de Fogo (fire_trail ★★★) — todos guardados em
+// `game.ground`/`game.portals` (ver state.ts/effects.ts). Vigia (Torre, agora
+// create_structure) causa dano por rodada em tick.ts, não aqui (não depende
+// de pisar na casa). Zonas de monstro-passiva (equivalente MVP) ainda não
+// existem no motor v2 — ver KANBAN.md.
 //
 // Disparam quando um campeão TERMINA o movimento na casa, seja andando
 // (voluntário) ou empurrado/puxado/teletransportado (forçado) — mesma regra
@@ -17,6 +19,7 @@ import { dealDamageV2 } from "./damage";
 import { forcedMove } from "./movement";
 import { addStatus } from "./status";
 import { logV2, nextIdV2, type ChampionStateV2, type GameStateV2 } from "./state";
+import { isFreeCellV2 } from "./world";
 
 export interface LandOptsV2 {
   /** true = andou por conta própria neste turno; false = foi movido por empurrão/puxão/teleporte de terceiro. */
@@ -48,6 +51,17 @@ export function onLandV2(s: GameStateV2, c: ChampionStateV2, opts: LandOptsV2): 
   if (!c.alive) return;
 
   if (!opts.chained) {
+    const portal = s.portals.find((p) => sameHex(p.a, c.pos) || sameHex(p.b, c.pos));
+    if (portal) {
+      const dest = sameHex(portal.a, c.pos) ? portal.b : portal.a;
+      if (isFreeCellV2(s, dest)) {
+        c.pos = { ...dest };
+        logV2(s, `${c.defId} (${c.team}) atravessa um portal`);
+      }
+      onLandV2(s, c, { ...opts, chained: true });
+      return;
+    }
+
     const spring = s.ground.find((g) => g.kind === "spring" && sameHex(g.pos, c.pos));
     if (spring) {
       const dir = opts.from && !sameHex(opts.from, c.pos) ? hexDirectionTo(opts.from, c.pos) : FALLBACK_SPRING_DIR;
@@ -85,5 +99,15 @@ export function onLandV2(s: GameStateV2, c: ChampionStateV2, opts: LandOptsV2): 
       logV2(s, `${c.defId} (${c.team}) entra na área marcada`);
       dealDamageV2(null, c, amount, { dot: true });
     }
+  }
+
+  // Rastro de Fogo ★★★ da Ignira (fire_trail com instant_bonus_on_enter):
+  // dano extra de uma vez a quem ENTRA no rastro, além do dano por rodada
+  // normal de "fire" (tick.ts). Fogo comum (ground_fire) nunca define esse
+  // campo, então não muda nada pra ele.
+  const fire = s.ground.find((g) => g.kind === "fire" && g.instantBonusOnEnter && hexDistance(g.pos, c.pos) <= g.radius);
+  if (fire) {
+    logV2(s, `${c.defId} (${c.team}) entra no Rastro de Fogo`);
+    dealDamageV2(null, c, fire.instantBonusOnEnter ?? 0, { dot: true });
   }
 }

@@ -208,8 +208,11 @@ export function championsInRadius(s: GameStateV2, center: Hex, radius: number, f
  * Alvos candidatos pra um `target`+alcance dado — usado por turn.ts pra
  * decidir se uma carta/básica tem pelo menos um alvo válido (jogadas rápidas
  * possíveis, ações legais) e, nos testes/bots, pra listar opções. Não cobre
- * `two_cells` (único consumidor hoje é `create_portal_pair`, ainda não
- * implementado em effects.ts) — devolve lista vazia por enquanto.
+ * `two_cells` (único consumidor hoje é `create_portal_pair`, já implementado
+ * em effects.ts — ver applyCreatePortalPair) — devolve lista vazia por
+ * enquanto: enumerar pares de casas válidas é mais caro (produto de duas
+ * áreas) e nenhum bot ainda precisa escolher esse alvo sozinho [PADRÃO,
+ * revisar se os bots v2 forem ensinados a usar Portal do Dorin].
  */
 export function enumerateTargetsV2(s: GameStateV2, owner: ChampionStateV2, def: TargetableV2, rangeBonus = 0, cap = 30): TargetV2[] {
   const out: TargetV2[] = [];

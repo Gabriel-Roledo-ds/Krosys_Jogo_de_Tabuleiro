@@ -8,6 +8,10 @@ import { allChampionsV2, type GameStateV2, type WallV2 } from "./state";
 
 export const wallAtV2 = (s: GameStateV2, p: Hex): WallV2 | null => s.walls.find((w) => sameHex(w.pos, p)) ?? null;
 
+/** Torre de Vigia (create_structure, Dorin) — sólida igual a parede (ver movement.ts isSolid). */
+export const structureAtV2 = (s: GameStateV2, p: Hex) => s.structures.find((st) => sameHex(st.pos, p)) ?? null;
+export const isStructureCellV2 = (s: GameStateV2, p: Hex): boolean => structureAtV2(s, p) !== null;
+
 /** A casa do boss (vivo) também é sólida, igual a campeão vivo e parede. */
 export const isBossCellV2 = (s: GameStateV2, p: Hex): boolean => s.boss.alive && sameHex(s.boss.pos, p);
 
@@ -25,6 +29,7 @@ export function isFreeCellV2(s: GameStateV2, p: Hex): boolean {
     inHexBoard(p, s.board) &&
     !allChampionsV2(s).some((c) => c.alive && sameHex(c.pos, p)) &&
     !wallAtV2(s, p) &&
+    !isStructureCellV2(s, p) &&
     !isBossCellV2(s, p) &&
     !isMonsterCellV2(s, p) &&
     !isMinionCellV2(s, p)

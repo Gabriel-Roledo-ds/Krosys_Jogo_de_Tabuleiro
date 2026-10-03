@@ -22,15 +22,15 @@ describe("partidas simuladas (roster v2)", () => {
     expect([a.winner, a.rounds, a.actions]).toEqual([b.winner, b.rounds, b.actions]);
   }, 120000);
 
-  it("bot aleatório joga milhares de ações sem quebrar o motor (fora dos ~30 tipos de efeito ainda não implementados, ver KANBAN.md)", () => {
-    // O catálogo de `effects` das cartas v2 tem 59 tipos; só uma parte já tem execução
-    // real (KANBAN.md, "Achado de escopo") — o bot aleatório pode escolher jogar uma
-    // carta com um efeito ainda não implementado, e isso lança um erro claro "não
-    // implementado" (comportamento intencional do motor, não um bug). Também pode
-    // escolher uma ação que era legal no momento em que foi enumerada (legalActionsV2)
-    // mas deixou de ser por uma resposta rápida do adversário no meio do caminho —
-    // commitCardV2 revalida e lança IllegalActionV2 (ex. "fora de alcance"), também
-    // esperado. Este teste só garante que NENHUM OUTRO tipo de erro aparece.
+  it("bot aleatório joga milhares de ações sem quebrar o motor", () => {
+    // O catálogo de `effects` das cartas v2 tem ~60 tipos, todos já implementados
+    // (item 37 do KANBAN, concluído). O bot aleatório ainda pode escolher uma ação
+    // que era legal no momento em que foi enumerada (legalActionsV2) mas deixou de
+    // ser por uma resposta rápida do adversário no meio do caminho — commitCardV2
+    // revalida e lança IllegalActionV2 (ex. "fora de alcance"), esperado. A checagem
+    // de "não implementado" continua aqui só como rede de segurança (se algum tipo
+    // novo entrar sem handler, o teste aponta pra isso em vez de mascarar). Este
+    // teste garante que NENHUM OUTRO tipo de erro aparece.
     for (const seed of [1, 2, 3]) {
       const s = createGameV2(seed, { comp: { A: ["niara", "varek", "selene"], B: ["borak", "dorin", "aurelia"] } });
       const bot = randomBotV2(createRng(seed));

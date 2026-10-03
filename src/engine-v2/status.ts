@@ -31,6 +31,9 @@ export interface AddStatusOptions {
   radius?: number;
   /** Status "mark" que salta pro inimigo mais próximo se o marcado morrer (ver death.ts). */
   jumpOnDeath?: boolean;
+  /** Status "fire_trail_active" (ver turn.ts/effects.ts applyFireTrail). */
+  trailDurationRounds?: number;
+  trailInstantBonus?: number;
 }
 
 /** Adiciona um status com duração; não funde com um já existente (pode haver vários). */
@@ -52,6 +55,8 @@ export function addStatus(
     partner: opts.partner,
     radius: opts.radius,
     jumpOnDeath: opts.jumpOnDeath,
+    trailDurationRounds: opts.trailDurationRounds,
+    trailInstantBonus: opts.trailInstantBonus,
   };
   c.statuses.push(entry);
   return entry;

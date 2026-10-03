@@ -162,8 +162,8 @@ describe("grant_personal_mana / drain_personal_mana", () => {
 });
 
 describe("applyEffectV2 — tipo desconhecido", () => {
-  it("lança erro claro pra um tipo ainda não implementado", () => {
+  it("lança erro claro pra um tipo que não existe no catálogo (todos os ~60 tipos de cards_v2.json já estão implementados)", () => {
     const { target, ctx } = setup();
-    expect(() => applyEffectV2(ctx, { type: "create_portal_pair" }, [target])).toThrow(/não implementado/);
+    expect(() => applyEffectV2(ctx, { type: "tipo_que_nao_existe_de_verdade" }, [target])).toThrow(/não implementado/);
   });
 });

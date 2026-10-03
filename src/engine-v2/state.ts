@@ -38,6 +38,10 @@ export interface StatusV2 {
   radius?: number;
   /** Status "mark" que salta pro inimigo mais próximo se o marcado morrer (Marca do Predador ★★★ da Niara, ver death.ts). */
   jumpOnDeath?: boolean;
+  /** Status "fire_trail_active" (Rastro de Fogo da Ignira): duração em rodadas do fogo deixado no próximo movimento — `amount` já guarda o dano por rodada (ver turn.ts). */
+  trailDurationRounds?: number;
+  /** Status "fire_trail_active": dano extra de uma vez a quem entra na casa, além do dano por rodada (rank 3). */
+  trailInstantBonus?: number;
 }
 
 export interface ChampionStateV2 {
@@ -110,9 +114,9 @@ export interface MonsterStateV2 {
  */
 export interface GroundEffectV2 {
   id: number;
-  kind: "fire" | "venom" | "trap" | "spring" | "fire_wall" | "venom_terrain" | "mark";
+  kind: "fire" | "venom" | "trap" | "spring" | "fire_wall" | "venom_terrain" | "mark" | "slow";
   pos: Hex;
-  /** Pra "trap"/"spring": sempre 0 (só a própria casa). Demais: raio de verdade. */
+  /** Pra "trap"/"spring"/"slow": sempre 0 (só a própria casa). Demais: raio de verdade. */
   radius: number;
   team: TeamId;
   remaining: number;
@@ -132,6 +136,45 @@ export interface GroundEffectV2 {
   retriggerFraction?: number;
   /** "mark": o dano original da carta que criou a marca (base pro retrigger acima). */
   storedDamage?: number;
+  /** "fire" (Rastro de Fogo ★★★ da Ignira): dano extra de uma vez a quem ENTRA na casa, além do dano por rodada normal. */
+  instantBonusOnEnter?: number;
+}
+
+/**
+ * Torre de Vigia (Dorin) — igual a Structure do MVP (src/engine/state.ts),
+ * mas no tabuleiro hexagonal. Dano por rodada a inimigos dentro de `range`,
+ * resolvido em tick.ts (mesma convenção de `ground`/`walls`). Sem hp extra
+ * por campeão (structureBonusHp do MVP) ainda — não há carta v2 que dependa
+ * disso até agora.
+ */
+export interface StructureV2 {
+  id: number;
+  pos: Hex;
+  hp: number;
+  team: TeamId;
+  damagePerRound: number;
+  range: number;
+  /** Rodadas restantes; null = sem duração natural (expira só por hp/destroy_wall). */
+  remaining: number | null;
+}
+
+/** Par de portais (Portal do Dorin) — entrar numa ponta teleporta pra outra. */
+export interface PortalPairV2 {
+  id: number;
+  a: Hex;
+  b: Hex;
+  team: TeamId;
+  remaining: number | null;
+}
+
+/** Dano com atraso (Explosão Retardada da Ignira) — resolvido em tick.ts quando `roundsLeft` chega a 0. */
+export interface DelayedDamageV2 {
+  id: number;
+  pos: Hex;
+  radius: number;
+  amount: number;
+  team: TeamId;
+  roundsLeft: number;
 }
 
 /**
@@ -267,6 +310,12 @@ export interface GameStateV2 {
   log: string[];
   ground: GroundEffectV2[];
   walls: WallV2[];
+  /** Torres de Vigia (Dorin, create_structure) — ver StructureV2/tick.ts. */
+  structures: StructureV2[];
+  /** Pares de portais (Dorin, create_portal_pair) — ver PortalPairV2/hazards.ts. */
+  portals: PortalPairV2[];
+  /** Danos com atraso pendentes (Ignira, delayed_damage) — ver DelayedDamageV2/tick.ts. */
+  delayedDamages: DelayedDamageV2[];
   turn: TurnStateV2;
   pending: PendingV2 | null;
   boss: BossStateV2;
@@ -408,6 +457,9 @@ export function createGameV2(seed: number, options: CreateGameV2Options = {}): G
     log: [],
     ground: [],
     walls: [],
+    structures: [],
+    portals: [],
+    delayedDamages: [],
     turn: newTurnV2("A", "draw"),
     pending: null,
     boss,

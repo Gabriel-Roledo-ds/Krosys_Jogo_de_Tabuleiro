@@ -10,7 +10,7 @@
 // carta). Então as funções aqui recebem os campeões-alvo já escolhidos.
 
 import { balance, type Effect } from "../engine/data";
-import { addHex, hexDirectionTo, hexDistance, hexNeighbors, sameHex, type Hex } from "../design/hexGrid";
+import { addHex, hexDirectionTo, hexDistance, hexLine, hexNeighbors, HEX_DIRECTIONS, sameHex, type Hex } from "../design/hexGrid";
 import { inHexBoard } from "../design/hexBoard";
 import { allChampionsV2, logV2, type ChampionStateV2, type GameStateV2 } from "./state";
 import { dealDamageV2, type DamageOptsV2 } from "./damage";
@@ -67,6 +67,15 @@ export interface EffectContextV2 {
    * applyEffectV2 até a camada de "jogar carta" existir de verdade.
    */
   targetCell?: Hex;
+  /** Segunda casa escolhida — só usada por `create_portal_pair` (target "two_cells", Portal do Dorin). */
+  targetCell2?: Hex;
+  /**
+   * Caminho (sem a casa de partida) do último `move_self` resolvido nesta
+   * carta — só preenchido quando quem chamou passa `ctx.moveDir` (cartas de
+   * target "direction"). `damage_all_adjacent_during_move` (Dança das
+   * Lâminas da Vextra) lê daqui pra saber por onde o atacante passou.
+   */
+  lastMovePath?: Hex[];
   /**
    * Alcance resolvido da carta no rank escolhido (com bônus já somados) —
    * só usado por efeitos com `all_enemies_in_range`/`all_poisoned_enemies`
@@ -377,6 +386,11 @@ export function applyMoveSelf(ctx: EffectContextV2, effect: Effect, targets: Cha
     const from = { ...target.pos };
     if (ctx.moveDir) forcedMove(ctx.game, target, ctx.moveDir, effect.distance ?? 0);
     else if (ctx.moveDest) safeTeleport(ctx.game, target, ctx.moveDest, effect.distance ?? 0);
+    // Caminho percorrido nesta chamada — só faz sentido pra moveDir (linha
+    // reta); damage_all_adjacent_during_move (Dança das Lâminas da Vextra)
+    // lê isso a seguir, no mesmo ctx (ver DISPATCH, efeitos da mesma carta
+    // rodam em sequência sobre o mesmo contexto).
+    if (ctx.moveDir && !sameHex(from, target.pos)) ctx.lastMovePath = hexLine(from, target.pos);
     onLandV2(ctx.game, target, { voluntary: false, from });
   }
 }
@@ -676,6 +690,191 @@ export function applyDetonateNearbyGroundFire(ctx: EffectContextV2, _effect: Eff
   ctx.game.ground = ctx.game.ground.filter((g) => g.id !== fire.id);
 }
 
+/**
+ * `fire_trail` (Rastro de Fogo ★ a ★★★ da Ignira, "ao se mover", carta
+ * rápida): não deixa fogo na hora — guarda um status no próprio dono que o
+ * PRÓXIMO movimento voluntário dele consome, deixando fogo em cada casa do
+ * caminho (ver turn.ts, caso "move"). [PADRÃO]: um "próximo movimento" por
+ * uso, consumido mesmo que ele não ande nada neste turno (sem prazo de
+ * validade além disso — revisar se o dono do projeto quiser uma validade).
+ */
+export function applyFireTrail(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
+  const duration = durationFromEffect(effect);
+  for (const target of targets) {
+    addStatus(target, ctx.nextId(), "fire_trail_active", "rounds", PERSISTENT_REMAINING, {
+      amount: effect.damage_per_round,
+      trailDurationRounds: duration.value,
+      trailInstantBonus: effect.instant_bonus_on_enter,
+      negative: false,
+    });
+  }
+}
+
+/**
+ * `delayed_damage` (Explosão Retardada ★ a ★★★ da Ignira): marca a casa do
+ * alvo escolhido na hora (não o segue se ele se mover) e explode sozinha
+ * `delay_rounds` rodadas depois, acertando quem estiver na área nesse
+ * momento (ver tick.ts) — inclusive quem marcou, se ficar perto.
+ */
+export function applyDelayedDamage(ctx: EffectContextV2, effect: Effect, targets: ChampionStateV2[]): void {
+  if (!ctx.attacker) return;
+  const target = targets[0];
+  if (!target) return;
+  ctx.game.delayedDamages.push({
+    id: ctx.nextId(),
+    pos: { ...target.pos },
+    radius: effect.radius ?? 0,
+    amount: effect.amount ?? 0,
+    team: ctx.attacker.team,
+    roundsLeft: effect.delay_rounds ?? 1,
+  });
+}
+
+/**
+ * `damage_all_adjacent_during_move` (Dança das Lâminas ★★/★★★ da Vextra):
+ * dano a todo inimigo que ficou adjacente a QUALQUER casa do caminho
+ * percorrido pelo `move_self` desta mesma carta (`ctx.lastMovePath`, ver
+ * applyMoveSelf acima — os dois efeitos rodam em sequência sobre o mesmo
+ * ctx). Cada inimigo é atingido só 1x mesmo perto de vários passos.
+ */
+export function applyDamageAllAdjacentDuringMove(ctx: EffectContextV2, effect: Effect): Record<string, number> {
+  if (!ctx.attacker || !ctx.lastMovePath) return {};
+  const hitUids = new Set<string>();
+  for (const step of ctx.lastMovePath) {
+    for (const h of hexNeighbors(step)) {
+      const hit = allChampionsV2(ctx.game).find((c) => c.alive && c.team !== ctx.attacker!.team && !hitUids.has(c.uid) && sameHex(c.pos, h));
+      if (hit) hitUids.add(hit.uid);
+    }
+  }
+  const out: Record<string, number> = {};
+  for (const uid of hitUids) {
+    const c = allChampionsV2(ctx.game).find((x) => x.uid === uid)!;
+    out[uid] = dealDamageV2(ctx.attacker, c, effect.amount ?? 0, { bonus: ctx.bonusDamage }).final;
+  }
+  return out;
+}
+
+/** `create_structure` (Torre de Vigia do Dorin): estrutura em `ctx.targetCell` que causa dano por rodada a inimigos dentro de `range` (resolvido em tick.ts). */
+export function applyCreateStructure(ctx: EffectContextV2, effect: Effect): void {
+  if (!ctx.attacker || !ctx.targetCell) return;
+  if (!isEmptyOfChampions(ctx.game, ctx.targetCell) || wallAtV2(ctx.game, ctx.targetCell)) return;
+  const duration = effect.duration ? durationFromEffect(effect).value : null;
+  ctx.game.structures.push({
+    id: ctx.nextId(),
+    pos: { ...ctx.targetCell },
+    hp: effect.hp ?? 1,
+    team: ctx.attacker.team,
+    damagePerRound: effect.damage_per_round ?? 0,
+    range: effect.range ?? 0,
+    remaining: duration,
+  });
+}
+
+/** Cria uma parede, sem duplicar se já houver uma ali (mesma regra de applyCreateWall). */
+function pushWallIfFree(ctx: EffectContextV2, pos: Hex, hp: number, duration: number): void {
+  if (!ctx.attacker || wallAtV2(ctx.game, pos)) return;
+  ctx.game.walls.push({ id: ctx.nextId(), pos: { ...pos }, hp, team: ctx.attacker.team, remaining: duration });
+}
+
+/** `create_walls_line` (Muralha do Dorin, target "line"): `count` paredes em fila a partir de `ctx.targetCell`, na direção de quem usou a carta até lá. */
+export function applyCreateWallsLine(ctx: EffectContextV2, effect: Effect): void {
+  if (!ctx.attacker || !ctx.targetCell || !ctx.moveDir) return;
+  const duration = durationFromEffect(effect).value;
+  let pos = { ...ctx.targetCell };
+  for (let i = 0; i < (effect.count ?? 1); i++) {
+    if (!inHexBoard(pos, ctx.game.board)) break;
+    pushWallIfFree(ctx, pos, effect.hp ?? balance.walls.normal_wall_hp, duration);
+    pos = addHex(pos, ctx.moveDir);
+  }
+}
+
+/** Direção vizinha a `dir` girando `steps` posições no hexágono (60° por passo) — ver HEX_DIRECTIONS. */
+function rotateHexDir(dir: Hex, steps: number): Hex {
+  const i = HEX_DIRECTIONS.findIndex((d) => d.q === dir.q && d.r === dir.r);
+  if (i < 0) return dir;
+  return HEX_DIRECTIONS[(i + steps + HEX_DIRECTIONS.length * 2) % HEX_DIRECTIONS.length];
+}
+
+/**
+ * `create_walls_shape` (Barricada ★★/★★★ do Dorin, target "cell"): uma
+ * "cunha" de paredes a partir de `ctx.targetCell` — 3 em linha na direção de
+ * quem usou a carta até lá, e o resto virando 60° a partir da última.
+ * [PADRÃO]: a carta não guarda direção nos dados (ao contrário do MVP
+ * original, que usava `target.dir` num grid quadrado) — aqui ela é
+ * derivada de quem usou a carta até a casa escolhida, igual ao target "line".
+ */
+export function applyCreateWallsShape(ctx: EffectContextV2, effect: Effect): void {
+  if (!ctx.attacker || !ctx.targetCell) return;
+  const dir = ctx.moveDir ?? hexDirectionTo(ctx.attacker.pos, ctx.targetCell);
+  if (dir.q === 0 && dir.r === 0) return;
+  const duration = durationFromEffect(effect).value;
+  const hp = effect.hp ?? balance.walls.normal_wall_hp;
+  const count = effect.count ?? 1;
+  const cells: Hex[] = [];
+  let pos = { ...ctx.targetCell };
+  for (let i = 0; i < Math.min(3, count); i++) {
+    cells.push(pos);
+    pos = addHex(pos, dir);
+  }
+  if (count > 3) {
+    const side = rotateHexDir(dir, 2);
+    let sidePos = addHex(cells[cells.length - 1], side);
+    for (let i = 3; i < count; i++) {
+      cells.push(sidePos);
+      sidePos = addHex(sidePos, side);
+    }
+  }
+  for (const c of cells) if (inHexBoard(c, ctx.game.board)) pushWallIfFree(ctx, c, hp, duration);
+}
+
+/**
+ * `create_walls_around_target` (Bastião Impenetrável ★★★ do Dorin, target
+ * "cell"): cerca a área escolhida com `count` paredes. [PADRÃO]: hexágono só
+ * tem 6 vizinhos de verdade (contra os 8 do grid quadrado do MVP original),
+ * então o anel 1 completo (6) é preenchido primeiro e o que faltar (`count`
+ * acima de 6) vem do anel 2, em ordem fixa — revisar se o dono do projeto
+ * quiser outra geometria.
+ */
+export function applyCreateWallsAroundTarget(ctx: EffectContextV2, effect: Effect): void {
+  if (!ctx.attacker || !ctx.targetCell) return;
+  const duration = durationFromEffect(effect).value;
+  const hp = effect.hp ?? balance.walls.normal_wall_hp;
+  const count = effect.count ?? 6;
+  const ring1 = hexNeighbors(ctx.targetCell);
+  const ring2 = ring1.flatMap((h) => hexNeighbors(h)).filter((h) => !sameHex(h, ctx.targetCell!) && !ring1.some((r) => sameHex(r, h)));
+  const uniqueRing2: Hex[] = [];
+  for (const h of ring2) if (!uniqueRing2.some((u) => sameHex(u, h))) uniqueRing2.push(h);
+  const cells = [...ring1, ...uniqueRing2].slice(0, count);
+  for (const c of cells) if (inHexBoard(c, ctx.game.board)) pushWallIfFree(ctx, c, hp, duration);
+}
+
+/** `create_portal_pair` (Portal do Dorin, target "two_cells"): duas casas ligadas — entrar numa teleporta pra outra (ver hazards.ts/onLandV2). */
+export function applyCreatePortalPair(ctx: EffectContextV2, effect: Effect): void {
+  if (!ctx.attacker || !ctx.targetCell || !ctx.targetCell2) return;
+  const duration = effect.lasts_until_destroyed ? null : (balance.walls.default_duration_rounds ?? 3);
+  ctx.game.portals.push({
+    id: ctx.nextId(),
+    a: { ...ctx.targetCell },
+    b: { ...ctx.targetCell2 },
+    team: ctx.attacker.team,
+    remaining: duration,
+  });
+}
+
+/** `slow_cell` (Teia da Sylvane): área que custa o dobro de movimento pra atravessar (ver movement.ts). */
+export function applySlowCell(ctx: EffectContextV2, effect: Effect): void {
+  if (!ctx.attacker || !ctx.targetCell) return;
+  const duration = durationFromEffect(effect);
+  ctx.game.ground.push({
+    id: ctx.nextId(),
+    kind: "slow",
+    pos: { ...ctx.targetCell },
+    radius: effect.radius ?? 0,
+    team: ctx.attacker.team,
+    remaining: duration.value,
+  });
+}
+
 /** `reflect_absorbed_damage`: enquanto tiver escudo, reflete `percent`% do dano absorvido (Vingança do Escudo). */
 export function applyReflectAbsorbedDamage(ctx: EffectContextV2, effect: Effect): void {
   if (!ctx.attacker) return;
@@ -957,6 +1156,15 @@ const DISPATCH: Record<string, (ctx: EffectContextV2, effect: Effect, targets: C
   venom_terrain: (ctx, effect) => applyVenomTerrain(ctx, effect),
   mark_ground_area: (ctx, effect) => applyMarkGroundArea(ctx, effect),
   detonate_nearby_ground_fire: (ctx, effect, targets) => applyDetonateNearbyGroundFire(ctx, effect, targets),
+  fire_trail: (ctx, effect, targets) => applyFireTrail(ctx, effect, targets),
+  delayed_damage: (ctx, effect, targets) => applyDelayedDamage(ctx, effect, targets),
+  damage_all_adjacent_during_move: (ctx, effect) => applyDamageAllAdjacentDuringMove(ctx, effect) as unknown as void,
+  create_structure: (ctx, effect) => applyCreateStructure(ctx, effect),
+  create_walls_line: (ctx, effect) => applyCreateWallsLine(ctx, effect),
+  create_walls_shape: (ctx, effect) => applyCreateWallsShape(ctx, effect),
+  create_walls_around_target: (ctx, effect) => applyCreateWallsAroundTarget(ctx, effect),
+  create_portal_pair: (ctx, effect) => applyCreatePortalPair(ctx, effect),
+  slow_cell: (ctx, effect) => applySlowCell(ctx, effect),
 };
 
 /** Tipos de efeito que já têm execução real no motor v2 (os outros ainda só existem como dado). */

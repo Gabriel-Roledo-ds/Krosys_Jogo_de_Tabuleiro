@@ -5229,8 +5229,8 @@
       {
         "rank": 2,
         "cost": 4,
-        "range": null,
-        "text": "3 paredes, 5hp, 3 rodadas, 4m",
+        "range": 3,
+        "text": "3 paredes, 5hp, 3 rodadas, 4m, alc.3",
         "effects": [
           {
             "type": "create_walls_line",
@@ -5246,8 +5246,8 @@
       {
         "rank": 3,
         "cost": 5,
-        "range": null,
-        "text": "4 paredes, 7hp, 4 rodadas, 5m",
+        "range": 4,
+        "text": "4 paredes, 7hp, 4 rodadas, 5m, alc.4",
         "effects": [
           {
             "type": "create_walls_line",

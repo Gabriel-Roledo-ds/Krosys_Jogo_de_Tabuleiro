@@ -10,8 +10,9 @@
 //   resolve na hora — não passa pela pilha de respostas rápidas (um jogador
 //   não pode responder à ativação do boss com uma carta rápida ainda, ver
 //   boss.ts).
-// - Sem efeitos de "pisar na casa" (onLand/hazards) — paredes/estruturas
-//   fixas do pós-MVP ainda não têm esse gancho no motor v2.
+// - Efeitos de "pisar na casa" (onLand/hazards.ts) já ligados no movimento
+//   voluntário (caso "move" abaixo) — armadilha, mola, portal, muro de
+//   chamas, terreno venenoso, marca de área e o bônus do Rastro de Fogo.
 // - Sem "Passo Ágil"/bônus de mana por distância andada (nenhuma carta v2
 //   usa isso hoje; se alguma vier a usar, entra junto).
 //
@@ -22,7 +23,8 @@
 import { balance, getBossCard, type BossCardDef } from "../engine/data";
 import { basicTargetV2, getCardDefV2, getCardRankV2, getChampionDefV2 } from "./data";
 import type { Hex } from "../design/hexGrid";
-import { hexKey } from "../design/hexGrid";
+import { hexKey, hexLine, sameHex } from "../design/hexGrid";
+import { removeStatus } from "./status";
 import { discardCardV2, deckSizeV2, drawFromV2 } from "./deck";
 import { resolveDeathsV2, returnDeadChampionsV2 } from "./death";
 import { beginBossActivationV2, bossShouldActivateV2, minionsAttackAdjacentV2, resolveBossItemV2 } from "./boss";
@@ -37,6 +39,7 @@ import {
   getChampionV2,
   logV2,
   newTurnV2,
+  nextIdV2,
   otherTeam,
   type CardInstanceV2,
   type ChampionStateV2,
@@ -66,6 +69,32 @@ export function cannotCastV2(c: ChampionStateV2): boolean {
   return c.statuses.some((x) => (x.status === "silenced" || x.status === "stunned") && !x.fresh);
 }
 export const cannotBasicV2 = (c: ChampionStateV2): boolean => c.statuses.some((x) => x.status === "stunned" && !x.fresh);
+
+/**
+ * Rastro de Fogo ★ a ★★★ da Ignira (fire_trail, ver effects.ts
+ * applyFireTrail): se `c` tiver o status "fire_trail_active" (carta rápida
+ * jogada antes de andar), deixa fogo em cada casa do caminho ANDADO agora
+ * (voluntário — forçado por empurrão/puxão/mola não deixa rastro, só o
+ * próprio passo) e consome o status (1 uso só).
+ */
+function layFireTrailV2(game: GameStateV2, c: ChampionStateV2, from: Hex): void {
+  const trail = c.statuses.find((x) => x.status === "fire_trail_active");
+  if (!trail) return;
+  removeStatus(c, "fire_trail_active");
+  if (sameHex(from, c.pos)) return; // não andou de verdade (ex. custo 0)
+  for (const cell of hexLine(from, c.pos)) {
+    game.ground.push({
+      id: nextIdV2(game),
+      kind: "fire",
+      pos: { ...cell },
+      radius: 0,
+      team: c.team,
+      remaining: trail.trailDurationRounds ?? 1,
+      damagePerRound: trail.amount,
+      instantBonusOnEnter: trail.trailInstantBonus,
+    });
+  }
+}
 
 /** Tamanho da mão pro limite (balance.hand.max_size): cartas de recompensa de monstro não contam (claude/monstros-mapa.md). */
 function nonMonsterHandSizeV2(hand: CardInstanceV2[]): number {
@@ -314,6 +343,7 @@ export function applyActionV2(game: GameStateV2, team: TeamId, a: ActionV2): voi
       const from = { ...c.pos };
       c.pos = { ...a.to };
       logV2(game, `${c.defId} (${c.team}) anda até (${a.to.q},${a.to.r})`);
+      layFireTrailV2(game, c, from);
       onLandV2(game, c, { voluntary: true, from });
       minionsAttackAdjacentV2(game, c);
       resolveDeathsV2(game, team);
