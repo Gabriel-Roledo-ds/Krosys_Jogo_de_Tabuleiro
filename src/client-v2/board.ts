@@ -9,6 +9,7 @@
 import Phaser from "phaser";
 import hexBoardData from "../../data/hex_board.json";
 import monstersMapData from "../../data/monsters_map.json";
+import { zoneSide } from "../design/monsterPlacement";
 
 const SIZE = 18; // raio do hexágono em pixels
 const SQRT3 = Math.sqrt(3);
@@ -18,6 +19,15 @@ const monsterTypes = (monstersMapData as any).types as Record<string, { name: st
 // Cor do guardião de templo antes de reivindicado — mística, nem A nem B, pra
 // não confundir com o dono de uma equipe (regras-e-decisoes.md §21).
 const TEMPLE_UNCLAIMED_COLOR = 0xd4af37;
+// Paleta por zona (claude/monstros-mapa.md/claude/estetica-visual.md): Vale
+// Selvagem (verde, mesma cor que o tabuleiro sempre usou) vs. Terra
+// Petrificada (pedra/terra áspera, cinza-amarronzado) — mesmo critério de
+// partição de `zoneSide` (src/design/monsterPlacement.ts, a diagonal entre as
+// duas pontas agudas do rombo), reaproveitado aqui sem duplicar a fórmula.
+const ZONE_COLOR: Record<ReturnType<typeof zoneSide>, [number, number]> = {
+  vale_selvagem: [0x3f7a3a, 0x448543],
+  terra_petrificada: [0x6b5a44, 0x72624c],
+};
 
 export interface Hex { q: number; r: number }
 
@@ -181,7 +191,8 @@ export function createBoard(parent: HTMLElement, onCell: (q: number, r: number) 
     const vis = visionSets();
     for (let q = 0; q < board.q_size; q++)
       for (let r = 0; r < board.r_size; r++) {
-        const base = (q + r) % 2 ? 0x3f7a3a : 0x448543;
+        const zc = ZONE_COLOR[zoneSide({ q, r })];
+        const base = (q + r) % 2 ? zc[0] : zc[1];
         const k = key(q, r);
         if (!vis || vis.visible.has(k)) {
           hexPoly({ q, r }, base, 1, 0x2a5a2a, 0.4);
